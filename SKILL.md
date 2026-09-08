@@ -62,6 +62,13 @@ Any other monitor line (`"type":"ready"`, errors, exit) is status. Do not treat 
      reply `{who:"agent", text, at}`. Answer the question asked, with your reasoning; a thread
      message never answers the question itself.
    - `defer` → `status = "deferred"`. `reopen` → `status = "reopened"`, delete `answer`.
+   - `explore` → write the question's `explore`: `{ at, rows: [{ option, pros: [...], cons: [...] }] }`,
+     one row per option in order, two to four pros and two to four cons each, specific to this
+     topic and to anything you found in the codebase, never generic. Be as honest about the
+     recommended option's cons as about the others'. The page renders it as a table in the
+     question's discussion panel. If writing it changes your mind, rewrite `rec` and set
+     `updated: true`. The page sends `explore` the moment the button is clicked, usually as
+     the only action in its send; handle it like any other send (working → write → waiting).
    - `finish` → see Finish below, after the other actions.
 3. If an answer changes the recommendation of a still-open question, rewrite that question's
    `rec` in place and set `updated: true` (the page marks it). Clear `updated` once the user
@@ -145,6 +152,7 @@ printed line exactly as in "Handling a send". On finish, kill the server by the 
     "rec": { "option": "A", "why": "…" },                       // or { "text": "…", "why": "…" }
     "status": "open|answered|deferred|reopened", "durable": false, "updated": false,
     "answer": { "kind": "accept|option|text", "option": "A", "text": "…" },
+    "explore": { "at": "ISO", "rows": [{ "option": "A", "pros": ["…"], "cons": ["…"] }] },  // after an explore action
     "thread": [{ "who": "user|agent", "text": "…", "at": "ISO" }]
   }]
 }
@@ -156,6 +164,6 @@ Send lines (`events.jsonl`, also printed by `serve`):
 { "type": "send", "seq": 12, "at": "ISO", "session": "/abs/session/folder", "actions": [
   { "q": "q15", "type": "answer", "kind": "accept|option|text", "option": "A", "text": "…" },
   { "q": "q8",  "type": "thread", "text": "…" },
-  { "q": "q17", "type": "defer" }, { "q": "q3", "type": "reopen" },
+  { "q": "q17", "type": "defer" }, { "q": "q3", "type": "reopen" }, { "q": "q9", "type": "explore" },
   { "type": "finish" } ] }
 ```

@@ -32,11 +32,14 @@ In any project:
 /grill-with-ui <topic you want grilled>
 ```
 
-The agent prints a URL. Open it. Answer by clicking an option, pressing **Accept** on the
-recommendation, or writing free text; start a discussion in the right-hand panel; use
-**Defer** and **Reopen** on a card when you want to. Everything you do is staged (and survives
-a reload) until you press **Send N to Agent** (⌘↩). The agent answers threads, records your
-answers, and adds the next round of questions to the page.
+The agent prints a URL. Open it. Answer by clicking an option (the recommended one is
+outlined) or writing free text; start a discussion in the right-hand panel; use **Defer** and **Reopen** on a card when
+you want to. Everything you do is staged (and survives a reload) until you press **Send N to
+Agent** (⌘↩). The one exception is **Explore deeper** next to a question's title: it goes to
+the agent the moment you click it, and the pros and cons table for that question's options
+appears in the discussion panel when the agent is done. The agent answers
+threads, writes the tables, records your answers, and adds the next round of questions to
+the page.
 
 **Finish grill** stages a finish action; on the next Send the agent writes the design doc to
 the path shown in the header (default `docs/<topic>-design.md` in your project) and stops.

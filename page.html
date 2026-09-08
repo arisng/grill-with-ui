@@ -26,11 +26,17 @@
   header { grid-row: 2; grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding: 12px 24px; border-bottom: 1px solid var(--rule); background: var(--panel); position: relative; }
   header h1 { font-family: var(--serif); font-weight: 500; font-size: 20px; margin: 0; }
   header .path { color: var(--ink-3); font-size: 13px; }
-  header .status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); }
+  header .status { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-2); } header .status .spin { color: var(--stage); }
   .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); }
   .dot.working { background: var(--stage); animation: pulse 1.2s ease-in-out infinite; }
   .dot.gone { background: var(--ink-3); }
   @keyframes pulse { 50% { opacity: .3; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { display: inline-block; width: 11px; height: 11px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -1px; flex-shrink: 0; }
+  #progress { display: none; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; overflow: hidden; background: var(--stage-soft); }
+  header.working #progress { display: block; }
+  #progress::after { content: ""; position: absolute; top: 0; bottom: 0; width: 30%; background: var(--stage); animation: slide 1.4s ease-in-out infinite; }
+  @keyframes slide { from { left: -30%; } to { left: 100%; } }
   #terms-toggle { font-size: 12px; padding: 4px 10px; }
   #terms { display: none; position: absolute; right: 24px; top: 100%; width: 420px; max-height: 60vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 16px; box-shadow: 0 8px 24px rgba(0,0,0,.08); z-index: 5; }
   #terms.show { display: block; }
@@ -46,8 +52,9 @@
   .item.selected { background: var(--panel); box-shadow: inset 3px 0 0 var(--accent); }
   .item .id { font-size: 12px; color: var(--ink-3); }
   .item .t { font-size: 14px; }
-  .item .mark { font-size: 11px; color: var(--ink-3); }
-  .mark.answered { color: var(--ok); } .mark.open, .mark.reopened { color: var(--accent); } .mark.staged { color: var(--stage); font-weight: 600; }
+  .item .mark { font-size: 11px; color: var(--ink-3); display: inline-flex; align-items: center; gap: 4px; }
+  .item .mark svg { width: 12px; height: 12px; }
+  .mark.answered { color: var(--ok); } .mark.open, .mark.reopened { color: var(--accent); } .mark.staged { color: var(--stage); font-weight: 600; } .mark.pending { color: var(--stage); }
   .item.updated .t::after { content: "updated"; font-size: 10px; color: var(--stage); margin-left: 6px; letter-spacing: .06em; text-transform: uppercase; }
   nav .empty { padding: 20px; font-size: 13px; color: var(--ink-3); }
 
@@ -55,20 +62,30 @@
   .card { max-width: 680px; }
   .crumb { font-size: 12px; color: var(--ink-3); display: flex; gap: 12px; flex-wrap: wrap; }
   .crumb a { text-decoration: none; } .crumb .upd { color: var(--stage); }
-  .card h2 { font-family: var(--serif); font-weight: 500; font-size: 30px; line-height: 1.15; margin: 8px 0 12px; }
+  .title-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 8px 0 12px; }
+  .card h2 { font-family: var(--serif); font-weight: 500; font-size: 30px; line-height: 1.15; margin: 0; }
+  #explore { font-size: 13px; padding: 6px 12px; flex-shrink: 0; }
+  #explore:disabled { background: var(--panel); border-color: var(--rule); color: var(--ink-3); }
   .card .body { font-size: 15px; color: var(--ink-2); max-width: 62ch; margin: 0; white-space: pre-line; }
   .opts { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 8px; }
-  .opt { display: grid; grid-template-columns: 28px 1fr; gap: 12px; align-items: start; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; background: var(--panel); cursor: pointer; }
+  .opt { display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: start; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; background: var(--panel); cursor: pointer; }
+  .opt .check { width: 20px; height: 20px; color: var(--ok); visibility: hidden; align-self: center; }
+  .opt .check svg, .mark svg { display: block; width: 100%; height: 100%; }
   .opt:hover { border-color: var(--ink-3); }
   .opt .k { font-family: var(--serif); font-size: 18px; line-height: 1.2; color: var(--ink-3); }
   .opt.rec { border-color: var(--accent); } .opt.rec .k { color: var(--accent); }
   .opt .tag { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); margin-bottom: 2px; }
-  .opt.chosen { border-color: var(--ok); box-shadow: 0 0 0 1px var(--ok); }
+  .opt.chosen { background: var(--ok-soft); border-color: var(--ok); } .opt.chosen .k, .opt.chosen .tag { color: var(--ok); } .opt.chosen .check { visibility: visible; }
+  /* Once an answer is picked (staged or recorded), everything but the picked box reads as disabled; hover or focus wakes a part back up. */
+  .card.picked .body, .card.picked .why, .card.picked .answer-row, .card.picked .links, .card.picked .opt:not(.chosen):not(.staged):not(.pending) { opacity: .45; transition: opacity .15s; }
+  .card.picked .opt:not(.chosen):not(.staged):not(.pending):hover, .card.picked .answer-row:focus-within, .card.picked .links:hover { opacity: 1; }
+  .opt.text-answer { cursor: default; } .opt.text-answer .tag { color: var(--ok); } .opt.text-answer:hover { border-color: var(--ok); }
   .opt.staged { border-color: var(--stage); box-shadow: 0 0 0 1px var(--stage); background: var(--stage-soft); }
+  .opt.pending { border-color: var(--stage); border-style: dashed; } .opt.pending .k { color: var(--stage); } .opt .check.pending { visibility: visible; color: var(--stage); display: flex; align-items: center; justify-content: center; }
   .locked .opt { cursor: default; } .locked .opt:hover { border-color: var(--rule); }
   .why { margin: 14px 0 0; font-size: 14px; color: var(--ink-2); white-space: pre-line; } .why b { color: var(--accent); font-weight: 600; }
-  .answered-line { margin-top: 18px; font-size: 14px; color: var(--ok); } .answered-line .against { color: var(--accent); margin-left: 6px; }
   .staged-line { margin-top: 10px; font-size: 14px; color: var(--stage); } .staged-line a { color: var(--ink-3); font-size: 12px; margin-left: 8px; }
+  .pending-line { margin-top: 10px; font-size: 14px; color: var(--stage); display: flex; align-items: center; gap: 8px; }
   .answer-row { display: flex; gap: 8px; margin-top: 20px; align-items: flex-start; }
   .links { margin-top: 12px; font-size: 13px; display: flex; gap: 14px; } .links a { color: var(--ink-3); text-decoration: none; } .links a:hover { color: var(--accent); }
   textarea { width: 100%; min-height: 60px; font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--panel); resize: vertical; color: var(--ink); }
@@ -89,13 +106,25 @@
   .msg .who { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); margin-bottom: 4px; }
   .msg.user .who { color: var(--stage); } .msg.agent .who { color: var(--accent); }
   .msg.staged { background: var(--stage-soft); margin: 8px -10px 0; padding: 10px 28px 10px 10px; border-radius: 6px; border-top: 0; }
+  .msg.pending { opacity: .7; } .msg.pending .who { display: flex; align-items: center; gap: 6px; }
   .msg .text { font-size: 14px; white-space: pre-line; }
   .msg .rm { position: absolute; right: 8px; top: 8px; color: var(--ink-3); text-decoration: none; font-size: 14px; }
   .empty-thread { padding: 12px 0; font-size: 13px; color: var(--ink-3); border-top: 1px solid var(--rule); }
+  .explore-head { padding: 12px 0 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; border-top: 1px solid var(--rule); }
+  .explore-wait { padding: 12px 0; font-size: 13px; color: var(--stage); border-top: 1px solid var(--rule); }
+  .procon { width: 100%; border-collapse: collapse; font-size: 13px; margin: 2px 0 10px; }
+  .procon th { text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; padding: 6px 8px 6px 0; border-bottom: 1px solid var(--rule); }
+  .procon td { vertical-align: top; padding: 8px 8px 8px 0; border-bottom: 1px solid var(--rule); }
+  .procon td.k { font-family: var(--serif); font-size: 16px; color: var(--ink-2); width: 28px; } .procon td.k.rec { color: var(--accent); }
+  .procon ul { margin: 0; padding-left: 16px; } .procon li { margin: 0 0 3px; }
+  .procon .pro li::marker { color: var(--ok); } .procon .con li::marker { color: var(--accent); }
   aside .compose { padding: 12px 22px 18px; border-top: 1px solid var(--rule); display: grid; gap: 8px; } aside .compose button { justify-self: end; }
 
   footer { grid-row: 4; grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding: 12px 24px; border-top: 1px solid var(--rule); background: var(--panel); }
-  footer .staged-list { font-size: 13px; color: var(--ink-2); flex: 1; } footer .staged-list b { color: var(--stage); } footer .staged-list .sent { color: var(--ok); }
+  footer .staged-list { font-size: 13px; color: var(--ink-2); flex: 1; } footer .staged-list b { color: var(--stage); } footer .staged-list .sent { color: var(--stage); display: inline-flex; align-items: center; gap: 6px; }
+  #finish.ready { background: var(--ok); border-color: var(--ok); color: #fff; font-weight: 600; animation: ready 1.2s ease-in-out infinite; }
+  #finish.ready:hover { background: #2f5a3b; border-color: #2f5a3b; }
+  @keyframes ready { 0%, 100% { background-color: var(--ok); border-color: var(--ok); } 50% { background-color: #7fb08d; border-color: #7fb08d; } }
   footer .hint { font-size: 12px; color: var(--ink-3); } footer .warn { font-size: 12px; color: var(--accent); }
   footer .confirm { font-size: 13px; color: var(--ink-2); display: flex; gap: 8px; align-items: center; }
 </style>
@@ -108,6 +137,7 @@
   <button id="terms-toggle" type="button">Terms</button>
   <div id="terms"></div>
   <span class="status"><span class="dot" id="agent-dot"></span><span id="agent-status">connecting…</span></span>
+  <div id="progress"></div>
 </header>
 <nav id="nav"><div class="empty">Connecting…</div></nav>
 <main id="main"></main>
@@ -125,11 +155,12 @@ const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const WORKING_GRACE_MS = 5 * 60 * 1000;
 const GONE_AFTER_MS = 3000;
+const CHECK = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="currentColor"/><path d="M6 10.4l2.6 2.6L14 7.4" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
 let S = null, raw = null, selected = null, storeKey = null;
 let lastOk = Date.now(), gone = false, confirmFinish = false;
 let local = fresh();
-function fresh() { return { staged: {}, finish: false, sent: null, drafts: {} }; }
+function fresh() { return { staged: {}, finish: false, pending: [], drafts: {} }; }
 function load() { local = fresh(); try { const v = localStorage.getItem(storeKey); if (v) local = Object.assign(fresh(), JSON.parse(v)); } catch {} }
 function save() { try { localStorage.setItem(storeKey, JSON.stringify(local)); } catch {} }
 
@@ -161,9 +192,11 @@ async function poll() {
 function onState() {
   const key = "grill:" + (S.project || "") + ":" + (S.created || "");
   if (key !== storeKey) { storeKey = key; load(); }
-  if (local.sent && S.agent && Number(S.agent.handled) >= local.sent.seq) {
-    local.sent = null; save();
-    const cur = byId(selected); if (!cur || !isOpen(cur)) selected = (firstOpen() || {}).id || selected;
+  const handled = Number((S.agent || {}).handled) || 0;
+  const still = local.pending.filter((p) => p.seq > handled);
+  if (still.length !== local.pending.length) {
+    local.pending = still; save();
+    if (!still.length) { const cur = byId(selected); if (!cur || !isOpen(cur)) selected = (firstOpen() || {}).id || selected; }
   }
   if (!selected || !byId(selected)) selected = (firstOpen() || {}).id || null;
   render();
@@ -179,6 +212,11 @@ function stageReopen(id) { const s = st(id); s.reopen = true; delete s.answer; d
 function clearStaged(id) { const s = local.staged[id]; if (s) { delete s.answer; delete s.defer; delete s.reopen; prune(id); } commit(); }
 function removeThread(id, i) { const s = local.staged[id]; if (s && s.thread) { s.thread.splice(i, 1); prune(id); } commit(); }
 function commit() { save(); render(); }
+// ---- pending: sent, not yet recorded by the agent (agent.handled < seq) ----
+const pendingActions = (id) => local.pending.flatMap((p) => p.actions.filter((a) => a.q === id));
+const lastPending = () => local.pending[local.pending.length - 1] || null;
+const isExploring = (id) => pendingActions(id).some((a) => a.type === "explore");
+const allSettled = () => qs().length > 0 && !qs().some(isOpen);
 function stagedCount() {
   let n = local.finish ? 1 : 0;
   for (const s of Object.values(local.staged)) n += (s.answer ? 1 : 0) + (s.defer ? 1 : 0) + (s.reopen ? 1 : 0) + (s.thread ? s.thread.length : 0);
@@ -195,25 +233,42 @@ function buildActions() {
   if (local.finish) out.push({ type: "finish" });
   return out;
 }
-function sendState() {
+function sendState(needStaged = true) {
   const a = (S && S.agent) || {};
   if (locked()) return { disabled: true, why: "" };
   if (gone) return { disabled: true, why: "server gone" };
-  if (!stagedCount()) return { disabled: true, why: "" };
+  if (needStaged && !stagedCount()) return { disabled: true, why: "" };
   if (a.status === "working") {
     const ms = Date.now() - Date.parse(a.since || 0);
     if (!(ms > WORKING_GRACE_MS)) return { disabled: true, why: "" };
     return { disabled: false, why: `The agent has been working for ${fmtMs(ms)}; it may not be listening.` };
   }
+  const lp = lastPending();
+  if (lp) { // sent, but the agent has not even picked it up yet: one event in flight at a time
+    const ms = Date.now() - Date.parse(lp.at || 0);
+    if (!(ms > WORKING_GRACE_MS)) return { disabled: true, why: "" };
+    return { disabled: false, why: `Send #${lp.seq} has waited ${fmtMs(ms)} for the agent; it may not be listening.` };
+  }
   return { disabled: false, why: "" };
+}
+async function post(actions) {
+  let r, j = {};
+  try { r = await fetch("/send", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ actions }) }); j = await r.json().catch(() => ({})); } catch { r = null; }
+  if (!j.ok) $("send-why").textContent = "Send failed: " + (j.error || (r && r.status) || "no server");
+  return j.ok ? j : null;
 }
 async function send() {
   const { disabled } = sendState(); if (disabled) return;
   const actions = buildActions();
-  let r, j = {};
-  try { r = await fetch("/send", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ actions }) }); j = await r.json().catch(() => ({})); } catch { r = null; }
-  if (j.ok) { local.sent = { seq: j.seq, at: new Date().toISOString(), n: actions.length }; local.staged = {}; local.finish = false; confirmFinish = false; commit(); }
-  else { $("send-why").textContent = "Send failed: " + (j.error || (r && r.status) || "no server"); }
+  const j = await post(actions);
+  if (j) { local.pending.push({ seq: j.seq, at: new Date().toISOString(), actions }); local.staged = {}; local.finish = false; confirmFinish = false; commit(); }
+}
+// Explore deeper skips staging: one click, one event, so the table is on its way at once.
+async function explore(id) {
+  if (sendState(false).disabled || isExploring(id)) return;
+  const actions = [{ q: id, type: "explore" }];
+  const j = await post(actions);
+  if (j) { local.pending.push({ seq: j.seq, at: new Date().toISOString(), actions }); commit(); }
 }
 
 // ---- rendering ----
@@ -247,8 +302,10 @@ function renderStatus() {
   if (gone) { dot.className = "dot gone"; txt.textContent = "server gone"; return; }
   if (!S) return;
   const a = S.agent || {};
-  if (S.finished) { dot.className = "dot"; txt.textContent = "finished"; return; }
-  if (a.status === "working") { dot.className = "dot working"; txt.textContent = `Agent working · ${fmtMs(Date.now() - Date.parse(a.since || 0))}`; }
+  if (S.finished) { dot.className = "dot"; txt.textContent = "finished"; document.querySelector("header").classList.remove("working"); return; }
+  const working = a.status === "working";
+  document.querySelector("header").classList.toggle("working", working);
+  if (working) { dot.className = "dot working"; txt.innerHTML = `<span class="spin"></span> Agent working · ${fmtMs(Date.now() - Date.parse(a.since || 0))}`; }
   else { dot.className = "dot"; txt.textContent = `Agent waiting for you${a.since ? " · since " + timeOf(a.since) : ""}${a.handled ? " · handled #" + a.handled : ""}`; }
 }
 function renderNav() {
@@ -266,7 +323,8 @@ function renderNav() {
       const el = document.createElement("div");
       el.className = "item" + (q.id === selected ? " selected" : "") + (q.updated ? " updated" : "");
       const mark = s ? `<span class="mark staged">staged</span>`
-        : `<span class="mark ${esc(q.status)}">${q.status === "answered" ? esc((q.answer && q.answer.option) || "text") : esc(q.status)}</span>`;
+        : pendingActions(q.id).some((a) => a.type !== "explore") ? `<span class="mark pending"><span class="spin"></span>sent</span>`
+        : `<span class="mark ${esc(q.status)}">${q.status === "answered" ? CHECK + esc((q.answer && q.answer.option) || "text") : esc(q.status)}</span>`;
       el.innerHTML = `<span class="id">${esc(q.id).toUpperCase()}</span><span class="t">${esc(q.title)}</span>${mark}`;
       el.onclick = () => { selected = q.id; render(); };
       nav.appendChild(el);
@@ -285,40 +343,46 @@ function renderMain() {
   if (q.updated) crumb.push(`<span class="upd">recommendation updated</span>`);
   if (q.status === "deferred") crumb.push(`<span>deferred</span>`);
   if (q.status === "reopened") crumb.push(`<span>reopened</span>`);
+  const pend = pendingActions(q.id);
+  const pendAnswer = pend.filter((a) => a.type === "answer").pop() || null;
   const opts = (q.options || []).map((o) => {
-    const isRec = rec.option === o.k, chosen = q.answer && q.answer.option === o.k, staged = s.answer && s.answer.option === o.k;
-    return `<li class="opt${isRec ? " rec" : ""}${chosen ? " chosen" : ""}${staged ? " staged" : ""}" data-opt="${esc(o.k)}"><span class="k">${esc(o.k)}</span><span>${isRec ? `<div class="tag">Recommended</div>` : ""}${esc(o.text)}</span></li>`;
-  }).join("");
+    const isRec = rec.option === o.k, chosen = q.answer && q.answer.option === o.k, staged = s.answer && s.answer.option === o.k, pending = !staged && pendAnswer && pendAnswer.option === o.k;
+    return `<li class="opt${isRec ? " rec" : ""}${chosen ? " chosen" : ""}${staged ? " staged" : ""}${pending ? " pending" : ""}" data-opt="${esc(o.k)}"><span class="k">${esc(o.k)}</span><span>${isRec ? `<div class="tag">Recommended</div>` : ""}${esc(o.text)}</span>${pending ? `<span class="check pending"><span class="spin"></span></span>` : `<span class="check">${CHECK}</span>`}</li>`;
+  }).join("") + (q.status === "answered" && q.answer && q.answer.kind === "text" && q.answer.text
+    ? `<li class="opt chosen text-answer"><span class="k"></span><span><div class="tag">Your answer</div>${esc(q.answer.text)}</span><span class="check">${CHECK}</span></li>` : "")
+    + (pendAnswer && pendAnswer.kind === "text" && pendAnswer.text
+    ? `<li class="opt pending text-answer"><span class="k"></span><span><div class="tag">Your answer · sending</div>${esc(pendAnswer.text)}</span><span class="check pending"><span class="spin"></span></span></li>` : "");
   const why = rec.option ? `<p class="why"><b>Why ${esc(rec.option)}.</b> ${esc(rec.why)}</p>`
     : rec.text ? `<p class="why"><b>Suggested.</b> ${esc(rec.text)}${rec.why ? " — " + esc(rec.why) : ""}</p>` : rec.why ? `<p class="why">${esc(rec.why)}</p>` : "";
-  let answered = "";
-  if (q.status === "answered" && q.answer) {
-    const against = q.answer.option && rec.option && q.answer.option !== rec.option ? `<span class="against">against rec ${esc(rec.option)}</span>` : "";
-    answered = `<div class="answered-line">Answered: ${q.answer.kind === "accept" ? `accepted recommendation <b>${esc(q.answer.option)}</b>` : q.answer.option ? `chose <b>${esc(q.answer.option)}</b>` : ""}${q.answer.text ? ` “${esc(q.answer.text)}”` : ""}${against}</div>`;
-  }
   let stagedLine = "";
   if (s.defer) stagedLine = "Staged: defer this question";
   else if (s.reopen) stagedLine = "Staged: reopen this question";
   else if (s.answer) stagedLine = s.answer.kind === "accept" ? `Staged: accept ${esc(s.answer.option)}` : s.answer.option ? `Staged: option ${esc(s.answer.option)}` : `Staged text: “${esc(s.answer.text)}”`;
   if (stagedLine) stagedLine = `<div class="staged-line">${stagedLine}<a href="#" id="clear-staged">clear</a></div>`;
+  const pendBits = pend.filter((a) => a.type === "defer" || a.type === "reopen").map((a) => a.type);
+  if (pendBits.length) stagedLine += `<div class="pending-line"><span class="spin"></span>Sent: ${pendBits.join(", ")} this question · waiting for the agent</div>`;
   const controls = lk ? "" : `
       <div class="answer-row">
         <textarea id="free" placeholder="${q.status === "answered" ? "Change your answer, or add nuance…" : (q.options || []).length ? "Free-text answer, if none of the options fit…" : "Your answer…"}">${esc(d.free || "")}</textarea>
-        ${rec.option ? `<button id="accept" type="button">Accept ${esc(rec.option)}</button>` : ""}
         <button id="stage-text" type="button">Stage text</button>
       </div>
       <div class="links">${isOpen(q) ? `<a href="#" id="defer">Defer this question</a>` : `<a href="#" id="reopen">Reopen this question</a>`}</div>`;
-  main.innerHTML = `<article class="card${lk ? " locked" : ""}">
+  const exploring = isExploring(q.id);
+  const gate = sendState(false);
+  const exploreBtn = (q.options || []).length && !lk
+    ? `<button id="explore" type="button"${exploring || gate.disabled ? " disabled" : ""}${gate.disabled && gate.why ? ` title="${esc(gate.why)}"` : ""}>${exploring ? `<span class="spin"></span> Exploring…` : q.explore ? "Explore again" : "Explore deeper"}</button>` : "";
+  const picked = (q.status === "answered" && q.answer) || !!s.answer || !!pendAnswer;
+  main.innerHTML = `<article class="card${lk ? " locked" : ""}${picked ? " picked" : ""}">
       <div class="crumb">${crumb.join("")}</div>
-      <h2>${esc(q.title)}</h2>
+      <div class="title-row"><h2>${esc(q.title)}</h2>${exploreBtn}</div>
       <p class="body">${esc(q.body)}</p>
       ${opts ? `<ul class="opts">${opts}</ul>` : ""}
-      ${why}${answered}${stagedLine}${controls}
+      ${why}${stagedLine}${controls}
     </article>`;
   main.querySelectorAll("[data-go]").forEach((a) => (a.onclick = (e) => { e.preventDefault(); if (byId(a.dataset.go)) { selected = a.dataset.go; render(); } }));
   if (lk) return;
-  main.querySelectorAll(".opt").forEach((o) => (o.onclick = () => stageAnswer(q.id, { kind: o.dataset.opt === rec.option ? "accept" : "option", option: o.dataset.opt })));
-  const acc = $("accept"); if (acc) acc.onclick = () => stageAnswer(q.id, { kind: "accept", option: rec.option });
+  main.querySelectorAll(".opt:not(.text-answer)").forEach((o) => (o.onclick = () => stageAnswer(q.id, { kind: o.dataset.opt === rec.option ? "accept" : "option", option: o.dataset.opt })));
+  const ex = $("explore"); if (ex) ex.onclick = () => explore(q.id);
   $("stage-text").onclick = () => { const t = $("free").value.trim(); if (t) { (local.drafts[q.id] = local.drafts[q.id] || {}).free = ""; stageAnswer(q.id, { kind: "text", text: t }); } };
   $("free").oninput = (e) => { (local.drafts[q.id] = local.drafts[q.id] || {}).free = e.target.value; save(); };
   const cl = $("clear-staged"); if (cl) cl.onclick = (e) => { e.preventDefault(); clearStaged(q.id); };
@@ -331,10 +395,20 @@ function renderAside() {
   const s = local.staged[q.id] || {}; const lk = locked(); const d = local.drafts[q.id] || {};
   const thread = Array.isArray(q.thread) ? q.thread : [];
   const msgs = thread.map((m) => `<div class="msg ${m.who === "agent" ? "agent" : "user"}"><div class="who">${esc(m.who)}${m.at ? " · " + timeOf(m.at) : ""}</div><div class="text">${esc(m.text)}</div></div>`).join("")
+    + pendingActions(q.id).filter((a) => a.type === "thread").map((a) => `<div class="msg user pending"><div class="who"><span class="spin"></span>you · sending</div><div class="text">${esc(a.text)}</div></div>`).join("")
     + (s.thread || []).map((t, i) => `<div class="msg user staged"><div class="who">you · staged</div><div class="text">${esc(t)}</div>${lk ? "" : `<a href="#" class="rm" data-rm="${i}" title="Remove">×</a>`}</div>`).join("");
+  const rec = q.rec || {};
+  let explore = "";
+  if (q.explore && Array.isArray(q.explore.rows) && q.explore.rows.length) {
+    const li = (xs) => `<ul>${(Array.isArray(xs) ? xs : []).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>`;
+    explore = `<div class="explore-head">Pros and cons${q.explore.at ? " · " + timeOf(q.explore.at) : ""}</div>
+      <table class="procon"><thead><tr><th></th><th>Pros</th><th>Cons</th></tr></thead><tbody>${q.explore.rows.map((r) =>
+        `<tr><td class="k${rec.option === r.option ? " rec" : ""}">${esc(r.option)}</td><td class="pro">${li(r.pros)}</td><td class="con">${li(r.cons)}</td></tr>`).join("")}</tbody></table>`;
+  }
+  if (isExploring(q.id)) explore += `<div class="explore-wait"><span class="spin"></span> Exploring: the agent is writing a pros and cons table for this question.</div>`;
   aside.innerHTML = `
     <div class="head"><h3>Discussion</h3><div class="sub">${esc(q.id).toUpperCase()} · ${esc(q.title)}<span class="count">${thread.length} message${thread.length === 1 ? "" : "s"}</span></div></div>
-    <div class="msgs">${msgs || `<div class="empty-thread">Nothing yet. Ask anything about this question; the agent answers here on the next send.</div>`}</div>
+    <div class="msgs">${explore}${msgs || (explore ? "" : `<div class="empty-thread">Nothing yet. Ask anything about this question; the agent answers here on the next send.</div>`)}</div>
     ${lk ? "" : `<div class="compose"><textarea id="thread-in" placeholder="Dig deeper on ${esc(q.id).toUpperCase()}…">${esc(d.thread || "")}</textarea><button id="stage-thread" type="button">Add to discussion</button></div>`}`;
   aside.querySelectorAll("[data-rm]").forEach((a) => (a.onclick = (e) => { e.preventDefault(); removeThread(q.id, Number(a.dataset.rm)); }));
   if (lk) return;
@@ -351,13 +425,18 @@ function renderFooter() {
     return `${esc(id).toUpperCase()} ${bits.join(" ")}`;
   });
   if (local.finish) parts.push("finish");
-  const sent = local.sent ? `<span class="sent">Sent #${local.sent.seq} · waiting for the agent</span>` : "";
-  list.innerHTML = locked() ? "This grill is finished." : n ? `<b>${n} staged</b> · ${parts.join(" · ")}${sent ? " · " + sent : ""}` : sent || "Nothing staged. Pick an option, accept a recommendation, or write in the discussion.";
+  const lp = lastPending();
+  const sent = lp ? `<span class="sent"><span class="spin"></span>Sent #${lp.seq} · waiting for the agent</span>` : "";
+  list.innerHTML = locked() ? "This grill is finished." : n ? `<b>${n} staged</b> · ${parts.join(" · ")}${sent ? " · " + sent : ""}` : sent || "Nothing staged. Pick an option or write in the discussion.";
   const fa = $("finish-area");
   if (locked()) fa.innerHTML = "";
   else if (local.finish) fa.innerHTML = `<button id="finish" type="button">Unstage finish</button>`;
   else if (confirmFinish) fa.innerHTML = `<span class="confirm">Finish this grill? The agent writes the design doc and stops. <button id="finish-yes" type="button">Stage finish</button><button id="finish-no" type="button">Cancel</button></span>`;
-  else fa.innerHTML = `<button id="finish" type="button">Finish grill</button>`;
+  else {
+    const a = (S && S.agent) || {};
+    const ready = allSettled() && a.status !== "working" && !lp && !gone;
+    fa.innerHTML = `<button id="finish" type="button" class="${ready ? "ready" : ""}"${ready ? ` title="Every question is settled. Finish writes the design doc."` : ""}>Finish grill</button>`;
+  }
   const f = $("finish"); if (f) f.onclick = () => { if (local.finish) { local.finish = false; commit(); } else { confirmFinish = true; render(); } };
   const fy = $("finish-yes"); if (fy) fy.onclick = () => { local.finish = true; confirmFinish = false; commit(); };
   const fn = $("finish-no"); if (fn) fn.onclick = () => { confirmFinish = false; render(); };
@@ -377,3 +456,4 @@ poll();
 </script>
 </body>
 </html>
+
