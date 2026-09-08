@@ -1,6 +1,6 @@
 ---
 name: grill-with-ui
-description: Run a grilling interview on a local browser page instead of the terminal. Every question is laid out with its recommendation, answerable in any order, with a per-question discussion thread and one "Send to Agent" button. Use when the user says "grill with ui", "/grill-with-ui <topic>", or "/grill-with-ui resume".
+description: Run a grilling interview on a local browser page instead of the terminal. Every question is laid out with its recommendation, answerable in any order, with a per-question discussion thread and one "Send to Agent" button. Use when the user says "grill with ui", invokes /grill-with-ui with a topic, or says "/grill-with-ui resume".
 ---
 
 # grill-with-ui
@@ -11,6 +11,7 @@ plain Node with no install step: `node $SKILL/server.mjs <command>`.
 Two files carry a grill. `state.json` is **yours alone**: questions, recommendations, thread
 replies, statuses, agent status. `events.jsonl` is **the page's alone**: one line per Send.
 Nobody writes the other's file. The page polls `state.json`; you are woken per event line.
+A third file, `visual.html`, is also yours, drawn by a subagent you run (see Visualize).
 
 ## Start (`/grill-with-ui <topic>`)
 
@@ -69,7 +70,16 @@ Any other monitor line (`"type":"ready"`, errors, exit) is status. Do not treat 
      question's discussion panel. If writing it changes your mind, rewrite `rec` and set
      `updated: true`. The page sends `explore` the moment the button is clicked, usually as
      the only action in its send; handle it like any other send (working → write → waiting).
-   - `finish` → see Finish below, after the other actions.
+   - `visualize` → see Visualize below: run the draw subagent, then set `state.visual`. The
+     page sends it the moment the button (or Regenerate) is clicked, usually alone.
+   - `visual-feedback` → append `{who:"user", text, at}` to `visual.thread`, reply there
+     `{who:"agent", text, at}`, and redraw the visual with the change (bump `version`, new
+     `note`). If the note contradicts an **answered** question, do not change that answer:
+     set the question's `status = "reopened"`, quote the note in its `thread`, rewrite its
+     `rec` to what the note implies, set `updated: true`. The answer changes only when the
+     user answers the reopened question. The visual follows the note either way.
+   - `finish` → see Finish below, after the other actions. The page sends it the moment the
+     user confirms, with everything they had staged in front of it.
 3. If an answer changes the recommendation of a still-open question, rewrite that question's
    `rec` in place and set `updated: true` (the page marks it). Clear `updated` once the user
    answers it.
@@ -77,10 +87,20 @@ Any other monitor line (`"type":"ready"`, errors, exit) is status. Do not treat 
    each with `deps` listing the question ids it depends on. New questions get the next round
    number. If the tree is fully walked, add no questions and set `note` to a short sentence
    saying every branch is settled and Finish is the next step.
-5. Write `state.json` with `agent.status = "waiting"`, `agent.since = now`,
-   `agent.handled = <seq of this send>`. Write the whole file each time.
-6. Print exactly one terminal line, e.g.
-   `grill: handled send #3 (Q2 → B, Q4 thread); round 4 has 2 questions`, and end the turn.
+5. **Ordinary turns do not redraw the visual.** When an answer, reopen, or changed
+   recommendation affects what an existing visual shows, set `visual.stale = true`.
+   Leave `visual.html`, `version`, `at`, and `note` unchanged; the page marks it out of date
+   and the user can click **Regenerate** when ready. Do not launch a draw subagent merely
+   because the next round is ready. Explicit `visualize` and `visual-feedback` actions
+   still request a draw, and Finish still reconciles the exported visual.
+6. Write `state.json` with `agent.status = "waiting"`, `agent.since = now`,
+   `agent.handled = <seq of this send>`. Publish the answer/thread updates, next round,
+   and this acknowledgement together in the same whole-file write. Do not publish the
+   next round with an old `handled` value while doing optional work: the page uses
+   `handled` to clear the previous question's "sent" spinner and enable the next Send.
+7. Print exactly one terminal line, e.g.
+   `grill: handled send #3 (Q2 → B, Q4 thread); round 4 has 2 questions; visual v3 out of date`,
+   and end the turn.
 
 ## Interview method (frontier per round)
 
@@ -102,6 +122,71 @@ decisions in order:
   surprising without context, a real trade-off. Everything else is a routine choice.
 - Stop asking when the tree is walked. Say so with `note`; do not pad with filler questions.
 
+## Visualize
+
+The header's **Visualize** button asks for one artifact for the whole grill, the **visual**:
+a **prototype** when the topic is a user interface (a page, a panel, a flow the user clicks
+through), a **diagram** otherwise (architecture, data flow, sequence, state). Decide from the
+topic and the questions so far; say which in `visual.kind`; switch when feedback asks
+("make this a diagram"). Questions are the source of truth and the visual is derived from
+them, never the other way round. When the topic is an improvement or a feature in an
+existing app, the prototype is drawn **in the context of that app**: the real page it lands
+on, with the app's own chrome and styling, so it looks like what will actually ship. You
+know where it lands from the grill; tell the subagent.
+
+**You never write `visual.html` yourself; a subagent draws it.** The file runs to hundreds
+of lines and is redrawn many times over a grill. Drawing it here would fill this session's
+context with markup and slow every later send. You stay the interviewer: you pick the kind,
+write the brief, and record the result in `state.json`. The rules for the file itself live
+in `$SKILL/visual-brief.md`; the subagent reads them, you do not repeat them.
+
+Draw only for the first Visualize click, Regenerate, explicit visual feedback, or the
+Finish reconcile. A requested redraw brings the visual up to date with **all** current
+questions, including changes accumulated since its last version, not just the triggering
+send. Ordinary interview turns only mark an affected visual stale.
+
+Every requested draw goes like this:
+
+1. `state.json` stays at `agent.status = "working"` (the page shows "Visualizing…").
+2. Launch ONE subagent with the Agent tool, **in the foreground** (you need its result in
+   this turn; never end the turn while it runs), general-purpose type, prompt filled in
+   from this template (use the absolute path of `$SKILL`):
+
+   > Draw the visual for a grill-with-ui design interview. Read `$SKILL/visual-brief.md`
+   > first and follow it exactly. Session folder: `<session>`. Project root: `<project>`.
+   > Kind: **prototype** | **diagram**.
+   > Context: **change to an existing app**, landing in `<route, page, or component>`;
+   > match that page's real look and surroundings. | **New UI**, nothing to match. |
+   > **Diagram of existing code** in `<modules>`. | **Diagram of a new system**.
+   > **First cut** from the questions in `state.json`.
+   > — or —
+   > **Redraw** of the existing `visual.html`. Change only what follows; keep everything
+   > else stable:
+   > - Q3 answered B: the discussion panel moves to the right third
+   > - feedback: "make the sidebar collapsible"
+   > Write `<session>/visual.html` and reply with ONE line saying what the visual now
+   > shows (or what changed).
+
+   One send with several triggers (feedback plus answers that change the visual) is one
+   redraw with all of them in the list, one version bump.
+3. When it returns, confirm `<session>/visual.html` exists and is newer than before (stat
+   it; do not read it). Then set `state.visual`: a first draw writes
+   `{ kind, version: 1, at, note: "v1: …", thread: [], stale: false }`; a redraw bumps
+   `version`, sets `at`, clears `stale`, and replaces `note` with one line naming what
+   changed, taken from the subagent's reply ("v3: discussion panel moved to the right per
+   Q3"). Never bump without a new file and never let a new file land without a bump; the
+   page reloads the iframe only on a bump.
+4. If the subagent fails or the file did not change, do not bump. On a first draw leave
+   `state.visual` absent and set `note` (the sentence above the question list) to say the
+   draw failed and Visualize can be clicked again; on a redraw append one `{who:"agent"}`
+   message to `visual.thread` saying so. Then finish the rest of the send as usual.
+
+If your harness has no subagent tool, draw the file yourself following `visual-brief.md`.
+
+Feedback arrives as `visual-feedback` actions (see Handling a send); sending visual feedback
+explicitly requests a redraw. Answers and question discussions do not. On Finish the visual
+is reconciled with the decisions and copied next to the doc.
+
 ## Terminal input
 
 Text the user types in the terminal during a grill answers the current question when that is
@@ -114,18 +199,24 @@ doc path may also be changed this way ("write the doc to …").
 
 On a `finish` action, or when the user says finish in the terminal:
 
-1. Write the design doc to `doc` (relative to the project root). It is exhaustive and
-   self-contained, in this order: a one-paragraph summary; **Terms** (each with its Avoid
-   list); **Why** (the problem in the user's words); **Locked decisions** (every `durable`
-   question: the decision, the rejected options and why each lost); **Routine choices** (every
-   other answered question, one bullet each); **Verified facts** (anything you established by
-   exploring rather than asking, if any); **Risks**; **Deferred** (deferred questions, with
-   what would reopen them); **Open threads** (discussion points that ended without a decision).
-   Do not compress: a reader with no access to the session must be able to build from it.
-2. Write `state.json` with `finished = { doc, at }` and `agent.status = "waiting"`; the page
-   shows the finished banner and locks staging.
-3. Stop the monitor with TaskStop.
-4. Print one line with the doc path. End.
+1. If `state.visual` exists, reconcile it against every answered question (a redraw through
+   the draw subagent, with a version bump, if it is stale or anything disagrees), then copy
+   `<session>/visual.html` to `docs/<slug>-visual.html` next to the doc (same folder, same
+   slug, `-visual.html`).
+2. Write the design doc to `doc` (relative to the project root). It is exhaustive and
+   self-contained, in this order: a one-paragraph summary (linking the copied visual when
+   there is one); **Terms** (each with its Avoid list); **Why** (the problem in the user's
+   words); **Locked decisions** (every `durable` question: the decision, the rejected options
+   and why each lost); **Routine choices** (every other answered question, one bullet each);
+   **Verified facts** (anything you established by exploring rather than asking, if any);
+   **Risks**; **Deferred** (deferred questions, with what would reopen them); **Open threads**
+   (discussion points that ended without a decision). Do not compress: a reader with no
+   access to the session must be able to build from it.
+3. Write `state.json` with `finished = { doc, visual, at }` (`visual` = the copied path, or
+   omit it) and `agent.status = "waiting"`; the page shows the finished banner and locks
+   staging.
+4. Stop the monitor with TaskStop.
+5. Print one line with the doc path (and the visual's). End.
 
 ## Wait mode (agents without a Monitor tool)
 
@@ -144,7 +235,13 @@ printed line exactly as in "Handling a send". On finish, kill the server by the 
   "topic": "…", "doc": "docs/x-design.md", "project": "/abs/path", "created": "ISO",
   "agent": { "status": "waiting|working", "since": "ISO", "handled": 3 },
   "note": "optional short sentence shown above the question list",
-  "finished": { "doc": "docs/x-design.md", "at": "ISO" },      // only after Finish
+  "finished": { "doc": "docs/x-design.md", "visual": "docs/x-visual.html", "at": "ISO" },  // only after Finish
+  "visual": {                                                   // only after a visualize action
+    "kind": "prototype|diagram", "version": 3, "at": "ISO",
+    "note": "v3: discussion panel moved to the right per Q3",
+    "stale": false,                                            // true after relevant ordinary decisions; no redraw or version bump
+    "thread": [{ "who": "user|agent", "text": "…", "at": "ISO" }]
+  },
   "terms": [{ "term": "…", "def": "…", "avoid": ["…"] }],
   "questions": [{
     "id": "q7", "round": 4, "deps": ["q2"], "title": "…", "body": "…",
@@ -165,5 +262,6 @@ Send lines (`events.jsonl`, also printed by `serve`):
   { "q": "q15", "type": "answer", "kind": "accept|option|text", "option": "A", "text": "…" },
   { "q": "q8",  "type": "thread", "text": "…" },
   { "q": "q17", "type": "defer" }, { "q": "q3", "type": "reopen" }, { "q": "q9", "type": "explore" },
+  { "type": "visualize" }, { "type": "visual-feedback", "text": "…" },
   { "type": "finish" } ] }
 ```

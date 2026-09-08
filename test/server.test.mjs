@@ -128,6 +128,21 @@ test("wait: blocks for a seq newer than --after (default: current last), prints 
   assert.equal(wo3.lines.length, 0);
 });
 
+test("serve: /visual serves the session's visual.html (no-store), 404 JSON when absent", async (t) => {
+  const { session } = newSession(tmp("grill-v-"));
+  const s = await startServe(session); t.after(s.stop);
+  const miss = await fetch(s.ready.url + "visual");
+  assert.equal(miss.status, 404);
+  assert.deepEqual(await miss.json(), { error: "no visual" });
+  const html = "<!doctype html><title>v</title><h1>Prototype</h1>";
+  writeFileSync(join(session, "visual.html"), html);
+  const hit = await fetch(s.ready.url + "visual?v=1");
+  assert.equal(hit.status, 200);
+  assert.match(hit.headers.get("content-type"), /^text\/html/);
+  assert.equal(hit.headers.get("cache-control"), "no-store");
+  assert.equal(await hit.text(), html);
+});
+
 test("url: prints the running server's url; fails fast when there is none", async (t) => {
   const { session } = newSession(tmp("grill-u-"));
   assert.throws(() => run(["url", "--session", session, "--timeout", "0.3"]));

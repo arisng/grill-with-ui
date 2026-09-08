@@ -41,8 +41,24 @@ appears in the discussion panel when the agent is done. The agent answers
 threads, writes the tables, records your answers, and adds the next round of questions to
 the page.
 
-**Finish grill** stages a finish action; on the next Send the agent writes the design doc to
-the path shown in the header (default `docs/<topic>-design.md` in your project) and stops.
+**Visualize** in the header asks the agent for one picture of the design so far: an
+interactive HTML prototype when the topic is a UI, an architecture or flow diagram
+otherwise. When the topic is a change to an existing app, the prototype is drawn inside the
+real page it changes, with the app's own look. It appears in place of the question list and
+card, with its own feedback thread on the right. Undecided parts are drawn from the
+recommendations and marked "assumed"; feedback you add there ships with your next Send and
+redraws it; a note that contradicts an answered question reopens that question rather than
+silently changing your answer. Ordinary answers and question discussions do not regenerate
+the visual or delay the next round. When decisions change what it shows, it is marked
+**Out of date**; click **Regenerate** to include the latest decisions. Each requested redraw
+has a version number and a one-line change note. The agent never writes the file in the
+grill conversation itself: it briefs a subagent (rules in `visual-brief.md`) so hundreds of
+lines of markup stay out of the interview's context. Finish reconciles and copies the final
+visual next to the design doc as `docs/<topic>-visual.html`.
+
+**Finish grill** sends at once (after an inline confirm), together with anything you had
+staged; the agent writes the design doc to the path shown in the header (default
+`docs/<topic>-design.md` in your project) and stops.
 
 To pick up an unfinished grill, in the same project:
 
@@ -62,6 +78,7 @@ Session state lives outside your repo, so there is nothing to gitignore:
   state.json     written only by the agent (questions, recommendations, threads, status)
   events.jsonl   appended only by the page, one line per Send
   server.json    url, port and pid of the running server
+  visual.html    the prototype or diagram, drawn by the agent's subagent, served at /visual
 ```
 
 `<project-key>` is the git common root of the project with slashes turned into dashes, so

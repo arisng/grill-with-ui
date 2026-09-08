@@ -121,13 +121,7 @@ try {
   await page.locator("#defer").click();
   check("send label counts 3", (await page.locator("#send").textContent()) === "Send 3 to Agent");
 
-  // finish flow: confirm inline, stage, then unstage
-  await page.locator("#finish").click();
-  check("inline confirm shown", await page.locator("#finish-yes").count() === 1);
-  await page.locator("#finish-yes").click();
-  check("finish staged → 4", (await page.locator("#send").textContent()) === "Send 4 to Agent");
-  await page.locator("#finish").click(); // Unstage finish
-  check("finish unstaged → 3", (await page.locator("#send").textContent()) === "Send 3 to Agent");
+  check("header has a Visualize button before any visual exists", await page.locator("header #visualize").count() === 1 && (await page.locator("#visualize").textContent()) === "Visualize" && await page.locator("body.visualize").count() === 0);
 
   await page.locator("#send").click();
   await page.waitForFunction(() => document.getElementById("staged-list").textContent.includes("Sent #2"));
@@ -179,13 +173,58 @@ try {
   await page.locator(".item", { hasText: "Q4" }).click();
   check("free-text answer shows as a green chosen box with a check", await page.locator(".opt.chosen.text-answer").count() === 1 && (await page.locator(".opt.chosen.text-answer").textContent()).includes("Short and sweet") && await page.locator(".opt.chosen.text-answer .check").isVisible());
 
-  // every question settled → Finish flashes
-  s = fixture(); s.agent = { status: "waiting", since: new Date().toISOString(), handled: 2 };
+  // visualize: immediate event; the view flips by itself when the visual arrives; feedback is staged
+  await page.locator("#visualize").click();
+  const visEv = JSON.parse(await srv.nth(4));
+  check("visualize sends immediately as its own event", visEv.seq === 3 && JSON.stringify(visEv.actions) === JSON.stringify([{ type: "visualize" }]), JSON.stringify(visEv.actions));
+  await page.waitForFunction(() => document.getElementById("visualize").textContent.includes("Visualizing…"));
+  check("visualize in flight: disabled with a spinner, still on the questions view", await page.locator("#visualize").isDisabled() && await page.locator("#visualize .spin").count() === 1 && await page.locator("body.visualize").count() === 0);
+  writeFileSync(join(session, "visual.html"), "<!doctype html><title>proto</title><h1 id='proto-heading'>Prototype v1 heading</h1>");
+  s = fixture(); s.agent = { status: "waiting", since: new Date().toISOString(), handled: 3 };
   s.questions[2].status = "answered"; s.questions[2].answer = { kind: "accept", option: "B" };
   s.questions[3].status = "answered"; s.questions[3].answer = { kind: "text", text: "Short and sweet" };
+  s.visual = { kind: "prototype", version: 1, at: new Date().toISOString(), note: "v1: first cut", thread: [] };
   writeState(s);
+  await page.waitForFunction(() => document.body.classList.contains("visualize"), null, { timeout: 5000 });
+  check("view flips to the visual by itself; list and card are hidden", await page.locator("nav").isHidden() && await page.locator("main").isHidden() && await page.locator("#visual-frame").isVisible());
+  check("iframe src carries the version and the sandbox has no same-origin", (await page.locator("#visual-frame").getAttribute("src")).includes("v=1") && (await page.locator("#visual-frame").getAttribute("sandbox")) === "allow-scripts");
+  check("strip shows the kind, version and note", (await page.locator("#visual-strip").textContent()).includes("Prototype") && (await page.locator("#visual-strip").textContent()).includes("v1: first cut"));
+  check("iframe shows the agent's file", (await page.frameLocator("#visual-frame").locator("#proto-heading").textContent()) === "Prototype v1 heading");
+  check("header button now toggles back to the questions", (await page.locator("#visualize").textContent()) === "Questions");
+  check("right panel is the visual's feedback thread", (await page.locator("aside .head h3").textContent()).includes("Visual feedback") && await page.locator("#feedback-in").count() === 1);
+  await page.locator("#feedback-in").fill("Make the list narrower");
+  await page.locator("#stage-feedback").click();
+  check("feedback staged: shown in the panel and in the footer", await page.locator("aside .msg.staged").count() === 1 && (await page.locator("#staged-list").textContent()).includes("visual +1 msg"));
+  await page.reload();
+  await page.waitForFunction(() => document.body.classList.contains("visualize"), null, { timeout: 5000 });
+  check("visualize view and staged feedback survive reload", await page.locator("aside .msg.staged").count() === 1 && (await page.locator("#staged-list").textContent()).includes("visual +1 msg"));
+  await page.locator("#send").click();
+  await page.waitForFunction(() => document.getElementById("staged-list").textContent.includes("Sent #4"));
+  const fbEv = JSON.parse(await srv.nth(5));
+  check("send carries the visual feedback action", fbEv.seq === 4 && fbEv.actions.some((a) => a.type === "visual-feedback" && a.text === "Make the list narrower"), JSON.stringify(fbEv.actions));
+  check("pending feedback shown as sending", await page.locator("aside .msg.pending").count() === 1);
+  s.agent = { status: "waiting", since: new Date().toISOString(), handled: 4 };
+  s.visual = { kind: "prototype", version: 2, at: new Date().toISOString(), note: "v2: narrower list", thread: [{ who: "user", text: "Make the list narrower", at: now }, { who: "agent", text: "Done in v2.", at: now }] };
+  writeState(s);
+  await page.waitForFunction(() => (document.getElementById("visual-frame").getAttribute("src") || "").includes("v=2"), null, { timeout: 5000 });
+  check("iframe reloads on a version bump; the thread shows both messages", (await page.locator("#visual-strip").textContent()).includes("v2: narrower list") && await page.locator("aside .msg").count() === 2 && await page.locator("aside .msg.pending").count() === 0);
+  await page.locator("#visualize").click();
+  check("toggling back restores the list and card", await page.locator("body.visualize").count() === 0 && await page.locator("nav .item").count() > 0 && await page.locator(".card").count() === 1 && (await page.locator("#visualize").textContent()).includes("Visual · v2"));
+
+  // every question settled → Finish flashes; finish fires at once with whatever is staged
   await page.waitForFunction(() => document.getElementById("finish").classList.contains("ready"), null, { timeout: 5000 });
   check("finish flashes when nothing is open", await page.locator("#finish.ready").count() === 1);
+  await page.locator(".item", { hasText: "Q3" }).click();
+  await page.locator("#thread-in").fill("final note"); await page.locator("#stage-thread").click();
+  await page.locator("#finish").click();
+  check("inline confirm shown", await page.locator("#finish-yes").count() === 1);
+  await page.locator("#finish-no").click();
+  check("cancel keeps the finish button", await page.locator("#finish").count() === 1 && await page.locator("#finish-yes").count() === 0);
+  await page.locator("#finish").click(); await page.locator("#finish-yes").click();
+  const finEv = JSON.parse(await srv.nth(6));
+  check("finish fires immediately, staged actions first, finish last", finEv.seq === 5 && finEv.actions.length === 2 && finEv.actions[0].type === "thread" && finEv.actions[0].text === "final note" && finEv.actions[1].type === "finish", JSON.stringify(finEv.actions));
+  await page.waitForFunction(() => { const f = document.getElementById("finish"); return !!f && f.textContent.includes("Finishing…"); });
+  check("finish button shows finishing; staging cleared", await page.locator("#finish").isDisabled() && await page.locator("#finish .spin").count() === 1 && (await page.locator("#send").textContent()) === "Send to Agent");
 
   // server gone → banner; restart on the same port → banner clears
   await srv.stop();
@@ -199,9 +238,14 @@ try {
   check("banner clears when the server is back", true);
 
   // finished state
-  s = fixture(); s.finished = { doc: "docs/e2e-design.md", at: new Date().toISOString() }; writeState(s);
+  s = fixture(); s.agent = { status: "waiting", since: new Date().toISOString(), handled: 5 };
+  s.visual = { kind: "prototype", version: 2, at: new Date().toISOString(), note: "v2: narrower list", thread: [] };
+  s.finished = { doc: "docs/e2e-design.md", visual: "docs/e2e-visual.html", at: new Date().toISOString() }; writeState(s);
   await page.waitForFunction(() => document.getElementById("banner").classList.contains("done"));
-  check("finished banner names the doc", (await page.locator("#banner").textContent()).includes("docs/e2e-design.md"));
+  check("finished banner names the doc and the visual", (await page.locator("#banner").textContent()).includes("docs/e2e-design.md") && (await page.locator("#banner").textContent()).includes("docs/e2e-visual.html"));
+  await page.locator("#visualize").click();
+  check("finished: visual still viewable, composer and regenerate gone", await page.locator("body.visualize").count() === 1 && await page.locator("#feedback-in").count() === 0 && await page.locator("#regen").count() === 0);
+  await page.locator("#visualize").click();
   check("staging locked when finished", await page.locator("#free").count() === 0 && await page.locator("#thread-in").count() === 0 && await page.locator("#finish").count() === 0);
 
   // The server-gone step above produces ERR_CONNECTION_REFUSED fetch failures by design.
@@ -214,4 +258,3 @@ try {
 const failed = results.filter((r) => !r.ok);
 console.log(`page e2e: ${results.length - failed.length}/${results.length} checks passed${failed.length ? " — FAILED: " + failed.map((f) => f.name).join("; ") : ""}`);
 process.exit(failed.length ? 1 : 0);
-

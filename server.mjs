@@ -151,6 +151,11 @@ function cmdServe(o) {
       return send(res, 200, lastGoodState, "application/json");
     }
     if (req.method === "GET" && pathname === "/events") return send(res, 200, fs.existsSync(events) ? fs.readFileSync(events) : "", "application/x-ndjson");
+    if (req.method === "GET" && pathname === "/visual") {
+      const visual = path.join(session, "visual.html"); // written only by the agent; shown by the page in a sandboxed iframe
+      if (!fs.existsSync(visual)) return json(res, 404, { error: "no visual" });
+      return send(res, 200, fs.readFileSync(visual), "text/html; charset=utf-8");
+    }
     if (req.method === "POST" && pathname === "/send") {
       let parsed;
       try { parsed = JSON.parse(await readBody(req)); } catch { return json(res, 400, { error: "body must be JSON" }); }
