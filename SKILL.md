@@ -13,7 +13,7 @@ replies, statuses, agent status. `events.jsonl` is **the page's alone**: one lin
 Nobody writes the other's file. The page polls `state.json`; you are woken per event line.
 A third file, `visual.html`, is also yours, drawn by a subagent you run (see Visualize).
 
-## Start (`/grill-with-ui <topic>`)
+## Start (`/grill-with-ui <topic>`, `$grill-with-ui <topic>`, or "grill with ui: <topic>")
 
 1. From the project directory run
    `node $SKILL/server.mjs new --topic "<topic>" --doc "<doc path>"`.
@@ -24,6 +24,8 @@ A third file, `visual.html`, is also yours, drawn by a subagent you run (see Vis
    `agent.status` to `"waiting"` and `agent.since` to now.
 3. Open a **persistent Monitor** (`persistent: true`) whose command is
    `node $SKILL/server.mjs serve --session <session>`, description `grill page: <topic>`.
+   No Monitor tool in your harness (Codex, Gemini CLI, Cursor, Copilot, others)? Use
+   "Wait mode" at the end of this file for this step and for every wait after it.
 4. Run `node $SKILL/server.mjs url --session <session>`; it prints the URL.
 5. Print ONE line: the URL, how many questions wait, and the doc path (say the user can change
    the path by typing in the terminal). End the turn.

@@ -14,15 +14,42 @@ agent. Nothing runs after the agent session ends.
 
 ## Install
 
-Claude Code (or any agent that reads `~/.claude/skills`):
+The skill is a plain [Agent Skills](https://agentskills.io) folder (`SKILL.md` plus one
+script and one page), so it installs the same way everywhere: put this folder where your
+agent looks for skills, under the name `grill-with-ui`. A symlink keeps `git pull` as the
+update path; copying the folder works too. Node 20 or newer is the only requirement.
 
 ```sh
 git clone https://github.com/jasonku09/grill-with-ui ~/Projects/grill-with-ui
-ln -s ~/Projects/grill-with-ui ~/.claude/skills/grill-with-ui
+ln -s ~/Projects/grill-with-ui ~/.claude/skills/grill-with-ui   # Claude Code (Cursor reads it too)
+ln -s ~/Projects/grill-with-ui ~/.agents/skills/grill-with-ui   # Codex, Gemini CLI, Cursor, Copilot
 ```
 
-Copying the folder works too. Node 20 or newer is the only requirement; Claude Code already
-needs it.
+Where each agent looks, and how to start a grill once it is there:
+
+| Agent | User-level folder | Project-level folder | Start a grill |
+|---|---|---|---|
+| Claude Code | `~/.claude/skills/` | `.claude/skills/` | `/grill-with-ui <topic>` |
+| Codex (CLI, IDE) | `~/.agents/skills/` | `.agents/skills/` | `$grill-with-ui <topic>` |
+| Gemini CLI | `~/.gemini/skills/` or `~/.agents/skills/` | `.gemini/skills/` or `.agents/skills/` | say "grill with ui: <topic>"; accept the activation prompt |
+| Cursor | `~/.cursor/skills/` or `~/.agents/skills/` (also `~/.claude/skills/`) | `.cursor/skills/` or `.agents/skills/` | `/grill-with-ui <topic>` in Agent chat |
+| GitHub Copilot (CLI, VS Code, JetBrains) | `~/.copilot/skills/` or `~/.agents/skills/` | `.github/skills/`, `.claude/skills/`, or `.agents/skills/` | say "grill with ui: <topic>" |
+| Any other agent that reads `SKILL.md` | its skills folder | | say "grill with ui: <topic>" |
+
+Paths are from each product's documentation as of September 2026; `/skills` (Codex,
+Gemini CLI) or the agent's skill picker will show whether the install landed. The skill's
+description names the phrase "grill with ui", so plain language works on every agent.
+
+What the agent needs at run time:
+
+- **A shell tool and Node 20+.** Claude Code is woken per Send by its persistent Monitor
+  tool. Every other agent uses **wait mode**, spelled out in `SKILL.md`: it starts the
+  server detached and blocks on `node server.mjs wait` in the foreground, which returns on
+  the next Send or after eight minutes, then loops. Any agent that can run a shell command
+  for several minutes can do this.
+- **Optionally a subagent tool**, for Visualize. With one, the visual is drawn in the
+  background while you keep answering. Without one, the agent draws it inline and that
+  turn takes longer.
 
 ## Use
 
@@ -102,12 +129,6 @@ node server.mjs url      --session DIR [--timeout S]           print the running
 ```
 
 `GRILL_HOME` overrides `~/.grill-with-ui`.
-
-## Other agents (wait mode)
-
-Agents without a "run this and wake me on each output line" tool can run `serve` detached and
-loop `wait` in the foreground; the `SKILL.md` section "Wait mode" has the exact commands. The
-page and the files are agent-neutral.
 
 ## Tests
 
