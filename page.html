@@ -70,6 +70,8 @@
   #visual-strip .right { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--stage); }
   #visual-strip a { color: var(--ink-3); text-decoration: none; font-size: 13px; } #visual-strip a:hover { color: var(--accent); }
   #visual-frame { width: 100%; height: 100%; border: 0; background: #fff; display: block; }
+  #visual-wait { display: flex; align-items: center; justify-content: center; gap: 10px; height: 100%; color: var(--ink-3); font-size: 14px; background: #fff; }
+  #visual-wait[hidden], #visual-frame[hidden] { display: none; }
 
   main { grid-row: 3; grid-column: 2; overflow-y: auto; padding: 36px 44px 60px; background: var(--panel); }
   .card { max-width: 680px; }
@@ -156,7 +158,7 @@
 </header>
 <nav id="nav"><div class="empty">Connecting…</div></nav>
 <main id="main"></main>
-<section id="visual"><div id="visual-strip"></div><iframe id="visual-frame" title="Visual" sandbox="allow-scripts"></iframe></section>
+<section id="visual"><div id="visual-strip"></div><div id="visual-wait" hidden><span class="spin"></span>Drawing the first version…</div><iframe id="visual-frame" title="Visual" sandbox="allow-scripts"></iframe></section>
 <aside id="aside"></aside>
 <footer>
   <span class="staged-list" id="staged-list"></span>
@@ -170,6 +172,8 @@
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const WORKING_GRACE_MS = 5 * 60 * 1000;
+const DRAW_GRACE_MS = 10 * 60 * 1000; // a background draw older than this is treated as stuck: Regenerate comes back
+const DRAW_STUCK_NOTE = "The draw has run over 10 minutes; regenerate to try again.";
 const GONE_AFTER_MS = 3000;
 const CHECK = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="10" fill="currentColor"/><path d="M6 10.4l2.6 2.6L14 7.4" stroke="#fff" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
@@ -189,7 +193,10 @@ const rounds = () => { const m = new Map(); for (const q of qs()) { const r = Nu
 const firstOpen = () => qs().filter((q) => isOpen(q) && Number(q.round) === curRound())[0] || qs().find(isOpen) || qs()[qs().length - 1] || null;
 const locked = () => !!(S && S.finished);
 const visual = () => (S && S.visual && typeof S.visual === "object" ? S.visual : null);
-const activeView = () => (local.view === "visualize" && visual() ? "visualize" : "questions");
+const hasVisual = () => { const v = visual(); return !!v && (Number(v.version) || 0) >= 1; }; // version 0 = first draw still running, nothing to show
+const drawing = () => { const v = visual(); return v && v.drawing && typeof v.drawing === "object" ? v.drawing : null; };
+const drawStuck = () => { const d = drawing(); return !!d && Date.now() - Date.parse(d.since || 0) > DRAW_GRACE_MS; };
+const activeView = () => (local.view === "visualize" && hasVisual() ? "visualize" : "questions");
 const timeOf = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); };
 const fmtMs = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`; };
 
@@ -235,7 +242,7 @@ const pendingActions = (id) => local.pending.flatMap((p) => p.actions.filter((a)
 const lastPending = () => local.pending[local.pending.length - 1] || null;
 const isExploring = (id) => pendingActions(id).some((a) => a.type === "explore");
 const pendingOfType = (t) => local.pending.flatMap((p) => p.actions.filter((a) => a.type === t));
-const isVisualizing = () => pendingOfType("visualize").length > 0;
+const isVisualizing = () => pendingOfType("visualize").length > 0 || (!!drawing() && !drawStuck());
 const isFinishing = () => pendingOfType("finish").length > 0;
 const allSettled = () => qs().length > 0 && !qs().some(isOpen);
 function stagedCount() {
@@ -337,22 +344,32 @@ function renderHeader() {
 }
 function renderVisualizeButton() {
   const b = $("visualize"); const v = visual(); const lk = locked();
-  if (v) { b.hidden = false; b.disabled = false; b.textContent = activeView() === "visualize" ? "Questions" : `Visual · v${esc(v.version)}`; return; }
+  if (hasVisual()) { b.hidden = false; b.disabled = false; b.title = ""; b.textContent = activeView() === "visualize" ? "Questions" : `Visual · v${esc(v.version)}`; return; }
   if (lk) { b.hidden = true; return; }
   b.hidden = false;
-  if (isVisualizing()) { b.disabled = true; b.innerHTML = `<span class="spin"></span>Visualizing…`; return; }
-  const gate = sendState(false); b.disabled = gate.disabled; b.textContent = "Visualize"; b.title = gate.disabled && gate.why ? gate.why : "Draw a prototype or diagram of the design so far";
+  if (isVisualizing()) { b.disabled = true; b.title = ""; b.innerHTML = `<span class="spin"></span>Visualizing…`; return; }
+  const gate = sendState(false); b.disabled = gate.disabled; b.textContent = "Visualize";
+  b.title = gate.disabled && gate.why ? gate.why : drawStuck() ? DRAW_STUCK_NOTE : "Draw a prototype or diagram of the design so far";
 }
 function renderVisual() {
   const v = visual(); const strip = $("visual-strip"); const frame = $("visual-frame");
-  if (!v) { strip.innerHTML = ""; if (frame.dataset.v) { frame.removeAttribute("src"); delete frame.dataset.v; } return; }
+  const wait = $("visual-wait");
+  if (!v) { strip.innerHTML = ""; wait.hidden = true; frame.hidden = false; if (frame.dataset.v) { frame.removeAttribute("src"); delete frame.dataset.v; } return; }
+  if (!hasVisual()) { // first draw still running: no file to show yet, never request v0
+    if (frame.dataset.v) { frame.removeAttribute("src"); delete frame.dataset.v; }
+    frame.hidden = true; wait.hidden = false;
+    strip.innerHTML = `<span class="kind">${v.kind === "diagram" ? "Diagram" : "Prototype"}</span><span class="ver">first version on its way</span>`;
+    return;
+  }
+  wait.hidden = true; frame.hidden = false;
   const src = `/visual?v=${encodeURIComponent(v.version)}`;
-  if (frame.dataset.v !== String(v.version)) { frame.dataset.v = String(v.version); frame.setAttribute("src", src); } // only a version bump reloads the iframe
+  if (frame.dataset.v !== String(v.version)) { frame.dataset.v = String(v.version); frame.setAttribute("src", src); } // only a version bump reloads the iframe; a background redraw keeps the current one
   const busy = isVisualizing(); const gate = sendState(false); const lk = locked();
+  const regenTitle = gate.disabled ? (gate.why || "the agent is busy") : drawStuck() ? DRAW_STUCK_NOTE : "";
   strip.innerHTML = `<span class="kind">${v.kind === "diagram" ? "Diagram" : "Prototype"}</span>
     <span class="ver"><b>v${esc(v.version)}</b>${v.note ? " · " + esc(v.note) : ""}${v.at ? " · " + timeOf(v.at) : ""}</span>
     ${v.stale ? `<span id="visual-stale" role="status">Out of date · regenerate to include the latest decisions</span>` : ""}
-    <span class="right">${busy ? `<span class="spin"></span> regenerating…` : lk ? "" : `<a href="#" id="regen"${gate.disabled ? ` title="${esc(gate.why || "the agent is busy")}"` : ""}>Regenerate</a>`}</span>`;
+    <span class="right">${busy ? `<span class="spin"></span> regenerating…` : lk ? "" : `<a href="#" id="regen"${regenTitle ? ` title="${esc(regenTitle)}"` : ""}>Regenerate</a>`}</span>`;
   const r = $("regen"); if (r) r.onclick = (e) => { e.preventDefault(); visualize(); };
 }
 function renderStatus() {
@@ -524,7 +541,7 @@ function renderSend() {
 }
 
 $("send").onclick = send;
-$("visualize").onclick = () => { if (visual()) { local.view = activeView() === "visualize" ? "questions" : "visualize"; commit(); } else visualize(); };
+$("visualize").onclick = () => { if (hasVisual()) { local.view = activeView() === "visualize" ? "questions" : "visualize"; commit(); } else visualize(); };
 $("terms-toggle").onclick = () => $("terms").classList.toggle("show");
 document.addEventListener("click", (e) => { if (!e.target.closest("#terms") && !e.target.closest("#terms-toggle")) $("terms").classList.remove("show"); });
 document.addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") send(); });

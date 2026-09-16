@@ -53,8 +53,11 @@ the visual or delay the next round. When decisions change what it shows, it is m
 **Out of date**; click **Regenerate** to include the latest decisions. Each requested redraw
 has a version number and a one-line change note. The agent never writes the file in the
 grill conversation itself: it briefs a subagent (rules in `visual-brief.md`) so hundreds of
-lines of markup stay out of the interview's context. Finish reconciles and copies the final
-visual next to the design doc as `docs/<topic>-visual.html`.
+lines of markup stay out of the interview's context. The draw runs in the background, so
+Send keeps working and the interview goes on while it is drawn; the header says
+Visualizing… (or the strip says regenerating…) until the new version lands. Finish
+reconciles and copies the final visual next to the design doc as
+`docs/<topic>-visual.html`.
 
 **Finish grill** sends at once (after an inline confirm), together with anything you had
 staged; the agent writes the design doc to the path shown in the header (default

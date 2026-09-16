@@ -113,6 +113,14 @@ finished. He requested that visualization stop auto-regenerating each turn.
   ship. Existing parts as they are today, new parts as designed. The wireframe fidelity
   (neutral palette, no undecided decoration) applies only to a new UI with nothing to match.
   The interviewer names the landing page or component in the subagent's brief.
+- **Background draws** (added by Jason after the grill, 2026-09-07): the draw subagent runs
+  in the background and the interview continues. The send that requested the draw is
+  handled as soon as the brief is out; the page keeps Send enabled and shows Visualizing…
+  or regenerating… from `visual.drawing` until the subagent's completion notice wakes the
+  agent, which then bumps the version. Decisions made during a draw mark it stale as
+  usual; draw requests made during a draw queue (`visual.queued`) and start the next draw
+  when the current one lands, so two draws never write the same file. Rejected: blocking
+  the interview for the length of a draw (a minute or more per version, many versions).
 
 ## Verified facts
 

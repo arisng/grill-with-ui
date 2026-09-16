@@ -53,6 +53,10 @@ the user"; for this monitor that label is wrong and this rule wins. When a send 
 
 Any other monitor line (`"type":"ready"`, errors, exit) is status. Do not treat it as input.
 
+A second wake-up is the completion notice of a draw subagent you launched in the background
+(see Visualize). It is not user input, but act on it in that turn: record the landed draw as
+described there, then end the turn.
+
 ## Handling a send
 
 1. Write `state.json` with `agent.status = "working"` (the page disables Send while you work).
@@ -70,11 +74,13 @@ Any other monitor line (`"type":"ready"`, errors, exit) is status. Do not treat 
      question's discussion panel. If writing it changes your mind, rewrite `rec` and set
      `updated: true`. The page sends `explore` the moment the button is clicked, usually as
      the only action in its send; handle it like any other send (working → write → waiting).
-   - `visualize` → see Visualize below: run the draw subagent, then set `state.visual`. The
-     page sends it the moment the button (or Regenerate) is clicked, usually alone.
+   - `visualize` → see Visualize below: launch the draw subagent in the background and mark
+     `visual.drawing`; the send counts as handled the moment the brief is out. The page
+     sends it the moment the button (or Regenerate) is clicked, usually alone.
    - `visual-feedback` → append `{who:"user", text, at}` to `visual.thread`, reply there
-     `{who:"agent", text, at}`, and redraw the visual with the change (bump `version`, new
-     `note`). If the note contradicts an **answered** question, do not change that answer:
+     `{who:"agent", text, at}`, and request a redraw with the change (see Visualize; while a
+     draw is in flight the note goes to `visual.queued` instead of starting a second one).
+     If the note contradicts an **answered** question, do not change that answer:
      set the question's `status = "reopened"`, quote the note in its `thread`, rewrite its
      `rec` to what the note implies, set `updated: true`. The answer changes only when the
      user answers the reopened question. The visual follows the note either way.
@@ -145,12 +151,13 @@ Finish reconcile. A requested redraw brings the visual up to date with **all** c
 questions, including changes accumulated since its last version, not just the triggering
 send. Ordinary interview turns only mark an affected visual stale.
 
-Every requested draw goes like this:
+Every requested draw goes like this. **The draw runs in the background and the interview
+goes on**: the send that requested it is handled the moment the brief is out, so the user
+keeps answering and sending while the subagent draws.
 
-1. `state.json` stays at `agent.status = "working"` (the page shows "Visualizing…").
-2. Launch ONE subagent with the Agent tool, **in the foreground** (you need its result in
-   this turn; never end the turn while it runs), general-purpose type, prompt filled in
-   from this template (use the absolute path of `$SKILL`):
+1. Launch ONE subagent with the Agent tool (it runs in the background and you get a
+   completion notice later), general-purpose type, prompt filled in from this template
+   (use the absolute path of `$SKILL`):
 
    > Draw the visual for a grill-with-ui design interview. Read `$SKILL/visual-brief.md`
    > first and follow it exactly. Session folder: `<session>`. Project root: `<project>`.
@@ -168,20 +175,41 @@ Every requested draw goes like this:
    > shows (or what changed).
 
    One send with several triggers (feedback plus answers that change the visual) is one
-   redraw with all of them in the list, one version bump.
-3. When it returns, confirm `<session>/visual.html` exists and is newer than before (stat
-   it; do not read it). Then set `state.visual`: a first draw writes
-   `{ kind, version: 1, at, note: "v1: …", thread: [], stale: false }`; a redraw bumps
-   `version`, sets `at`, clears `stale`, and replaces `note` with one line naming what
-   changed, taken from the subagent's reply ("v3: discussion panel moved to the right per
-   Q3"). Never bump without a new file and never let a new file land without a bump; the
-   page reloads the iframe only on a bump.
-4. If the subagent fails or the file did not change, do not bump. On a first draw leave
-   `state.visual` absent and set `note` (the sentence above the question list) to say the
-   draw failed and Visualize can be clicked again; on a redraw append one `{who:"agent"}`
-   message to `visual.thread` saying so. Then finish the rest of the send as usual.
+   draw with all of them in the list.
+2. In the same turn write `state.json`. On a first draw create
+   `visual = { kind, version: 0, thread: [], stale: false, drawing: { since: now, seq } }`.
+   On a redraw keep `version`, `at`, `note`, and the file as they are and set
+   `stale = false` and `drawing = { since: now, seq }`. Then finish the send as usual
+   (`agent.handled = seq`, `agent.status = "waiting"`), print the terminal line with
+   "visual drawing" in it, and end the turn. The page reads `drawing`: on a first draw it
+   stays on the questions with the header button reading Visualizing… and flips to the
+   visual by itself when v1 lands; on a redraw it keeps the current version on screen with
+   regenerating… in the strip. Send stays enabled throughout.
+3. **While a draw is in flight**, handle sends normally. An answer, reopen, or changed
+   recommendation that affects the visual sets `stale = true` as usual (the in-flight
+   draw did not see it). A new draw request (Visualize, Regenerate, or visual feedback)
+   does not start a second subagent: reply in the thread now and append the request as
+   one bullet to `visual.queued`. Never run two draws at once; both would write the same
+   file.
+4. **When the draw lands** (its completion notice wakes you): confirm
+   `<session>/visual.html` exists and is newer than `drawing.since` (stat it; do not read
+   it). Bump `version` (0 → 1 on a first draw), set `at`, set `note` to one line naming
+   what changed, taken from the subagent's reply ("v3: discussion panel moved to the right
+   per Q3"), delete `drawing`, and leave `stale` as it is. If `visual.queued` is
+   non-empty, launch the next draw at once with those bullets as the change list (steps
+   1–2 again, `drawing.seq` = the last handled seq) and delete `queued`. Write
+   `state.json`, print one line ("grill: visual v3 landed", or "… landed; drawing v4 from
+   2 queued notes"), and end the turn. Never bump without a new file and never let a new
+   file land without a bump; the page reloads the iframe only on a bump.
+5. If the subagent fails or the file did not change: on a first draw delete `visual`
+   entirely and set `note` (the sentence above the question list) to say the draw failed
+   and Visualize can be clicked again; on a redraw delete `drawing` and append one
+   `{who:"agent"}` message to `visual.thread` saying so. Do not bump either way.
 
-If your harness has no subagent tool, draw the file yourself following `visual-brief.md`.
+Background draws rely on your being the top-level session: a subagent's own background
+tasks are dropped when its turn ends. If you are yourself running as a subagent, or your
+harness has no subagent tool, draw the file yourself from `visual-brief.md`, inline, then
+bump the version in the same turn as the rest of the send.
 
 Feedback arrives as `visual-feedback` actions (see Handling a send); sending visual feedback
 explicitly requests a redraw. Answers and question discussions do not. On Finish the visual
@@ -199,23 +227,25 @@ doc path may also be changed this way ("write the doc to …").
 
 On a `finish` action, or when the user says finish in the terminal:
 
-1. If `state.visual` exists, reconcile it against every answered question (a redraw through
-   the draw subagent, with a version bump, if it is stale or anything disagrees), then copy
+1. Write the design doc to `doc` (relative to the project root). It is exhaustive and
+   self-contained, in this order: a one-paragraph summary (linking the visual at
+   `docs/<slug>-visual.html` when there is one, see step 3); **Terms** (each with its
+   Avoid list); **Why** (the problem in the user's words); **Locked decisions** (every
+   `durable` question: the decision, the rejected options and why each lost); **Routine
+   choices** (every other answered question, one bullet each); **Verified facts** (anything
+   you established by exploring rather than asking, if any); **Risks**; **Deferred**
+   (deferred questions, with what would reopen them); **Open threads** (discussion points
+   that ended without a decision). Do not compress: a reader with no access to the session
+   must be able to build from it.
+2. Write `state.json` with `finished = { doc, at }` and `agent.status = "waiting"`; the page
+   shows the finished banner and locks staging.
+3. If `state.visual` exists, it must be reconciled with every answered question before it
+   is exported. If no draw is in flight and it is not stale and nothing disagrees, copy
    `<session>/visual.html` to `docs/<slug>-visual.html` next to the doc (same folder, same
-   slug, `-visual.html`).
-2. Write the design doc to `doc` (relative to the project root). It is exhaustive and
-   self-contained, in this order: a one-paragraph summary (linking the copied visual when
-   there is one); **Terms** (each with its Avoid list); **Why** (the problem in the user's
-   words); **Locked decisions** (every `durable` question: the decision, the rejected options
-   and why each lost); **Routine choices** (every other answered question, one bullet each);
-   **Verified facts** (anything you established by exploring rather than asking, if any);
-   **Risks**; **Deferred** (deferred questions, with what would reopen them); **Open threads**
-   (discussion points that ended without a decision). Do not compress: a reader with no
-   access to the session must be able to build from it.
-3. Write `state.json` with `finished = { doc, visual, at }` (`visual` = the copied path, or
-   omit it) and `agent.status = "waiting"`; the page shows the finished banner and locks
-   staging.
-4. Stop the monitor with TaskStop.
+   slug, `-visual.html`) and set `finished.visual` to that path. Otherwise request one
+   reconciling draw (or let the in-flight one land), end the turn, and when it lands copy
+   the file and set `finished.visual` then.
+4. Stop the monitor with TaskStop, once there is no draw in flight.
 5. Print one line with the doc path (and the visual's). End.
 
 ## Wait mode (agents without a Monitor tool)
@@ -240,6 +270,8 @@ printed line exactly as in "Handling a send". On finish, kill the server by the 
     "kind": "prototype|diagram", "version": 3, "at": "ISO",
     "note": "v3: discussion panel moved to the right per Q3",
     "stale": false,                                            // true after relevant ordinary decisions; no redraw or version bump
+    "drawing": { "since": "ISO", "seq": 12 },                  // while a draw subagent runs; version is 0 before the first lands
+    "queued": ["feedback: make the sidebar collapsible"],      // draw requests that arrived during a draw; next draw takes them
     "thread": [{ "who": "user|agent", "text": "…", "at": "ISO" }]
   },
   "terms": [{ "term": "…", "def": "…", "avoid": ["…"] }],
