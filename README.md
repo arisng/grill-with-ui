@@ -8,9 +8,12 @@ button, **Send to Agent**, to ship everything you staged as a single turn. At th
 agent writes an exhaustive design doc for the topic.
 
 Under the hood it is small on purpose: one Node script and one HTML file, no dependencies,
-no build step. The agent owns `state.json`; the page appends one line per Send to
-`events.jsonl`; the server that serves the page is also the process whose output wakes the
-agent. Nothing runs after the agent session ends.
+no build step. The agent owns `state.json` and changes it only through
+`node server.mjs patch`, sending just what changed as a small JSON patch that the script
+merges, validates, and writes atomically; a whole-file rewrite would put the entire state
+(60 KB by the end of a long grill) into the agent's context on every turn. The page appends
+one line per Send to `events.jsonl`; the server that serves the page is also the process
+whose output wakes the agent. Nothing runs after the agent session ends.
 
 ## Install
 
@@ -105,7 +108,7 @@ Session state lives outside your repo, so there is nothing to gitignore:
 
 ```
 ~/.grill-with-ui/sessions/<project-key>/<YYYYMMDD-HHMMSS>/
-  state.json     written only by the agent (questions, recommendations, threads, status)
+  state.json     written only by the agent, through `patch` (questions, recommendations, threads, status)
   events.jsonl   appended only by the page, one line per Send
   server.json    url, port and pid of the running server
   visual.html    the prototype or diagram, drawn by the agent's subagent, served at /visual
@@ -126,7 +129,12 @@ node server.mjs sessions [--all]                               list this project
 node server.mjs pending  --session DIR                         print sends past agent.handled
 node server.mjs wait     --session DIR [--after N] [--timeout S]  block until the next send (exit 3 on timeout)
 node server.mjs url      --session DIR [--timeout S]           print the running server's url
+node server.mjs patch    --session DIR [--file P]              apply a JSON patch (stdin or P) to state.json
 ```
+
+`patch` merges by the rules in `SKILL.md` ("Patching state.json"). A bad patch exits
+non-zero and leaves the file untouched; a good one prints one short summary line, never the
+state.
 
 `GRILL_HOME` overrides `~/.grill-with-ui`.
 
