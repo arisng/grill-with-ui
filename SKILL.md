@@ -31,7 +31,8 @@ Throughout this skill, **return to listening** means the appropriate action abov
 mode stop only after Finish and any final visual export are complete, the user explicitly
 pauses/stops the interview, or a tool failure prevents continuing. If you must stop, say that
 the listener is inactive and that browser submissions will be queued until resume; never
-claim you are still listening. On resume, drain `pending` before waiting for new events.
+claim you are still listening. On resume, drain `pending` as Resume step 3 describes before
+waiting for new events.
 
 **You change `state.json` only through `patch`** (next section), never with a file-write or
 edit tool. A whole-file write puts the entire state into this conversation on every turn, and
@@ -360,12 +361,20 @@ confirms the server is running, **not** that the agent is listening.
 
 Keep this loop active in the current agent turn:
 
-1. Run `pending --session <session>` on entry/resume and handle any queued sends in order.
-2. Run `node $SKILL/server.mjs wait --session <session> --after <agent.handled> --timeout 50`.
+1. On entry and on resume run `node $SKILL/server.mjs pending --session <session>` and drain
+   it exactly as Resume step 3 says: every printed line in one turn, in order, following
+   "Handling a send", with one patch at the end whose `agent.handled` is the last seq — not
+   a patch and a new question round per queued send.
+2. Run `node $SKILL/server.mjs wait --session <session> --after <agent.handled>`.
    Use the last acknowledged `handled` from your patch, not the last sequence merely seen.
-   If the shell tool yields a running process ID, keep polling that same process; do not
-   abandon it or start duplicate waiters. Use bounded polls within the harness's limits
-   so user input and draw completions can still be handled.
+   `--timeout` (default 480) bounds how long that wait *process* sits idle before exiting 3;
+   it prints the send and exits the moment one lands, so a long idle timeout never delays
+   delivery. It is not how long one tool call should block: if the shell tool yields a
+   running process or session ID, keep that single wait alive and poll it in bounded steps
+   (60 seconds or less, within the harness's limits) so user input and draw completions are
+   still handled promptly. Never start a second waiter for the same session. Pass a short
+   `--timeout` only when the harness cannot keep a yielded process between calls and each
+   wait must run to completion in the foreground.
 3. Exit 0 returns a send: handle it and acknowledge it atomically, then loop with the new
    `handled`. Exit 3 is an idle timeout: re-issue the wait. Other failures need inspection;
    recover if possible, otherwise report the inactive listener rather than silently exit.
