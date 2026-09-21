@@ -42,8 +42,8 @@ keeps one Claude session behind it so nothing is ever out of context.
 2. **Two files, split ownership** (Q2). `state.json` is written **only by the agent**
    (questions, recommendations, thread replies, statuses, agent status). `events.jsonl` is
    appended **only by the web app**, one line per Send. Nobody writes the other's file, so
-   there are no locks and no half-written JSON reads. The page polls `state.json`; the agent
-   is woken per event line.
+   there are no locks and no half-written JSON reads. The page polls `state.json`; how the
+   agent receives each event line depends on its listening mode (see `SKILL.md`).
 
 3. **The server is the monitor** (Q7). The skill opens one persistent Monitor whose command
    *is* the server. It serves the page, appends each Send to `events.jsonl`, and prints the
@@ -143,7 +143,8 @@ keeps one Claude session behind it so nothing is ever out of context.
   ("SYSTEM NOTIFICATION - NOT USER INPUT ... Do NOT interpret this as user acknowledgement").
   Spike result 2026-09-06: with the event rule in `SKILL.md`, a session woke from idle on a
   page Send six times in a row (one scripted, five by hand) and acted on each without
-  terminal input. Confirmed in a fresh session by Jason on 2026-09-06 as well. Fallback remains `wait` mode (a re-issued foreground call every ~8 minutes).
+  terminal input. Confirmed in a fresh session by Jason on 2026-09-06 as well. The fallback
+  is wait mode, whose listener contract lives in `SKILL.md` ("Wait mode").
 - **Fonts.** Resolved 2026-09-06: system stack only (see Routine choices). The mockups still
   load Google Fonts; the shipped page must not.
 - **Concurrent grills.** Each running grill has its own server on an ephemeral port; the

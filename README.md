@@ -24,7 +24,9 @@ no build step. The agent owns `state.json` and changes it only through
 merges, validates, and writes atomically; a whole-file rewrite would put the entire state
 (60 KB by the end of a long grill) into the agent's context on every turn. The page appends
 one line per Send to `events.jsonl`; the server that serves the page is also the process
-whose output wakes the agent. Nothing runs after the agent session ends.
+whose output a persistent Monitor delivers to the agent. In wait mode the agent must keep
+its foreground listener active; a page server alone cannot wake an ended agent turn.
+Submissions made while the agent is not listening remain queued for resume.
 
 ## Install
 
@@ -58,9 +60,10 @@ What the agent needs at run time:
 
 - **A shell tool and Node 20+.** Claude Code is woken per Send by its persistent Monitor
   tool. Every other agent uses **wait mode**, spelled out in `SKILL.md`: it starts the
-  server detached and blocks on `node server.mjs wait` in the foreground, which returns on
-  the next Send or after eight minutes, then loops. Any agent that can run a shell command
-  for several minutes can do this.
+  server detached (or in a harness-managed shell session) and keeps `node server.mjs wait`
+  active in the foreground. It returns on the next Send or after a bounded timeout, then
+  loops. The agent keeps listening after replies and completed visuals, until the user
+  finishes or explicitly pauses; a running server is not a substitute for that listener.
 - **Optionally a subagent tool**, for Visualize. With one, the visual is drawn in the
   background while you keep answering. Without one, the agent draws it inline and that
   turn takes longer.
