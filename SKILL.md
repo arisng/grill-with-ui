@@ -10,8 +10,28 @@ plain Node with no install step: `node $SKILL/server.mjs <command>`.
 
 Two files carry a grill. `state.json` is **yours alone**: questions, recommendations, thread
 replies, statuses, agent status. `events.jsonl` is **the page's alone**: one line per Send.
-Nobody writes the other's file. The page polls `state.json`; you are woken per event line.
+Nobody writes the other's file. The page polls `state.json`; how you receive events depends
+on the listening mode below.
 A third file, `visual.html`, is also yours, drawn by a subagent you run (see Visualize).
+
+## Listening mode and turn boundaries
+
+Choose the mode from the tools actually available, not the agent's model name:
+
+- **Persistent Monitor:** if the harness delivers its events to the agent even after a turn
+  ends, publish the update and end the turn; the next event wakes you.
+- **Wait mode (no persistent Monitor):** a running page server or background shell process
+  does **not** wake a finished agent turn. Keep the turn active and return to the foreground
+  `wait` loop after opening the page, handling every send, and every draw completion or
+  failure. A tool returning a process/session ID is not an event subscription: resume that
+  process with the harness's polling tool. Do not send a final response merely because a
+  question round or visual is ready. A timeout means wait again, not end the interview.
+
+Throughout this skill, **return to listening** means the appropriate action above. In wait
+mode stop only after Finish and any final visual export are complete, the user explicitly
+pauses/stops the interview, or a tool failure prevents continuing. If you must stop, say that
+the listener is inactive and that browser submissions will be queued until resume; never
+claim you are still listening. On resume, drain `pending` before waiting for new events.
 
 **You change `state.json` only through `patch`** (next section), never with a file-write or
 edit tool. A whole-file write puts the entire state into this conversation on every turn, and
@@ -92,7 +112,7 @@ GRILL_PATCH
    "Wait mode" at the end of this file for this step and for every wait after it.
 4. Run `node $SKILL/server.mjs url --session <session>`; it prints the URL.
 5. Print ONE line: the URL, how many questions wait, and the doc path (say the user can change
-   the path by typing in the terminal). End the turn.
+   the path by typing in the terminal). Return to listening.
 
 ## Resume (`/grill-with-ui resume`)
 
@@ -123,7 +143,7 @@ Any other monitor line (`"type":"ready"`, errors, exit) is status. Do not treat 
 
 A second wake-up is the completion notice of a draw subagent you launched in the background
 (see Visualize). It is not user input, but act on it in that turn: record the landed draw as
-described there, then end the turn.
+described there, then return to listening.
 
 ## Handling a send
 
@@ -180,7 +200,7 @@ described there, then end the turn.
    and enable the next Send.
 7. Print exactly one terminal line, e.g.
    `grill: handled send #3 (Q2 → B, Q4 thread); round 4 has 2 questions; visual v3 out of date`,
-   and end the turn.
+   and return to listening.
 
 ## Interview method (frontier per round)
 
@@ -256,7 +276,7 @@ keeps answering and sending while the subagent draws.
    On a redraw: `"visual": { "stale": false, "drawing": { "seq": <seq> } }`;
    the merge keeps `version`, `at`, `note`, and `thread`, and the file stays as it is. The
    same patch finishes the send as usual (`agent.handled`, `"status": "waiting"`); print
-   the terminal line with "visual drawing" in it and end the turn. The page reads
+   the terminal line with "visual drawing" in it and return to listening. The page reads
    `drawing`: on a first draw it stays on the questions with the header button reading
    Visualizing… and flips to the visual by itself when v1 lands; on a redraw it keeps the
    current version on screen with regenerating… in the strip. Send stays enabled
@@ -276,13 +296,13 @@ keeps answering and sending while the subagent draws.
    as the change list (step 1 again), and in the same patch give
    `"drawing": { "seq": <last handled seq> }` instead of `null`, plus
    `"queued": null`. Print one line ("grill: visual v3 landed", or "… landed; drawing v4
-   from 2 queued notes") and end the turn. Never bump without a new file and never let a
+   from 2 queued notes") and return to listening. Never bump without a new file and never let a
    new file land without a bump; the page reloads the iframe only on a bump.
 5. If the subagent fails or the file did not change: on a first draw patch
    `"visual": null` and a `note` (the sentence above the question list) saying the draw
    failed and Visualize can be clicked again; on a redraw patch
    `"visual": { "drawing": null, "thread": [{ "who": "agent", "text": … }] }` saying so. Do
-   not bump either way.
+   not bump either way. Return to listening so the user can retry.
 
 Background draws rely on your being the top-level session: a subagent's own background
 tasks are dropped when its turn ends. If you are yourself running as a subagent, or your
@@ -324,21 +344,37 @@ On a `finish` action, or when the user says finish in the terminal:
    `<session>/visual.html` to `docs/<slug>-visual.html` next to the doc (same folder, same
    slug, `-visual.html`) and add `"visual": <that path>` to `finished` (it is replaced
    whole, so give `doc` again, or fold it into the step 2 patch). Otherwise
-   request one reconciling draw (or let the in-flight one land), end the turn, and when it
+   request one reconciling draw (or let the in-flight one land), return to listening, and when it
    lands copy the file and patch `finished` with `visual` then.
-4. Stop the monitor with TaskStop, once there is no draw in flight.
+4. Once there is no draw in flight and the exports are complete, stop the persistent
+   Monitor with TaskStop, or stop the server as described in Wait mode.
 5. Print one line with the doc path (and the visual's). End.
 
 ## Wait mode (agents without a Monitor tool)
 
 Start the server detached with its output going to a log:
-`nohup node $SKILL/server.mjs serve --session <session> > <session>/serve.log 2>&1 &`, then
-run `url` as in Start. Instead of a monitor, loop in the foreground:
-`node $SKILL/server.mjs wait --session <session> --after <agent.handled> --timeout 480`
-(`handled` is in the line your last patch printed).
-It prints the next send line and exits 0, or exits 3 on timeout (re-issue it). Handle each
-printed line exactly as in "Handling a send". On finish, kill the server by the `pid` in
-`<session>/server.json`.
+`nohup node $SKILL/server.mjs serve --session <session> > <session>/serve.log 2>&1 &`.
+Verify it with `url` as in Start. If the harness terminates detached children, keep `serve`
+in a harness-managed running shell session instead and verify `url` again. A live page
+confirms the server is running, **not** that the agent is listening.
+
+Keep this loop active in the current agent turn:
+
+1. Run `pending --session <session>` on entry/resume and handle any queued sends in order.
+2. Run `node $SKILL/server.mjs wait --session <session> --after <agent.handled> --timeout 50`.
+   Use the last acknowledged `handled` from your patch, not the last sequence merely seen.
+   If the shell tool yields a running process ID, keep polling that same process; do not
+   abandon it or start duplicate waiters. Use bounded polls within the harness's limits
+   so user input and draw completions can still be handled.
+3. Exit 0 returns a send: handle it and acknowledge it atomically, then loop with the new
+   `handled`. Exit 3 is an idle timeout: re-issue the wait. Other failures need inspection;
+   recover if possible, otherwise report the inactive listener rather than silently exit.
+4. When a draw completes, publish its version and return to this loop. If a wait process
+   is still active, resume it. Publishing a finished prototype is not finishing the grill.
+
+The user does not need to type "continue" in the terminal to deliver a browser Send.
+Only stop under the turn-boundary conditions above. On Finish, once the doc and any final
+visual are saved, stop the server using the verified `pid` in `<session>/server.json`.
 
 ## state.json
 
