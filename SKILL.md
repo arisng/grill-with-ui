@@ -344,9 +344,9 @@ On a `finish` action, or when the user says finish in the terminal:
    is exported. If no draw is in flight and it is not stale and nothing disagrees, copy
    `<session>/visual.html` to `docs/<slug>-visual.html` next to the doc (same folder, same
    slug, `-visual.html`) and add `"visual": <that path>` to `finished` (it is replaced
-   whole, so give `doc` again, or fold it into the step 2 patch). Otherwise
-   request one reconciling draw (or let the in-flight one land), return to listening, and when it
-   lands copy the file and patch `finished` with `visual` then.
+   whole, so give `doc` again, or fold it into the step 2 patch). Otherwise request one
+   reconciling draw (or let the in-flight one land), return to listening, and when it lands
+   copy the file and patch `finished` with `visual` then.
 4. Once there is no draw in flight and the exports are complete, stop the persistent
    Monitor with TaskStop, or stop the server as described in Wait mode.
 5. Print one line with the doc path (and the visual's). End.
