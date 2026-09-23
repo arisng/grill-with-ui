@@ -383,9 +383,11 @@ function validateState(s) {
       `${where}[${i}] must be {"who":"user"|"agent","text":"…","at":"ISO"}`));
   };
   for (const k of ["topic", "doc", "project", "created", "note"]) check(s, k, str, `${k} must be a string`);
+  check(s, "domainModeling", bool, "domainModeling must be a boolean");
   if ("finished" in s) {
-    need(isObj(s.finished), 'finished must be an object ({"doc","visual","at"})');
-    texts(s.finished, ["doc", "visual", "at"], "finished");
+    need(isObj(s.finished), 'finished must be an object ({"doc","visual","context","adrs","at"})');
+    texts(s.finished, ["doc", "visual", "at", "context"], "finished");
+    check(s.finished, "adrs", (v) => Array.isArray(v) && v.every(str), "finished.adrs must be an array of strings");
   }
   if ("agent" in s) {
     need(isObj(s.agent), "agent must be an object");
