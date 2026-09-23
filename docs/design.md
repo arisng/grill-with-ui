@@ -56,8 +56,11 @@ keeps one Claude session behind it so nothing is ever out of context.
    nothing is separate under the hood. Rejected: a subagent per thread, which loses exactly
    the context the feature exists to keep.
 
-5. **Finish writes the exhaustive topic design doc, with two borrows** (Q8, Q9). The doc
-   path is asked once at start (default: the project's docs folder, slug from the topic).
+5. **Finish writes the exhaustive topic design doc, with two borrows** (Q8, Q9).
+   *Superseded in part 2026-09-23: the default path and the `CONTEXT.md`/`docs/adr/` opt-in
+   have shipped — see Routine choices ("Per-topic outputs…", "Domain-modeling mode…").*
+   The doc path is asked once at start (default: the project's docs folder, slug from the
+   topic).
    Borrowed from Matt Pocock's domain-modeling skill: a per-decision **durable** flag
    (three gates) that splits "Locked decisions" from "Routine choices", and a **Terms**
    section with _Avoid_ lists at the top. Not borrowed: repo-wide `CONTEXT.md` and sparse
@@ -126,6 +129,18 @@ keeps one Claude session behind it so nothing is ever out of context.
   send (an answer, a thread reply, a new question, the handled bump) is a 3.0 KB patch
   against a 64.7 KB whole file. Incoming Sends were already diffs; this makes the outgoing
   side one too. Locked decision 2 still holds: the agent is the only writer.
+- **Domain-modeling mode is an opt-in round-1 question** (2026-09-23). `q-domain` asks
+  whether settled terms and durable decisions also land as standing files — repo-root
+  `CONTEXT.md` and `docs/adr/`; the answer stores top-level `domainModeling: true`
+  (absent = off, reopen clears it), Finish writes them per `domain-brief.md` alongside the
+  unchanged design doc, `finished` carries `context`/`adrs`, and the page banner shows
+  them. Formats inherited (MIT) from mattpocock/skills domain-modeling — the earlier "not
+  borrowed" note in Q8/Q9 becomes the borrowed half.
+- **Per-topic outputs grouped under `.grill-with-ui/<slug>/`** (2026-09-23). The default
+  doc path is `.grill-with-ui/<slug>/design.md` and Finish exports `visual.html` beside
+  the design doc (grouping follows the doc under `--doc` overrides); standing artifacts
+  stay conventional — root `CONTEXT.md`, ADRs in `docs/adr/`. Supersedes the Q8/Q9
+  "project docs folder" default; that dated text stays as recorded.
 
 ## Verified facts (2026-09-06)
 
@@ -153,7 +168,9 @@ keeps one Claude session behind it so nothing is ever out of context.
 ## Deferred
 
 - Keyboard shortcuts on the page.
-- Repo-wide `CONTEXT.md` / `docs/adr/` output as an opt-in flag.
+- ~~Repo-wide `CONTEXT.md` / `docs/adr/` output as an opt-in flag.~~ Resolved 2026-09-23:
+  shipped as the round-1 `q-domain` question + Finish-time writes per `domain-brief.md`
+  (inherited from mattpocock's grill-with-docs → domain-modeling, MIT).
 - The Codex-side skill prompt (wait mode is built; the prompt is not).
 
 ## State sketch (for the spike)
