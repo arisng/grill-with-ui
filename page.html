@@ -406,7 +406,7 @@ function withThreadScroll(fn) {
 }
 function renderBanner() {
   const b = $("banner");
-  if (S && S.finished) { b.className = "show done"; b.textContent = `Finished · the design doc was written to ${S.finished.doc || S.doc || "the doc path"}${S.finished.visual ? ", the visual to " + S.finished.visual : ""}${S.finished.at ? " at " + timeOf(S.finished.at) : ""}.`; }
+  if (S && S.finished) { b.className = "show done"; const f = S.finished, adrs = Array.isArray(f.adrs) ? f.adrs : [], ai = adrs.length ? Math.max(adrs[0].lastIndexOf("/"), adrs[0].lastIndexOf("\\")) : -1, adir = adrs.length ? (ai >= 0 ? adrs[0].slice(0, ai + 1) : adrs[0]) : ""; b.textContent = `Finished · the design doc was written to ${f.doc || S.doc || "the doc path"}${f.visual ? ", the visual to " + f.visual : ""}${f.context ? ", the glossary to " + f.context : ""}${adrs.length ? `, ${adrs.length} ADR${adrs.length === 1 ? "" : "s"} to ${adir}` : ""}${f.at ? " at " + timeOf(f.at) : ""}.`; }
   else if (gone) { b.className = "show"; b.textContent = "Server gone. Resume the grill from the terminal; this tab reconnects by itself."; }
   else { b.className = ""; b.textContent = ""; }
 }
