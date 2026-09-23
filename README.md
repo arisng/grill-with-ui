@@ -85,6 +85,11 @@ appears in the discussion panel when the agent is done. The agent answers
 threads, writes the tables, records your answers, and adds the next round of questions to
 the page.
 
+The first question of every grill asks whether settled terms and durable decisions should
+also be kept as standing files — a `CONTEXT.md` glossary at the project root and one short
+ADR per durable decision in `docs/adr/` — alongside the design doc, which is written
+either way; no (the default) changes nothing else.
+
 **Visualize** in the header asks the agent for one picture of the design so far: an
 interactive HTML prototype when the topic is a UI, an architecture or flow diagram
 otherwise. When the topic is a change to an existing app, the prototype is drawn inside the
@@ -101,11 +106,12 @@ lines of markup stay out of the interview's context. The draw runs in the backgr
 Send keeps working and the interview goes on while it is drawn; the header says
 Visualizing… (or the strip says regenerating…) until the new version lands. Finish
 reconciles and copies the final visual next to the design doc as
-`docs/<topic>-visual.html`.
+`.grill-with-ui/<topic-slug>/visual.html` — design and visual grouped per topic.
 
 **Finish grill** sends at once (after an inline confirm), together with anything you had
 staged; the agent writes the design doc to the path shown in the header (default
-`docs/<topic>-design.md` in your project) and stops.
+`.grill-with-ui/<topic-slug>/design.md` in your project), plus the glossary and ADRs in
+domain-modeling mode, and stops.
 
 To pick up an unfinished grill, in the same project:
 
@@ -130,6 +136,15 @@ Session state lives outside your repo, so there is nothing to gitignore:
 
 `<project-key>` is the git common root of the project with slashes turned into dashes, so
 every worktree of a repo sees the same sessions; outside git it is the working directory.
+
+Repo-side outputs are few and grouped per topic under `.grill-with-ui/<topic-slug>/` —
+`design.md` plus the optional `visual.html` — while standing files stay at `CONTEXT.md`
+and `docs/adr/`. These are committed deliverables: commit `.grill-with-ui/` (it is the
+product), or gitignore it deliberately if you don't want them in the repo.
+
+Only in domain-modeling mode does Finish also write these standing files: `CONTEXT.md` at
+the project root (merged into, never overwritten) and `docs/adr/NNNN-slug.md`, recorded in
+`finished.context`/`finished.adrs`.
 
 In this repo: `server.mjs` (the server and CLI), `page.html` (the page), `SKILL.md` (the
 prompt the agent follows), `test/`, and `design/` + `docs/design.md` (how it was designed).
