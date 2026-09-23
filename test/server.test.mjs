@@ -473,6 +473,26 @@ test("patch: null deletes a key at any level", () => {
   assert.equal(st.note, "The draw failed; click Visualize to try again.");
 });
 
+test("patch: domainModeling: true is accepted whole, domainModeling: null deletes it, a non-boolean domainModeling is rejected", () => {
+  const session = seeded({ questions: [qn("q1", 1)] });
+  applied(session, { domainModeling: true });
+  assert.equal(stateOf(session).domainModeling, true);
+  applied(session, { domainModeling: null });
+  assert.ok(!("domainModeling" in stateOf(session)), "null deletes domainModeling");
+  rejected(session, { domainModeling: "yes" }, /domainModeling must be a boolean/);
+});
+
+test("patch: finished.context and finished.adrs read back; a bad adrs is rejected, state untouched", () => {
+  const session = seeded({ questions: [qn("q1", 1)] });
+  applied(session, { finished: { doc: "docs/design.md", context: "CONTEXT.md", adrs: ["docs/adr/0001-a.md"] } });
+  const fin = stateOf(session).finished;
+  assert.equal(fin.doc, "docs/design.md");
+  assert.equal(fin.context, "CONTEXT.md");
+  assert.deepEqual(fin.adrs, ["docs/adr/0001-a.md"]);
+  rejected(session, { finished: { adrs: "docs/adr" } }, /finished\.adrs/);
+  rejected(session, { finished: { adrs: ["docs/adr/0001-a.md", 2] } }, /finished\.adrs/);
+});
+
 test("patch: terms are keyed by term; a known term is replaced whole, a new one appended", () => {
   const session = seeded({ terms: [{ term: "round", def: "One turn of questions.", avoid: ["batch"] }, { term: "send", def: "One press.", avoid: [] }] });
   applied(session, { terms: [{ term: "round", def: "The frontier of one turn." }, { term: "frontier", def: "Askable now.", avoid: ["queue"] }] });
@@ -556,6 +576,7 @@ test("patch: every field the page renders must have the shape the render reads, 
   rejected(session, { finished: { doc: boom } }, /finished\.doc/);
   rejected(session, { finished: { doc: "docs/x.md", visual: 1 } }, /finished\.visual/);
   rejected(session, { finished: { doc: "docs/x.md", at: boom } }, /finished\.at/);
+  rejected(session, { finished: { context: boom } }, /finished\.context/);
 
   // Every shape SKILL.md documents still goes through, including the optional parts left out.
   applied(session, {
