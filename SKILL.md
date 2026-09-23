@@ -1,6 +1,6 @@
 ---
 name: grill-with-ui
-description: Run a grilling interview on a local browser page instead of the terminal. Every question is laid out with its recommendation, answerable in any order, with a per-question discussion thread and one "Send to Agent" button. Use when the user says "grill with ui", invokes /grill-with-ui with a topic, or says "/grill-with-ui resume".
+description: Run a grilling interview on a local browser page instead of the terminal. Every question is laid out with its recommendation, answerable in any order, with a per-question discussion thread and one "Send to Agent" button. An opt-in first question can additionally land settled terms in a repo CONTEXT.md and durable decisions as ADRs. Use when the user says "grill with ui", invokes /grill-with-ui with a topic, or says "/grill-with-ui resume".
 ---
 
 # grill-with-ui
@@ -69,7 +69,7 @@ The patch is shaped like `state.json` (schema at the end):
 - `thread` (on a question and on `visual`) and `visual.queued` append: list only the new
   messages or bullets.
 - `terms` is keyed by `term`: a known term is replaced whole, a new one appended.
-- Every other key (`note`, `finished`, `doc`, …) is replaced whole.
+- Every other key (`note`, `finished`, `doc`, `domainModeling`, …) is replaced whole.
 
 **Never write the current time; the server stamps every time you leave out**: `agent.since`
 whenever you give `agent.status`, `at` on each appended message, `explore.at`, `visual.at`
@@ -102,11 +102,23 @@ GRILL_PATCH
 
 1. From the project directory run
    `node $SKILL/server.mjs new --topic "<topic>" --doc "<doc path>"`.
-   The doc path defaults to `docs/<slug-of-topic>-design.md` under the project root (create the
-   folder later if needed). It prints one JSON line; keep `session` (the session folder).
-2. Patch round 1 in (`new` already wrote the skeleton): one to three independent questions,
-   each with lettered options, one recommendation, and a one-paragraph why, plus any `terms`
-   and `"agent": { "status": "waiting" }`.
+   The doc path defaults to `.grill-with-ui/<slug-of-topic>/design.md` under the project root
+   (create the nested folder later if needed). It prints one JSON line; keep `session` (the
+   session folder).
+2. Patch round 1 in (`new` already wrote the skeleton). Round 1 ALWAYS begins with the
+   domain-modeling-mode question, first, id `q-domain`:
+   - `title`: "Also keep a glossary and ADRs?"
+   - `body`: At Finish the design doc is always written to `doc`; opting in additionally
+     keeps a repo-root `CONTEXT.md` glossary of settled terms and one short ADR per durable
+     decision in `docs/adr/`, both written when the grill finishes.
+   - `options`: A "Yes — also write CONTEXT.md and ADRs", B "No — the design doc only (default)".
+   - `rec`: option A, why: locked decisions then live where the next engineer already looks —
+     CONTEXT.md and docs/adr/ — not only in a dated design doc; the cost is two small repo
+     files.
+   - `durable: false` (it is session meta, never a topic decision).
+   Then the usual one to three independent topic questions follow (round 1: after
+   `q-domain`), each with lettered options, one recommendation, and a one-paragraph why,
+   plus any `terms` and `"agent": { "status": "waiting" }`.
 3. Open a **persistent Monitor** (`persistent: true`) whose command is
    `node $SKILL/server.mjs serve --session <session>`, description `grill page: <topic>`.
    No Monitor tool in your harness (Codex, Gemini CLI, Cursor, Copilot, others)? Use
@@ -159,6 +171,12 @@ described there, then return to listening.
      Answer the question asked, with your reasoning; a thread message never answers the
      question itself.
    - `defer` → `status: "deferred"`. `reopen` → `status: "reopened"`, `answer: null`.
+   - The top-level `domainModeling` key follows `q-domain`: an `answer` that means yes (kind accept,
+     option A, or affirmative free text) → include `"domainModeling": true` in the step 6 patch; an
+     answer that means no (option B, or negative free text) → `"domainModeling": null` (`null`
+     deletes the key). A `reopen` → `"domainModeling": null` too: never write repo files the user is
+     reconsidering; domain-modeling mode takes effect again only when re-answered yes. Defer and
+     never-answered leave the key absent: domain-modeling mode off.
    - `explore` → set the question's `explore`: `{ rows: [{ option, pros: [...], cons: [...] }] }`,
      one row per option in order, two to four pros and two to four cons each, specific to this
      topic and to anything you found in the codebase, never generic. Be as honest about the
@@ -177,6 +195,8 @@ described there, then return to listening.
      set the question's `status: "reopened"`, append the quoted note to its `thread`, set
      its `rec` to what the note implies, and set `updated: true`. The answer changes only
      when the user answers the reopened question. The visual follows the note either way.
+     This applies to `q-domain` too: a reopen of it here puts `"domainModeling": null` in
+     the step 6 patch.
    - `finish` → see Finish below, after the other actions. The page sends it the moment the
      user confirms, with everything they had staged in front of it.
 3. If an answer changes the recommendation of a still-open question, give that question its
@@ -328,28 +348,44 @@ also be changed this way ("write the doc to …" → patch `"doc"`).
 On a `finish` action, or when the user says finish in the terminal:
 
 1. Write the design doc to `doc` (relative to the project root). It is exhaustive and
-   self-contained, in this order: a one-paragraph summary (linking the visual at
-   `docs/<slug>-visual.html` when there is one, see step 3); **Terms** (each with its
+   self-contained, in this order: a one-paragraph summary (linking `visual.html` in the doc's
+   folder when there is one, see step 4); **Terms** (each with its
    Avoid list); **Why** (the problem in the user's words); **Locked decisions** (every
    `durable` question: the decision, the rejected options and why each lost); **Routine
    choices** (every other answered question, one bullet each); **Verified facts** (anything
    you established by exploring rather than asking, if any); **Risks**; **Deferred**
    (deferred questions, with what would reopen them); **Open threads** (discussion points
-   that ended without a decision). Do not compress: a reader with no access to the session
-   must be able to build from it.
-2. Patch `"finished": { "doc": … }` and `"agent": { "status": "waiting" }`
+   that ended without a decision). Exclude the domain-modeling-mode meta question (`q-domain`) from
+   every section: it is session meta, not a topic decision. Do not compress: a reader with
+   no access to the session must be able to build from it.
+2. If `domainModeling` is true — in state or in the changes collected for this send's
+   patch, a `q-domain` reopen/revoke among them turning it off — write the repo-level docs
+   per `$SKILL/domain-brief.md`:
+   (a) merge this grill's terms into repo-root `CONTEXT.md` (create lazily; merge, never
+   clobber); (b) for each answered question with `durable: true`, write
+   `docs/adr/NNNN-slug.md` per the brief (scan existing numbers; create lazily);
+   (c) remember the paths — the step that patches `finished` must then also include
+   `"context": <path>` (when `CONTEXT.md` was written) and `"adrs": [<paths…>]` (when any
+   ADR was written), alongside `doc`/`at` as that step already does.
+3. Patch `"finished": { "doc": … }` and `"agent": { "status": "waiting" }`
    (after a page Finish this is the send's one patch, with `handled`); the page shows the
    finished banner and locks staging.
-3. If `state.visual` exists, it must be reconciled with every answered question before it
+4. If `state.visual` exists, it must be reconciled with every answered question before it
    is exported. If no draw is in flight and it is not stale and nothing disagrees, copy
-   `<session>/visual.html` to `docs/<slug>-visual.html` next to the doc (same folder, same
-   slug, `-visual.html`) and add `"visual": <that path>` to `finished` (it is replaced
-   whole, so give `doc` again, or fold it into the step 2 patch). Otherwise request one
+   `<session>/visual.html` to `visual.html` in the design doc's folder (create the folder if
+   needed; the visual always sits beside the doc — same folder wherever `--doc` points; if
+   `--doc` leaves the project, the visual follows it out; prefer a project-relative path) and
+   add `"visual": <that path>` to `finished` (it is replaced whole, so give `doc` again —
+   and `context`/`adrs` when domain-modeling mode wrote them — or fold it into the step 3
+   patch). Otherwise request one
    reconciling draw (or let the in-flight one land), return to listening, and when it lands
-   copy the file and patch `finished` with `visual` then.
-4. Once there is no draw in flight and the exports are complete, stop the persistent
+   copy the file and patch `finished` with `visual` then (it is replaced whole, so give
+   `doc` again — and `context`/`adrs` when domain-modeling mode wrote them; the server
+   stamps `at`).
+5. Once there is no draw in flight and the exports are complete, stop the persistent
    Monitor with TaskStop, or stop the server as described in Wait mode.
-5. Print one line with the doc path (and the visual's). End.
+6. Print one line with the doc path (and the visual's, plus `CONTEXT.md` and the ADRs when
+   domain-modeling mode wrote them). End.
 
 ## Wait mode (agents without a Monitor tool)
 
@@ -382,8 +418,9 @@ Keep this loop active in the current agent turn:
    is still active, resume it. Publishing a finished prototype is not finishing the grill.
 
 The user does not need to type "continue" in the terminal to deliver a browser Send.
-Only stop under the turn-boundary conditions above. On Finish, once the doc and any final
-visual are saved, stop the server using the verified `pid` in `<session>/server.json`.
+Only stop under the turn-boundary conditions above. On Finish, once the doc, any repo-level
+docs, and any final visual are saved, stop the server using the verified `pid` in
+`<session>/server.json`.
 
 ## state.json
 
@@ -391,10 +428,12 @@ What each field means. You write it only through `patch`.
 
 ```jsonc
 {
-  "topic": "…", "doc": "docs/x-design.md", "project": "/abs/path", "created": "ISO",
+  "topic": "…", "doc": ".grill-with-ui/x/design.md", "project": "/abs/path", "created": "ISO",
   "agent": { "status": "waiting|working", "since": "ISO", "handled": 3 },
   "note": "optional short sentence shown above the question list",
-  "finished": { "doc": "docs/x-design.md", "visual": "docs/x-visual.html", "at": "ISO" },  // only after Finish
+  "domainModeling": true,  // domain-modeling mode on: Finish also writes CONTEXT.md + docs/adr/ per domain-brief.md; absent = off
+  "finished": { "doc": ".grill-with-ui/x/design.md", "visual": ".grill-with-ui/x/visual.html",
+                "context": "CONTEXT.md", "adrs": ["docs/adr/0001-slug.md"], "at": "ISO" },  // only after Finish
   "visual": {                                                   // only after a visualize action
     "kind": "prototype|diagram", "version": 3, "at": "ISO",
     "note": "v3: discussion panel moved to the right per Q3",
