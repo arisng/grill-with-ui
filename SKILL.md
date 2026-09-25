@@ -1,6 +1,8 @@
 ---
 name: grill-with-ui
 description: Run a grilling interview on a local browser page instead of the terminal. Every question is laid out with its recommendation, answerable in any order, with a per-question discussion thread and one "Send to Agent" button. An opt-in first question can additionally land settled terms in a repo CONTEXT.md and durable decisions as ADRs. Use when the user says "grill with ui", invokes /grill-with-ui with a topic, or says "/grill-with-ui resume".
+metadata:
+   version: 0.1.0
 ---
 
 # grill-with-ui
