@@ -66,7 +66,8 @@ under `GRILL_HOME` (default `~/.grill-with-ui/sessions/<project-key>/<timestamp>
 by the git common root so worktrees share sessions — nothing to gitignore.
 
 `server.mjs` is both the HTTP server and the CLI. `serve` handles the page (poll of
-`state.json`, `POST /send`, `/visual`), appends the event, and acts as the Monitor command.
+`state.json`, `POST /send`, `/visual`, `/context`), appends the event, and acts as the
+Monitor command.
 Because most harnesses have no persistent Monitor, SKILL.md defines **wait mode**: the agent
 keeps `node server.mjs wait --session DIR --after <handled>` in the foreground and loops on
 exit 0 (a Send) / exit 3 (timeout → wait again). A running server does not wake a finished
@@ -91,6 +92,12 @@ a glossary and ADRs?"); a yes stores a top-level `domainModeling: true` in state
 `CONTEXT.md` (merged, never clobbered) and one ADR per answered durable question under
 `docs/adr/`, per the sibling brief `domain-brief.md`. The design doc is written either
 way, unchanged.
+
+The header **Terms** panel merges live `state.terms` with the repo's `CONTEXT.md` —
+fetched via read-only `GET /context` (no-store markdown; 404 `no context`/
+`no project`/`no state`), parsed for the `## Language` section in page.html, session
+wins collisions, provenance pills shown once ≥1 glossary entry parses; viewing is
+independent of the session's domain-modeling mode.
 
 ## Key conventions
 
