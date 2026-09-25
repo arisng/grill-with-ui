@@ -90,6 +90,11 @@ also be kept as standing files — a `CONTEXT.md` glossary at the project root a
 ADR per durable decision in `docs/adr/` — alongside the design doc, which is written
 either way; no (the default) changes nothing else.
 
+The header **Terms** panel also shows the project's standing glossary from `CONTEXT.md`
+once it exists — session terms and standing terms in one list, each marked where it came
+from. Declining the mode changes nothing: you still see a glossary a previous grill left
+behind.
+
 **Visualize** in the header asks the agent for one picture of the design so far: an
 interactive HTML prototype when the topic is a UI, an architecture or flow diagram
 otherwise. When the topic is a change to an existing app, the prototype is drawn inside the
