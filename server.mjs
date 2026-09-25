@@ -6,6 +6,7 @@
 //                                                   line to stdout (this process is the agent's Monitor command).
 //                                                   Without --port it retries the port it used last time, then falls
 //                                                   back to an ephemeral one, so an open tab survives a restart.
+//                                                   GET /context reads the project's CONTEXT.md glossary.
 //   sessions [--all]                                list this project's sessions (newest first; --all adds finished ones)
 //   pending  --session DIR                          print every Send past agent.handled (replay on resume)
 //   wait     --session DIR [--after N] [--timeout S] block until a Send newer than seq N lands, print it, exit 0
@@ -162,6 +163,15 @@ function cmdServe(o) {
       const visual = path.join(session, "visual.html"); // written only by the agent; shown by the page in a sandboxed iframe
       if (!fs.existsSync(visual)) return json(res, 404, { error: "no visual" });
       return send(res, 200, fs.readFileSync(visual), "text/html; charset=utf-8");
+    }
+    if (req.method === "GET" && pathname === "/context") {
+      // Same read+parse attempt as /state, so first-read vs stale semantics match:
+      // a mid-write corrupt file keeps serving the last parse that worked.
+      try { const raw = fs.readFileSync(stateFile, "utf8"); JSON.parse(raw); lastGoodState = raw; } catch { /* keep lastGoodState */ }
+      if (lastGoodState === null) return json(res, 404, { error: "no state" });
+      const project = JSON.parse(lastGoodState)?.project; // never re-throws: lastGoodState only holds parses that worked
+      if (typeof project !== "string" || !path.isAbsolute(project)) return json(res, 404, { error: "no project" }); // before join: patch {"project":null} deletes the key; join(undefined) throws, join("") resolves against cwd
+      try { return send(res, 200, fs.readFileSync(path.join(project, "CONTEXT.md")), "text/markdown; charset=utf-8"); } catch { return json(res, 404, { error: "no context" }); }
     }
     if (req.method === "POST" && pathname === "/send") {
       // Browsers set Origin on every POST, same-origin or not; reject a mismatch so another
