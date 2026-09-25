@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync, execFileSync } from "node:child_process";
-import { closeSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, statSync, writeFileSync } from "node:fs";
+import { closeSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
@@ -169,6 +169,42 @@ test("serve: /visual serves the session's visual.html (no-store), 404 JSON when 
   assert.match(hit.headers.get("content-type"), /^text\/html/);
   assert.equal(hit.headers.get("cache-control"), "no-store");
   assert.equal(await hit.text(), html);
+});
+
+test("serve: /context serves the project's CONTEXT.md (no-store), 404 JSON when absent", async (t) => {
+  const { session, project } = newSession(tmp("grill-ctx-"));
+  const md = "# Glossary\n\n## Language\n\n**Grill**: ask one thing.\n";
+  writeFileSync(join(project, "CONTEXT.md"), md);
+  const s = await startServe(session); t.after(s.stop);
+  const hit = await fetch(s.ready.url + "context");
+  assert.equal(hit.status, 200);
+  assert.ok(hit.headers.get("content-type").startsWith("text/markdown"));
+  assert.ok(hit.headers.get("cache-control").includes("no-store"));
+  assert.equal(await hit.text(), md);
+  unlinkSync(join(project, "CONTEXT.md"));
+  const miss = await fetch(s.ready.url + "context?v=1");
+  assert.equal(miss.status, 404);
+  assert.deepEqual(await miss.json(), { error: "no context" });
+});
+
+test('serve: /context with state.json corrupted before any read → 404 {"error":"no state"}', async (t) => {
+  const { session } = newSession(tmp("grill-cs-"));
+  // Corrupt BEFORE this serve process's first GET: one good read would keep lastGoodState
+  // and serve it stale. Never GET /state first here — that would populate it.
+  writeFileSync(join(session, "state.json"), "{ not json");
+  const s = await startServe(session); t.after(s.stop);
+  const r = await fetch(s.ready.url + "context");
+  assert.equal(r.status, 404);
+  assert.deepEqual(await r.json(), { error: "no state" });
+});
+
+test('serve: /context with project missing from state → 404 {"error":"no project"}', async (t) => {
+  const { session } = newSession(tmp("grill-cp-"));
+  applied(session, { project: null }); // sanctioned: null deletes the key; validateState only checks if-present
+  const s = await startServe(session); t.after(s.stop);
+  const r = await fetch(s.ready.url + "context");
+  assert.equal(r.status, 404);
+  assert.deepEqual(await r.json(), { error: "no project" });
 });
 
 test("url: prints the running server's url; fails fast when there is none", async (t) => {
