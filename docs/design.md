@@ -141,6 +141,13 @@ keeps one Claude session behind it so nothing is ever out of context.
   the design doc (grouping follows the doc under `--doc` overrides); standing artifacts
   stay conventional — root `CONTEXT.md`, ADRs in `docs/adr/`. Supersedes the Q8/Q9
   "project docs folder" default; that dated text stays as recorded.
+- **Glossary in the Terms panel** (2026-09-23). The Terms dropdown merges this session's
+  `terms` with the repo's standing `CONTEXT.md` behind a read-only `GET /context`;
+  rows are badged `session`, `glossary`, or `✓ glossary`, the session definition
+  wins collisions, and the file is read at load/open/Finish — never mid-grill polling.
+  Viewing is not gated on domain-modeling mode (viewing ≠ writing); no readable file
+  renders the session panel exactly as before. Chosen over a second Glossary button and
+  over split sections: one glossary concept, provenance as metadata.
 
 ## Verified facts (2026-09-06)
 
