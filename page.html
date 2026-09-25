@@ -44,6 +44,8 @@
   #terms.show { display: block; }
   .term { padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: 14px; } .term:last-child { border-bottom: 0; }
   .term b { font-family: var(--serif); font-weight: 500; font-size: 15px; } .term .avoid { color: var(--ink-3); font-size: 12px; }
+  .term .pill { float: right; margin: 1px 0 0 10px; padding: 1px 8px; border: 1px solid var(--rule); border-radius: 999px; background: var(--bg); color: var(--ink-3); font-size: 11px; line-height: 1.5; white-space: nowrap; }
+  #terms .glossary-note { margin-top: 8px; font-size: 12px; color: var(--ink-3); }
 
   nav { grid-row: 3; grid-column: 1; border-right: 1px solid var(--rule); overflow-y: auto; padding: 10px 0 24px; }
   nav .note { margin: 6px 14px 4px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; font-size: 13px; color: var(--ink-2); }
@@ -260,6 +262,73 @@ const activeView = () => (local.view === "visualize" && hasVisual() ? "visualize
 const timeOf = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); };
 const fmtMs = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`; };
 
+// ---- glossary: the standing CONTEXT.md vocabulary, read live via /context ----
+let glossary = null;          // null until a fetch resolves (or after a failure); array of {term,def,avoid} once parsed
+let glossaryMissing = false;  // last completed fetch was non-200/failure: no glossary right now
+let finishedPrev = null;      // S.finished as of the previous state, to catch the false→true transition
+function parseGlossary(text) {
+  try {
+    const lines = String(text).split(/\r?\n/);
+    let start = -1;
+    for (let i = 0; i < lines.length; i++) if (/^## Language\s*$/.test(lines[i])) { start = i; break; }
+    if (start < 0) return []; // no Language section: defensive, never throw
+    let end = lines.length;
+    for (let i = start + 1; i < lines.length; i++) if (/^## /.test(lines[i])) { end = i; break; }
+    const ENTRY = /^\s*(?:[-*]\s+)?\*\*(.+?)\*\*:\s*(.*)$/;
+    const AVOID = /^\s*_Avoid_:\s*(.*)$/;
+    const out = [], seen = new Set();
+    let last = null;
+    for (let i = start + 1; i < end; i++) {
+      const line = lines[i];
+      const em = line.match(ENTRY);
+      if (em) {
+        const term = em[1].trim();
+        let def = em[2].trim();
+        if (!def) { // empty def: adopt the next non-empty line that matches no other rule, and consume it
+          let j = i + 1;
+          while (j < end && !lines[j].trim()) j++;
+          if (j < end && !ENTRY.test(lines[j]) && !AVOID.test(lines[j]) && !/^\s*#/.test(lines[j])) { def = lines[j].trim(); i = j; }
+        }
+        const key = term.toLocaleLowerCase();
+        last = { term, def, avoid: [] };
+        if (seen.has(key)) continue; // glossary-internal duplicate: first wins — its later _Avoid_ lands on this dropped copy
+        seen.add(key);
+        out.push(last);
+        continue;
+      }
+      const am = line.match(AVOID);
+      if (am && last) last.avoid.push(...am[1].split(",").map((s) => s.trim()).filter(Boolean));
+      // ### grouping subheads and every other line in the section are skipped
+    }
+    return out;
+  } catch { return []; }
+}
+// Session terms win on collision; glossary-only entries append after them, in file order.
+function mergedTerms(terms) {
+  const glossKeys = new Set((glossary || []).map((g) => String(g.term).toLocaleLowerCase()));
+  const rows = terms.map((t) => ({ term: t.term, def: t.def, avoid: t.avoid, pill: glossKeys.has(String(t.term).toLocaleLowerCase()) ? "✓ glossary" : "session" }));
+  const seen = new Set(terms.map((t) => String(t.term).toLocaleLowerCase()));
+  for (const g of glossary || []) {
+    const k = String(g.term).toLocaleLowerCase();
+    if (seen.has(k)) continue;
+    seen.add(k);
+    rows.push({ term: g.term, def: g.def, avoid: g.avoid, pill: "glossary" });
+  }
+  return rows;
+}
+async function fetchGlossary() {
+  try {
+    const r = await fetch("/context", { cache: "no-store" });
+    if (!r.ok) throw new Error(String(r.status));
+    glossary = parseGlossary(await r.text());
+    glossaryMissing = false;
+  } catch { // any non-200 or fetch failure: no glossary — degrade to the session-only panel
+    glossary = null;
+    glossaryMissing = true;
+  }
+  renderHeader();
+}
+
 // ---- polling ----
 async function poll() {
   try {
@@ -284,6 +353,9 @@ function onState() {
     if (!still.length) { const cur = byId(selected); if (!cur || !isOpen(cur)) selected = (firstOpen() || {}).id || selected; }
   }
   if (!selected || !byId(selected)) selected = (firstOpen() || {}).id || null;
+  const fin = !!S.finished;
+  if (finishedPrev === false && fin) fetchGlossary(); // Finish just wrote CONTEXT.md — refetch once
+  finishedPrev = fin;
   render();
 }
 
@@ -416,10 +488,14 @@ function renderHeader() {
   $("topic").textContent = S.topic || "grill";
   $("doc-path").textContent = S.doc || "";
   const terms = Array.isArray(S.terms) ? S.terms : [];
-  $("terms-toggle").textContent = `Terms${terms.length ? " · " + terms.length : ""}`;
-  $("terms").innerHTML = terms.length
-    ? terms.map((t) => `<div class="term"><b>${esc(t.term)}</b> — ${esc(t.def)}${t.avoid && t.avoid.length ? `<div class="avoid">Avoid: ${t.avoid.map(esc).join(", ")}</div>` : ""}</div>`).join("")
-    : `<div class="term" style="color:var(--ink-3)">No terms yet. The agent adds vocabulary here as it settles.</div>`;
+  const hasGloss = Array.isArray(glossary) && glossary.length > 0;
+  const rows = hasGloss ? mergedTerms(terms) : terms; // glossary null/failed/empty → exactly the session-only panel
+  const n = Array.isArray(glossary) ? rows.length : terms.length; // merged size once known; session count while the load-fetch is pending
+  $("terms-toggle").textContent = `Terms${n ? " · " + n : ""}`;
+  $("terms").innerHTML = (rows.length
+    ? rows.map((t) => `<div class="term"><b>${esc(t.term)}</b> — ${esc(t.def)}${hasGloss ? `<span class="pill">${esc(t.pill)}</span>` : ""}${t.avoid && t.avoid.length ? `<div class="avoid">Avoid: ${t.avoid.map(esc).join(", ")}</div>` : ""}</div>`).join("")
+    : `<div class="term" style="color:var(--ink-3)">No terms yet. The agent adds vocabulary here as it settles.</div>`)
+    + (glossaryMissing && S.domainModeling && !S.finished ? `<div class="glossary-note">CONTEXT.md is written at Finish.</div>` : "");
   renderVisualizeButton();
   renderStatus();
 }
@@ -623,9 +699,10 @@ function renderSend() {
 
 $("send").onclick = send;
 $("visualize").onclick = () => { if (hasVisual()) { local.view = activeView() === "visualize" ? "questions" : "visualize"; commit(); } else visualize(); };
-$("terms-toggle").onclick = () => $("terms").classList.toggle("show");
+$("terms-toggle").onclick = () => { if ($("terms").classList.toggle("show")) fetchGlossary(); }; // refresh on every open
 document.addEventListener("click", (e) => { if (!e.target.closest("#terms") && !e.target.closest("#terms-toggle")) $("terms").classList.remove("show"); });
 document.addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "Enter") send(); });
+fetchGlossary(); // once on page load
 poll();
 </script>
 </body>
