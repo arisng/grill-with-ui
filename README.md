@@ -159,7 +159,7 @@ Playwright and `ffmpeg`.
 ## Server commands
 
 ```
-node server.mjs new      --topic T [--doc P]                  create a session, print its folder
+node server.mjs new      --topic T [--intent I] [--doc P]     create a session, print its folder
 node server.mjs serve    --session DIR [--port N]             serve the page; print one line per Send
 node server.mjs sessions [--all]                               list this project's sessions
 node server.mjs pending  --session DIR                         print sends past agent.handled

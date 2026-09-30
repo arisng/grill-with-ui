@@ -71,7 +71,7 @@ The patch is shaped like `state.json` (schema at the end):
 - `thread` (on a question and on `visual`) and `visual.queued` append: list only the new
   messages or bullets.
 - `terms` is keyed by `term`: a known term is replaced whole, a new one appended.
-- Every other key (`note`, `finished`, `doc`, `domainModeling`, …) is replaced whole.
+- Every other key (`note`, `intent`, `finished`, `doc`, `domainModeling`, …) is replaced whole.
 
 **Never write the current time; the server stamps every time you leave out**: `agent.since`
 whenever you give `agent.status`, `at` on each appended message, `explore.at`, `visual.at`
@@ -103,10 +103,13 @@ GRILL_PATCH
 ## Start (`/grill-with-ui <topic>`, `$grill-with-ui <topic>`, or "grill with ui: <topic>")
 
 1. From the project directory run
-   `node $SKILL/server.mjs new --topic "<topic>" --doc "<doc path>"`.
+   `node $SKILL/server.mjs new --topic "<topic>" --intent "<why this grill exists, 1-2 sentences>" --doc "<doc path>"`.
    The doc path defaults to `.grill-with-ui/<slug-of-topic>/design.md` under the project root
-   (create the nested folder later if needed). It prints one JSON line; keep `session` (the
-   session folder).
+   (create the nested folder later if needed). Pass `--intent` with the user's goal in their
+   words (1-2 sentences), taken from the topic message that started this grill. The topic is
+   the title; the intent is the why. Omit it only when the topic arrived as a bare phrase with
+   no goal attached. The page shows it under the topic so several open grills stay
+   distinguishable. It prints one JSON line; keep `session` (the session folder).
 2. Patch round 1 in (`new` already wrote the skeleton). Round 1 ALWAYS begins with the
    domain-modeling-mode question, first, id `q-domain`:
    - `title`: "Also keep a glossary and ADRs?"
@@ -133,7 +136,7 @@ GRILL_PATCH
 
 1. From the project directory run `node $SKILL/server.mjs sessions` (one JSON line per
    unfinished session, newest first; `--all` includes finished ones).
-2. Exactly one line: take it. Several: list them in the terminal (topic, created, open/answered
+2. Exactly one line: take it. Several: list them in the terminal (topic, intent, created, open/answered
    counts) and ask which. None: say so and stop.
 3. Read `<session>/state.json` once to load the grill (reading is fine; only writes go
    through `patch`). Run `node $SKILL/server.mjs pending --session <session>`. Every line
@@ -430,7 +433,7 @@ What each field means. You write it only through `patch`.
 
 ```jsonc
 {
-  "topic": "…", "doc": ".grill-with-ui/x/design.md", "project": "/abs/path", "created": "ISO",
+  "topic": "…", "intent": "why this grill exists, 1-2 sentences", "doc": ".grill-with-ui/x/design.md", "project": "/abs/path", "created": "ISO",
   "agent": { "status": "waiting|working", "since": "ISO", "handled": 3 },
   "note": "optional short sentence shown above the question list",
   "domainModeling": true,  // domain-modeling mode on: Finish also writes CONTEXT.md + docs/adr/ per domain-brief.md; absent = off
