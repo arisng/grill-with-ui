@@ -1,0 +1,176 @@
+# Taskfile for grill-with-ui — taskfile.dev wrappers over the commands this repo already
+# documents (README.md, .github/copilot-instructions.md). Nothing here is required: every
+# task is a thin, readable alias around plain `node`, so `node <cmd>` always still works.
+#
+#   task                 list these tasks
+#   task check           unit + page e2e + design detector
+#   task demo            throwaway seeded session you can click through
+version: '3'
+
+vars:
+  # Where the demo keeps its sessions: its own temp home, never the real ~/.grill-with-ui.
+  DEMO_HOME:
+    sh: node -e "process.stdout.write(require('os').tmpdir()+'/grill-taskfile-demo')"
+  # The Impeccable detector: $IMPECCABLE wins, else the skill's usual home.
+  IMPECCABLE:
+    sh: |-
+      node -e "const fs=require('fs');const h=process.env.USERPROFILE||process.env.HOME||'';const c=[process.env.IMPECCABLE,h+'/.agents/skills/impeccable/scripts/impeccable.cmd',h+'/.agents/skills/impeccable/scripts/impeccable'].filter(Boolean);process.stdout.write(c.find(f=>{try{return fs.statSync(f).isFile()}catch(e){return false}})||'')"
+  # Three server tests are broken on Windows and documented as such: a POSIX-only path
+  # assertion, and two serve tests whose ready line never arrives. Skipped so `task test`
+  # means the same thing on every machine; `task test:all` runs the full suite unfiltered.
+  UNIT_SKIP: '--test-skip-pattern "outside\s+git\s+the\s+key\s+comes\s+from\s+the\s+cwd|ready\s+line\s+\+\s+server\.json|reuses\s+the\s+last\s+port\s+from\s+server\.json"'
+  UNIT_FLAGS: --test-force-exit --test-timeout=10000
+
+tasks:
+  default:
+    desc: List every task in this file
+    cmds:
+      - task --list
+
+  test:
+    desc: Server unit tests, green on Windows (the three documented-broken tests are skipped)
+    summary: node --test over test/server.test.mjs. --test-force-exit keeps open handles from
+      hanging the run; --test-timeout turns the serve tests that stall on Windows into fast
+      failures. Excludes only the three tests .github/copilot-instructions.md documents as
+      broken on Windows — nothing else is filtered.
+    cmds:
+      - node --test {{.UNIT_SKIP}} {{.UNIT_FLAGS}} test/server.test.mjs
+
+  test:all:
+    desc: The full unit suite, unfiltered (the three Windows-broken tests will fail there)
+    cmds:
+      - node --test {{.UNIT_FLAGS}} test/server.test.mjs
+
+  test:e2e:
+    desc: Page end-to-end checks against a real serve (needs Playwright)
+    summary: Drives page.html in Chromium — including the theme toggle checks. Set
+      PLAYWRIGHT_PKG to @playwright/test's index.mjs; a raw Windows path is normalised here.
+    preconditions:
+      - sh: test -n "$PLAYWRIGHT_PKG"
+        msg: 'Set PLAYWRIGHT_PKG to @playwright/test''s index.mjs, e.g. PLAYWRIGHT_PKG=file:///c:/path/node_modules/@playwright/test/index.mjs (or a plain path; this task normalises Windows paths).'
+    cmds:
+      - |
+        # ESM import rejects a bare 'C:\...' path: normalise to a file:// URL in this shell,
+        # where the inherited value is unambiguous (doing it in a Task var that also feeds
+        # this task's env map creates a resolution cycle).
+        export PLAYWRIGHT_PKG="$(node -e "const p=process.env.PLAYWRIGHT_PKG||'';process.stdout.write(p&&p[1]===':'?'file:///'+p.split(String.fromCharCode(92)).join('/'):p)")"
+        node test/page.e2e.mjs
+
+  detect:
+    desc: Run the Impeccable design detector over the page markup
+    summary: |-
+      Usage:  task detect                       → page.html
+              task detect -- page.html visual.html
+    preconditions:
+      - sh: test -f "{{.IMPECCABLE}}"
+        msg: 'Impeccable launcher not found. Set IMPECCABLE=/path/to/impeccable (the skill''s scripts/impeccable).'
+    vars:
+      TARGETS: '{{.CLI_ARGS | default "page.html"}}'
+    cmds:
+      - '"{{.IMPECCABLE}}" detect --json {{.TARGETS}}'
+
+  check:
+    desc: Everything local — unit tests, page e2e, design detector
+    deps: [test, test:e2e]
+    cmds:
+      - task detect
+
+  # ---- server CLI (the commands SKILL.md drives at runtime) ----
+
+  new:
+    desc: Create a session folder for this project
+    summary: 'Usage: task new TOPIC="What to grill" DOC=docs/my-design.md'
+    vars:
+      TOPIC: '{{.TOPIC | default "Untitled grill"}}'
+      DOC: '{{.DOC | default "docs/design.md"}}'
+    cmds:
+      - node server.mjs new --topic "{{.TOPIC}}" --doc "{{.DOC}}"
+
+  sessions:
+    desc: List this project's sessions, newest first (unfinished only)
+    summary: 'Usage: task sessions            → unfinished only
+                    task sessions ARGS=--all  → include finished'
+    cmds:
+      - node server.mjs sessions {{.ARGS}}
+
+  serve:
+    desc: Serve a session so the page is live (newest one unless SESSION=DIR)
+    summary: |-
+      Prints the URL on the first line; Ctrl+C stops it.
+      Pass SESSION=<dir> to pick a specific session — the same one `task sessions`
+      prints under the "session" key.
+    vars:
+      SESSION:
+        sh: |-
+          node -e "const p=require('child_process');let out='';try{out=p.execFileSync(process.execPath,['server.mjs','sessions'],{encoding:'utf8'})}catch(e){}const l=out.split(/\r?\n/).filter(Boolean)[0];if(l)try{process.stdout.write(JSON.parse(l).session)}catch(e){}"
+    preconditions:
+      - sh: test -n "{{.SESSION}}"
+        msg: 'No session found for this project. Run `task new TOPIC="..."` first, or `task demo` for a throwaway one.'
+    cmds:
+      - node server.mjs serve --session "{{.SESSION}}"
+
+  pending:
+    desc: Print every Send the agent has not handled yet (the resume replay)
+    vars:
+      SESSION:
+        sh: |-
+          node -e "const p=require('child_process');let out='';try{out=p.execFileSync(process.execPath,['server.mjs','sessions'],{encoding:'utf8'})}catch(e){}const l=out.split(/\r?\n/).filter(Boolean)[0];if(l)try{process.stdout.write(JSON.parse(l).session)}catch(e){}"
+    preconditions:
+      - sh: test -n "{{.SESSION}}"
+        msg: 'No session found for this project. Run `task new TOPIC="..."` first.'
+    cmds:
+      - node server.mjs pending --session "{{.SESSION}}"
+
+  # ---- local walkthroughs ----
+
+  demo:
+    desc: Serve a throwaway seeded grill in its own temp home (Ctrl+C stops it)
+    summary: Creates a fresh session under a temporary GRILL_HOME, patches in a handful of
+      questions covering every card state (answered, open+recommended, free text, deferred,
+      a discussion thread, a glossary), then serves it. The real ~/.grill-with-ui is never
+      touched and there is nothing to clean up afterwards unless you want to.
+    env:
+      GRILL_HOME: "{{.DEMO_HOME}}"
+    cmds:
+      - |
+        set -e
+        SESSION=$(node server.mjs new --topic "Try the grill page" --doc "docs/demo.md" | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>process.stdout.write(JSON.parse(d).session))")
+        node server.mjs patch --session "$SESSION" <<'JSON'
+        {
+          "intent": "Walk the page and flip the theme control.",
+          "terms": [
+            { "term": "Send", "def": "One press ships every staged action as a single turn.", "avoid": ["submit", "reply"] },
+            { "term": "Round", "def": "One agent turn's worth of new questions.", "avoid": ["batch", "wave"] },
+            { "term": "Frontier", "def": "Questions whose prerequisites are settled and can be asked now.", "avoid": ["queue", "next up"] }
+          ],
+          "questions": [
+            { "id": "q1", "round": 1, "deps": [], "title": "Answered question", "body": "Pick an option to see a settled card.", "options": [{ "k": "A", "text": "First" }, { "k": "B", "text": "Second" }], "rec": { "option": "B", "why": "Second reads better." }, "status": "answered", "durable": true, "updated": false, "answer": { "kind": "option", "option": "B" }, "thread": [{ "who": "user", "text": "Why B?" }, { "who": "agent", "text": "Shorter to scan." }] },
+            { "id": "q2", "round": 2, "deps": ["q1"], "title": "Open question with a recommendation", "body": "Click an option to stage it, then look at the footer.", "options": [{ "k": "A", "text": "Do the simple thing" }, { "k": "B", "text": "Do the thorough thing" }], "rec": { "option": "B", "why": "Thorough wins when it is reversible." }, "status": "open", "durable": false, "updated": true, "thread": [] },
+            { "id": "q3", "round": 2, "deps": ["q1"], "title": "Free-text question", "body": "No options here - type an answer and stage it.", "options": [], "rec": { "text": "Something short", "why": "Keeps it simple." }, "status": "open", "durable": false, "updated": false, "thread": [] },
+            { "id": "q4", "round": 2, "deps": ["q1"], "title": "Deferred question", "body": "Parked for later.", "options": [{ "k": "A", "text": "Yes" }], "rec": { "option": "A", "why": "Sure." }, "status": "deferred", "durable": false, "updated": false, "thread": [] }
+          ]
+        }
+        JSON
+        echo "Demo session: $SESSION"
+        exec node server.mjs serve --session "$SESSION"
+
+  clean:
+    desc: Delete the demo's temp session home (stop a running demo first)
+    env:
+      DEMO_HOME: "{{.DEMO_HOME}}"
+    cmds:
+      - node -e "const fs=require('fs');const p=process.env.DEMO_HOME;fs.rmSync(p,{recursive:true,force:true});console.log('removed',p)"
+
+  gif:
+    desc: Re-record docs/demo.gif (needs Playwright and ffmpeg)
+    summary: 'Usage: task gif                    → docs/demo.gif
+                    task gif OUT=path/to/x.gif'
+    preconditions:
+      - sh: test -n "$PLAYWRIGHT_PKG"
+        msg: 'Set PLAYWRIGHT_PKG to @playwright/test''s index.mjs (see README).'
+      - sh: ffmpeg -version
+        msg: ffmpeg is not on PATH — the recorder muxes frames with it.
+    cmds:
+      - |
+        export PLAYWRIGHT_PKG="$(node -e "const p=process.env.PLAYWRIGHT_PKG||'';process.stdout.write(p&&p[1]===':'?'file:///'+p.split(String.fromCharCode(92)).join('/'):p)")"
+        node design/record-demo.mjs "{{.OUT | default "docs/demo.gif"}}"
