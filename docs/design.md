@@ -165,6 +165,22 @@ keeps one Claude session behind it so nothing is ever out of context.
   already exists, and feedback needs a wider window. Chosen over a horizontal round strip
   (permanently costs a band and shows ~4 of 12) and over a docked thread on tablet
   (permanently costs ~46% of the column height for a thread you often are not reading).
+- **Dark theme with a three-state header toggle** (2026-10-01). One `:root[data-theme="dark"]`
+  block restates every color token — the same paper-and-ink vocabulary, cool and deep, with
+  the accents *lightening* because they were tuned to sit on white — and everything the light
+  world hardcoded (`#fff` on filled buttons, the Finish-ready greens, the scrim and the three
+  shadows) became a variable each theme supplies. The button beside Terms cycles
+  **System → Light → Dark**, defaults to System, and writes `grill-theme` to localStorage:
+  it is the reader's preference, so it never enters the agent-owned `state.json`, and a head
+  script resolves it to a concrete `data-theme` before first paint so a dark reader sees no
+  white flash. `system` re-resolves live through a `matchMedia` listener. One block, not two:
+  the toggle always writes a concrete theme, so a `prefers-color-scheme` duplicate could only
+  drift. The theme stops at the Visualize frame — `visual.html` is drawn light by the
+  subagent and keeps its own palette (it is a locked mechanism); only the chrome around it,
+  including the wait surface, themes. Measured, not eyeballed: every dark pair ≥4.5:1 for body
+  and small labels (the light numbers are byte-for-byte what they were). Chosen over
+  a two-state toggle whose first visit guesses (a guess you cannot undo without a second
+  guess), and over per-session state (theme is not a decision about the topic).
 
 ## Verified facts (2026-09-06)
 
