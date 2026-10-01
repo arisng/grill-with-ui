@@ -148,6 +148,23 @@ keeps one Claude session behind it so nothing is ever out of context.
   Viewing is not gated on domain-modeling mode (viewing ≠ writing); no readable file
   renders the session panel exactly as before. Chosen over a second Glossary button and
   over split sections: one glossary concept, provenance as metadata.
+- **Responsive tiers: two panes below 1400px, sheets below 740px** (2026-10-01). One
+  `max-width: 760px` breakpoint left 768–1399px on the desktop three-column grid — exactly
+  where a tablet lands — so at 768 the question column was 255px and the headline 136px.
+  Three tiers now: ≥1400 three columns (unchanged); 740–1399 two columns, 260px rail + card,
+  with the discussion in a right drawer and Terms a header panel; ≤739 the card alone, the
+  rail a left sheet, the discussion a bottom sheet, and a thumb band under the card carrying
+  ‹ / › plus a **Questions** opener that doubles as the position indicator. Two panes start at
+  740 because the rail is 260px and cannot shrink — 260px is the floor at which a long id
+  plus the `updated` badge still fits (at 236px it clipped) — and the card needs ~420px of
+  measure besides; at 561px, which the throwaway prototypes used, the card got 214px and the
+  breadcrumb overflowed. Desktop starts at 1400 because the aside takes a third of the window
+  whatever the window is, so three columns only give the card its 680px cap past ~1534px.
+  Media bounds end on `.98` because the layout viewport is fractional under a scaled device
+  pixel ratio. Visualize is view-only on a phone: the button appears only when a visual
+  already exists, and feedback needs a wider window. Chosen over a horizontal round strip
+  (permanently costs a band and shows ~4 of 12) and over a docked thread on tablet
+  (permanently costs ~46% of the column height for a thread you often are not reading).
 
 ## Verified facts (2026-09-06)
 
