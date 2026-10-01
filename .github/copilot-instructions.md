@@ -76,6 +76,19 @@ agent turn; never treat "page is up" as "agent is listening".
 `page.html` is a single self-contained file (inline CSS/JS, no framework, no network) that
 polls `state.json`; staged answers live in the browser until Send and must survive reload.
 
+That file carries three responsive tiers: ≥1400px keeps the desktop three columns, 740–1399px
+is two panes (260px rail + card) with the discussion in a right drawer, and ≤739px gives the
+card the screen with the rail as a left sheet, the discussion a bottom sheet, and a thumb band
+under the card (‹ / › plus a **Questions** opener that doubles as the position indicator). The
+rail is 260px in every tier because that is the floor at which a long id plus the `updated`
+badge fits. Two details are easy to reintroduce as bugs: off-screen sheets must be `fixed` (an
+`absolute` panel parked off-screen extends the document's scrollable overflow and puts a
+horizontal scrollbar on the page), and the media bounds end on `.98` because the layout
+viewport is fractional under a scaled device pixel ratio, so an integer bound drops a tier one
+pixel early. `#pager` is itself a `<nav>`, so rail selectors are scoped to `#nav`. Closed
+sheets are `inert` + `aria-hidden`, and focus moves into a sheet on open and returns to its
+trigger on close.
+
 `visual.html` (per session) is drawn by a **subagent** following `visual-brief.md` —
 hundreds of lines of markup stay out of the interview's context. It renders in a sandboxed
 iframe with no same-origin access: one file, inline everything, no CDN/fetch/external images
