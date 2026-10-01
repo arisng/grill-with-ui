@@ -27,10 +27,17 @@ PLAYWRIGHT_PKG=/path/to/node_modules/@playwright/test/index.mjs node test/manual
 Commands are POSIX shell; in PowerShell set `PLAYWRIGHT_PKG` with
 `$env:PLAYWRIGHT_PKG = 'C:\path\to\node_modules\@playwright\test\index.mjs'` first.
 
-Windows note (verified on this machine): the unit suite has two pre-existing failures —
-`new: outside git the key comes from the cwd` asserts a POSIX-only path expectation, and
-`serve: ready line` hangs indefinitely under the default `--test-timeout=0` (pass e.g.
-`--test-timeout=30000` to surface it as a failure instead). The server CLI itself works on
+`Taskfile.yml` (taskfile.dev) wraps these same commands: `task test`, `task test:e2e`,
+`task check`, plus the server CLI (`new`/`sessions`/`serve`/`pending`) and `task demo` for a
+seeded throwaway walkthrough. `task test` already skips the three Windows-broken tests below,
+and `task test:e2e` normalises a raw Windows `PLAYWRIGHT_PKG` path to a file URL.
+
+Windows note (verified on this machine): the unit suite has three pre-existing failures —
+`new: outside git the key comes from the cwd` asserts a POSIX-only path expectation, and the
+two `serve:` tests (`ready line…` and `reuses the last port…`) never see their ready line, so
+they hang under the default `--test-timeout=0` and time out under a finite one (pass e.g.
+`--test-timeout=30000` to surface them as failures instead). `task test` skips exactly these
+three; `task test:all` runs the full suite unfiltered. The server CLI itself works on
 Windows — `new`/`serve`/`url` plus a full send→restart cycle were exercised manually — so
 when diagnosing, run targeted tests with `--test-name-pattern` rather than trusting a full
 suite run.
@@ -88,6 +95,16 @@ viewport is fractional under a scaled device pixel ratio, so an integer bound dr
 pixel early. `#pager` is itself a `<nav>`, so rail selectors are scoped to `#nav`. Closed
 sheets are `inert` + `aria-hidden`, and focus moves into a sheet on open and returns to its
 trigger on close.
+
+The header also carries a **theme** control beside Terms: one icon button cycling
+System → Light → Dark. A tiny inline head script resolves the stored choice
+(`localStorage` key `grill-theme`, deliberately outside the per-session key, and never in the
+agent-owned `state.json`) to a concrete `data-theme` on `<html>` before first paint, and one
+`:root[data-theme="dark"]` block restates every color token — so there is exactly one dark
+block to keep in step. On ≤739px the button joins `#terms-toggle` and `#visualize` in the
+`order: 1` control row. The theme covers the chrome only: the sandboxed `visual.html` keeps
+the light palette it was drawn with, while the strip and `#visual-wait` surface around it
+theme.
 
 `visual.html` (per session) is drawn by a **subagent** following `visual-brief.md` —
 hundreds of lines of markup stay out of the interview's context. It renders in a sandboxed
