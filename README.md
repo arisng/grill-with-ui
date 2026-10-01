@@ -77,13 +77,22 @@ In any project:
 ```
 
 The agent prints a URL. Open it. Answer by clicking an option (the recommended one is
-outlined) or writing free text; start a discussion in the right-hand panel; use **Defer** and **Reopen** on a card when
+outlined) or writing free text; start a discussion in the discussion panel (the right-hand
+column on a wide window, a drawer or a bottom sheet on a narrow one); use **Defer** and **Reopen** on a card when
 you want to. Everything you do is staged (and survives a reload) until you press **Send N to
 Agent** (⌘↩). The one exception is **Explore deeper** next to a question's title: it goes to
 the agent the moment you click it, and the pros and cons table for that question's options
 appears in the discussion panel when the agent is done. The agent answers
 threads, writes the tables, records your answers, and adds the next round of questions to
 the page.
+
+The page also fits a phone and a tablet. A wide window keeps three columns. Below 1400px the
+discussion moves into a drawer you open with **Discussion**, leaving the question list and the
+card side by side. Below 740px the card takes the whole screen, with a band under it: ‹ and ›
+step one question at a time in document order (so you can walk back into earlier rounds), and
+the **Questions** button between them opens the list and shows where you are (`11 of 12`).
+Everything staged survives opening and closing those panels. The visual is view-only on a
+phone — send feedback on it from a wider window.
 
 The first question of every grill asks whether settled terms and durable decisions should
 also be kept as standing files — a `CONTEXT.md` glossary at the project root and one short
@@ -99,7 +108,7 @@ behind.
 interactive HTML prototype when the topic is a UI, an architecture or flow diagram
 otherwise. When the topic is a change to an existing app, the prototype is drawn inside the
 real page it changes, with the app's own look. It appears in place of the question list and
-card, with its own feedback thread on the right. Undecided parts are drawn from the
+card, with its own feedback thread in the discussion panel. Undecided parts are drawn from the
 recommendations and marked "assumed"; feedback you add there ships with your next Send and
 redraws it; a note that contradicts an answered question reopens that question rather than
 silently changing your answer. Ordinary answers and question discussions do not regenerate
