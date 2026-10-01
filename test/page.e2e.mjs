@@ -48,8 +48,10 @@ const url = ready.url;
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [];
+const notFound = []; // 404 URLs: /context is the page's deliberate "is there a glossary?" probe and 404s by design
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 page.on("pageerror", (e) => errors.push(String(e)));
+page.on("response", (r) => { if (r.status() === 404) notFound.push(r.url()); });
 const results = [];
 const check = (name, ok, extra = "") => { results.push({ name, ok, extra }); if (!ok) console.log("FAIL", name, extra); };
 
@@ -92,6 +94,28 @@ try {
   await page.locator("#terms-toggle").click();
   check("terms panel shows the term and its avoid list", (await page.locator("#terms").textContent()).includes("Avoid: submit, reply"));
   await page.locator("h1").click();
+
+  // theme: System → Light → Dark on one header button; the choice is the reader's, so it
+  // lives in localStorage and never in state.json.
+  const themeOf = () => page.evaluate(() => document.documentElement.dataset.theme);
+  const themeName = () => page.locator("#theme-toggle").getAttribute("aria-label");
+  check("theme toggle sits in the header, beside Terms and Visualize", await page.locator("header #theme-toggle").count() === 1 && (await themeName()) === "Theme: follow system");
+  check("first visit follows the system preference (playwright renders light)", (await themeOf()) === "light");
+  await page.locator("#theme-toggle").click();
+  check("cycle 1: light is chosen explicitly", (await themeOf()) === "light" && (await themeName()) === "Theme: light");
+  const lightBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  await page.locator("#theme-toggle").click();
+  const darkBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
+  check("cycle 2: dark, and the palette actually flips", (await themeOf()) === "dark" && (await themeName()) === "Theme: dark" && darkBg !== lightBg && darkBg === "rgb(16, 14, 12)");
+  check("dark paints through the token block, not one rule", (await page.evaluate(() => getComputedStyle(document.querySelector("header")).backgroundColor)) === "rgb(25, 22, 19)");
+  await page.locator("#theme-toggle").click();
+  check("cycle 3: wraps back to system", (await themeOf()) === "light" && (await themeName()) === "Theme: follow system");
+  await page.evaluate(() => localStorage.setItem("grill-theme", "dark"));
+  await page.reload();
+  await page.locator(".item").first().waitFor();
+  check("the choice survives a reload (no white flash before paint)", (await themeOf()) === "dark" && (await themeName()) === "Theme: dark");
+  await page.locator("#theme-toggle").click(); // back to system so the rest of the run is light
+  check("un-chosen again returns to the system theme", (await themeOf()) === "light");
 
   await page.locator(".opt.rec").click();
   check("staging an option dims the rest of the card, the picked box stays full", await page.locator(".card.picked").count() === 1
@@ -374,8 +398,13 @@ try {
   check("staging locked when finished", await page.locator("#free").count() === 0 && await page.locator("#thread-in").count() === 0 && await page.locator("#finish").count() === 0);
 
   // The server-gone step above produces ERR_CONNECTION_REFUSED fetch failures by design.
-  const real = errors.filter((e) => !e.includes("ERR_CONNECTION_REFUSED"));
-  check("no console errors (besides the deliberate server-gone fetches)", real.length === 0, real.join(" | "));
+  // Console 404s carry no URL, so the deliberate /context probe is excused by URL instead —
+  // a real missing asset still lands in `notFound` and fails the check with its address.
+  const isProbe = (u) => { try { return new URL(u).pathname === "/context"; } catch { return false; } };
+  const real = errors
+    .filter((e) => !e.includes("ERR_CONNECTION_REFUSED") && !e.includes("404 (Not Found)"))
+    .concat(notFound.filter((u) => !isProbe(u)).map((u) => `404 ${u}`));
+  check("no console errors (besides the deliberate server-gone fetches and the glossary probe)", real.length === 0, real.join(" | "));
 } finally {
   await browser.close();
   await srv.stop();
