@@ -57,7 +57,8 @@ try {
   await page.goto(url);
   await page.locator(".item").first().waitFor();
   check("default selection = first open question in the current round", (await page.locator(".item.selected .id").textContent()) === "Q3");
-  check("updated marker on q3", await page.locator(".item.updated .id", { hasText: "Q3" }).count() === 1);
+  // the updated marker is a real element in the item's meta line (id + updated + status on one row)
+  check("updated marker on q3", await page.locator(".item", { has: page.locator(".id", { hasText: "Q3" }) }).locator(".upd").count() === 1);
   check("crumb shows recommendation updated", (await page.locator(".crumb .upd").textContent()) === "recommendation updated");
   check("send disabled with nothing staged", await page.locator("#send").isDisabled());
   check("no Accept button (clicking the recommended option is the accept)", await page.locator("#accept").count() === 0);
@@ -243,8 +244,8 @@ try {
   writeState(s);
   await page.waitForFunction(() => document.getElementById("agent-status").textContent.includes("handled #2"));
   check("sent note cleared when handled", !(await page.locator("#staged-list").textContent()).includes("Sent #"));
-  check("agent note shown above the list", (await page.locator("nav .note").textContent()).includes("last round"));
-  check("round 4 marked current", (await page.locator("nav .round.current").textContent()).includes("Round 4"));
+  check("agent note shown above the list", (await page.locator("#nav .note").textContent()).includes("last round"));
+  check("round 4 marked current", (await page.locator("#nav .round.current").textContent()).includes("Round 4"));
   check("pending marks cleared once handled", await page.locator(".mark.pending").count() === 0 && await page.locator(".opt.pending").count() === 0 && await page.locator("header.working").count() === 0);
   check("finish does not flash while a question is open", await page.locator("#finish.ready").count() === 0);
   await page.locator(".item", { hasText: "Q3" }).click();
@@ -292,7 +293,8 @@ try {
   s.visual = { kind: "prototype", version: 1, at: new Date().toISOString(), note: "v1: first cut", thread: [], stale: false };
   writeState(s);
   await page.waitForFunction(() => document.body.classList.contains("visualize"), null, { timeout: 5000 });
-  check("view flips to the visual by itself; list and card are hidden", await page.locator("nav").isHidden() && await page.locator("main").isHidden() && await page.locator("#visual-frame").isVisible());
+  // #nav, not `nav`: the thumb band is a second <nav> and is hidden on desktop too
+  check("view flips to the visual by itself; list and card are hidden", await page.locator("#nav").isHidden() && await page.locator("main").isHidden() && await page.locator("#visual-frame").isVisible());
   check("iframe src carries the version and the sandbox has no same-origin", (await page.locator("#visual-frame").getAttribute("src")).includes("v=1") && (await page.locator("#visual-frame").getAttribute("sandbox")) === "allow-scripts");
   check("strip shows the kind, version and note", (await page.locator("#visual-strip").textContent()).includes("Prototype") && (await page.locator("#visual-strip").textContent()).includes("v1: first cut"));
   check("iframe shows the agent's file", (await page.frameLocator("#visual-frame").locator("#proto-heading").textContent()) === "Prototype v1 heading");
@@ -330,7 +332,7 @@ try {
   await page.waitForFunction(() => (document.getElementById("visual-frame").getAttribute("src") || "").includes("v=2"), null, { timeout: 5000 });
   check("iframe reloads on a version bump; the thread shows both messages; Regenerate is plain again", (await page.locator("#visual-strip").textContent()).includes("v2: narrower list") && await page.locator("aside .msg").count() === 2 && await page.locator("aside .msg.pending").count() === 0 && await page.locator("#regen").count() === 1 && !(await page.locator("#regen").getAttribute("title")));
   await page.locator("#visualize").click();
-  check("toggling back restores the list and card", await page.locator("body.visualize").count() === 0 && await page.locator("nav .item").count() > 0 && await page.locator(".card").count() === 1 && (await page.locator("#visualize").textContent()).includes("Visual · v2"));
+  check("toggling back restores the list and card", await page.locator("body.visualize").count() === 0 && await page.locator("#nav .item").count() > 0 && await page.locator(".card").count() === 1 && (await page.locator("#visualize").textContent()).includes("Visual · v2"));
 
   // every question settled → Finish flashes; finish fires at once with whatever is staged
   await page.waitForFunction(() => document.getElementById("finish").classList.contains("ready"), null, { timeout: 5000 });
