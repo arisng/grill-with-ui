@@ -104,6 +104,11 @@ once it exists — session terms and standing terms in one list, each marked whe
 from. Declining the mode changes nothing: you still see a glossary a previous grill left
 behind.
 
+Beside it, a **theme** button cycles **System → Light → Dark**: the page follows your OS by
+default, your choice is remembered in this browser (never in the session's state), and dark
+is the same design in warm ink on cool paper. It applies before first paint, so reloading in
+dark never flashes white.
+
 **Visualize** in the header asks the agent for one picture of the design so far: an
 interactive HTML prototype when the topic is a UI, an architecture or flow diagram
 otherwise. When the topic is a change to an existing app, the prototype is drawn inside the
@@ -188,9 +193,21 @@ state.
 ```sh
 node --test test/server.test.mjs
 PLAYWRIGHT_PKG=/path/to/node_modules/@playwright/test/index.mjs node test/page.e2e.mjs
+
+# or, with Task (taskfile.dev) installed — thin aliases over the same commands:
+task test        # unit tests, skipping the three documented as broken on Windows
+task test:e2e    # the page check (normalises a raw Windows PLAYWRIGHT_PKG path)
+task check       # both, plus the design detector
+task             # list every task
 ```
 
 The page check needs Playwright with Chromium; point `PLAYWRIGHT_PKG` at an existing install
 or run it with `@playwright/test` installed next to the repo. It starts a real server on a
 throwaway session and drives the page end to end (staging, reload, send, working state,
 server restart, finished state).
+
+`Taskfile.yml` also wraps the server CLI for local use — `task new TOPIC=… DOC=…`,
+`task sessions`, `task serve` (newest session, or `SESSION=<dir>`), `task pending` — and
+offers `task demo`, which serves a throwaway session seeded with every card state (its own
+temp `GRILL_HOME`, cleaned by `task clean`) so you can click through the page without a real
+grill running.
