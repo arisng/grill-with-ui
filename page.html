@@ -11,9 +11,33 @@
     /* --hover is the row wash, --thumb the scrollbar grip; --stage-ink is --stage darkened to
        clear 4.5:1 as text on --bg, which the 11px status labels need and the amber does not. */
     --hover: #efebe3; --thumb: #d3cbbc; --stage-ink: #8a5a12;
-    --serif: "Iowan Old Style", Charter, Georgia, serif;
-    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-  }
+      /* The rest are derived from the palette rather than written inline so dark has somewhere to
+         put them: --field is the textarea/input surface, --on-accent is the color the filled
+         accent/ok buttons provide themselves, the two --ready-* are the Finish-ready greens, and
+         --scrim/--sheet-shadow/--drop-shadow are the overlay elevations (black stops reading as
+         depth on a near-black page). */
+      --field: #ffffff; --on-accent: #ffffff; --ready-hover: #2f5a3b; --ready-flash: #7fb08d;
+      --scrim: rgba(31, 28, 24, .38); --sheet-shadow: -8px 0 30px rgba(0, 0, 0, .14);
+      --drop-shadow: 0 8px 24px rgba(0, 0, 0, .08); --sel: rgba(154, 58, 38, .20);
+      color-scheme: light;
+      --serif: "Iowan Old Style", Charter, Georgia, serif;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+    /* Dark is the same paper-and-ink vocabulary, not a second design: the warm paper goes cool
+       and deep, and the accents were tuned to sit on white, so they lighten here rather than
+       darken (the lever light used). Every value is measured against its own surface — body and
+       small labels ≥4.5:1, large/UI ≥3:1. There is exactly one dark block because the toggle
+       always writes a concrete `data-theme` (light|dark) on <html> before first paint; `system`
+       resolves to whichever the OS prefers and re-resolves when the OS changes. */
+    :root[data-theme="dark"] {
+      --bg: #100e0c; --panel: #191613; --ink: #ece6db; --ink-2: #b3ab9c; --ink-3: #8f867a;
+      --rule: #2e2a25; --accent: #e08a6f; --ok: #8ec49b; --ok-soft: #1c2a20; --stage: #d99a3e; --stage-soft: #2a2115; --warn-soft: #2e1d17;
+      --hover: #221e1a; --thumb: #4a443c; --stage-ink: #e0a951;
+      --field: #131110; --on-accent: #241410; --ready-hover: #a5d6b3; --ready-flash: #6fa982;
+      --scrim: rgba(6, 5, 4, .58); --sheet-shadow: -8px 0 30px rgba(0, 0, 0, .6);
+      --drop-shadow: 0 8px 24px rgba(0, 0, 0, .5); --sel: rgba(224, 138, 111, .28);
+      color-scheme: dark;
+    }
   * { box-sizing: border-box; }
   html, body { height: 100%; margin: 0; }
   body {
@@ -44,10 +68,12 @@
   header.working #progress { display: block; }
   #progress::after { content: ""; position: absolute; top: 0; bottom: 0; width: 30%; background: var(--stage); animation: slide 1.4s ease-in-out infinite; }
   @keyframes slide { from { left: -30%; } to { left: 100%; } }
-  #terms-toggle, #visualize { font-size: 12px; padding: 4px 10px; }
+  #terms-toggle, #visualize, #theme-toggle { font-size: 12px; padding: 4px 10px; }
+  #theme-toggle { display: inline-flex; align-items: center; justify-content: center; padding: 5px 8px; }
+  #theme-toggle svg { width: 14px; height: 14px; display: block; }
   #visualize .spin { width: 9px; height: 9px; margin-right: 4px; }
   #visualize:disabled { background: var(--panel); border-color: var(--rule); color: var(--ink-3); }
-  #terms { display: none; position: absolute; right: 24px; top: 100%; width: 420px; max-height: 60vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 16px; box-shadow: 0 8px 24px rgba(0,0,0,.08); z-index: 5; }
+  #terms { display: none; position: absolute; right: 24px; top: 100%; width: 420px; max-height: 60vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 16px; box-shadow: var(--drop-shadow); z-index: 5; }
   #terms.show { display: block; }
   .term { padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: 14px; } .term:last-child { border-bottom: 0; }
   .term b { font-family: var(--serif); font-weight: 500; font-size: 15px; } .term .avoid { color: var(--ink-3); font-size: 12px; }
@@ -93,7 +119,9 @@
   #visual-strip .right { margin-left: auto; display: flex; align-items: center; gap: 10px; color: var(--stage); }
   #visual-strip a { color: var(--ink-3); text-decoration: none; font-size: 13px; } #visual-strip a:hover { color: var(--accent); }
   #visual-frame { width: 100%; height: 100%; border: 0; background: #fff; display: block; }
-  #visual-wait { display: flex; align-items: center; justify-content: center; gap: 10px; height: 100%; color: var(--ink-3); font-size: 14px; background: #fff; }
+  /* The wait surface precedes any visual and belongs to the chrome, so it themes; the frame
+     itself stays white because visual.html is drawn light (locked: theme stops at the frame). */
+  #visual-wait { display: flex; align-items: center; justify-content: center; gap: 10px; height: 100%; color: var(--ink-2); font-size: 14px; background: var(--panel); }
   #visual-wait[hidden], #visual-frame[hidden] { display: none; }
 
   main { grid-row: 3; grid-column: 2; overflow-y: auto; padding: 36px 44px 60px; background: var(--panel); }
@@ -126,12 +154,19 @@
   .pending-line { margin-top: 10px; font-size: 14px; color: var(--stage); display: flex; align-items: center; gap: 8px; }
   .answer-row { display: flex; gap: 8px; margin-top: 20px; align-items: flex-start; }
   .links { margin-top: 12px; font-size: 13px; display: flex; gap: 14px; } .links a { color: var(--ink-3); text-decoration: none; } .links a:hover { color: var(--accent); }
-  textarea { width: 100%; min-height: 60px; font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--panel); resize: vertical; color: var(--ink); }
+  textarea { width: 100%; min-height: 60px; font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--field); resize: vertical; color: var(--ink); }
   textarea:focus { outline: none; border-color: var(--ink-3); }
+  /* Browser surfaces carry the design too: selection, caret, focus ring and scrollbars are
+     part of the palette, not UA defaults that belong to no theme. */
+  ::selection { background: var(--sel); }
+  button:focus-visible, a:focus-visible, textarea:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  main, aside .msgs, #terms, #nav { scrollbar-width: thin; scrollbar-color: var(--thumb) transparent; }
   button { font-family: var(--sans); font-weight: 500; font-size: 14px; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--rule); background: var(--panel); color: var(--ink); cursor: pointer; white-space: nowrap; }
   button:hover { border-color: var(--ink-3); }
-  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; } button.primary:hover { border-color: var(--accent); }
-  button:disabled, button.primary:disabled { background: var(--ink-3); border-color: var(--ink-3); color: #fff; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); } button.primary:hover { border-color: var(--accent); }
+  button:disabled, button.primary:disabled { background: var(--ink-3); border-color: var(--ink-3); color: var(--on-accent); cursor: default; }
   main .empty { color: var(--ink-3); font-size: 14px; }
 
   aside { grid-row: 3; grid-column: 3; border-left: 1px solid var(--rule); display: grid; grid-template-rows: auto 1fr auto; min-height: 0; }
@@ -160,13 +195,13 @@
 
   footer { grid-row: 4; grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding: 12px 24px; border-top: 1px solid var(--rule); background: var(--panel); }
   footer .staged-list { font-size: 13px; color: var(--ink-2); flex: 1; } footer .staged-list b { color: var(--stage); } footer .staged-list .sent { color: var(--stage); display: inline-flex; align-items: center; gap: 6px; }
-  #finish.ready { background: var(--ok); border-color: var(--ok); color: #fff; font-weight: 600; animation: ready 1.2s ease-in-out infinite; }
-  #finish.ready:hover { background: #2f5a3b; border-color: #2f5a3b; }
+  #finish.ready { background: var(--ok); border-color: var(--ok); color: var(--on-accent); font-weight: 600; animation: ready 1.2s ease-in-out infinite; }
+  #finish.ready:hover { background: var(--ready-hover); border-color: var(--ready-hover); }
   /* The inline confirm keeps the green so the eye stays on it, but stops blinking:
      blinking means "you can act", solid green means "confirm here". */
-  #finish-yes.ready { background: var(--ok); border-color: var(--ok); color: #fff; font-weight: 600; }
-  #finish-yes.ready:hover { background: #2f5a3b; border-color: #2f5a3b; }
-  @keyframes ready { 0%, 100% { background-color: var(--ok); border-color: var(--ok); } 50% { background-color: #7fb08d; border-color: #7fb08d; } }
+  #finish-yes.ready { background: var(--ok); border-color: var(--ok); color: var(--on-accent); font-weight: 600; }
+  #finish-yes.ready:hover { background: var(--ready-hover); border-color: var(--ready-hover); }
+  @keyframes ready { 0%, 100% { background-color: var(--ok); border-color: var(--ok); } 50% { background-color: var(--ready-flash); border-color: var(--ready-flash); } }
   footer .hint { font-size: 12px; color: var(--ink-3); } footer .warn { font-size: 12px; color: var(--accent); }
   footer .confirm { font-size: 13px; color: var(--ink-2); display: flex; gap: 8px; align-items: center; }
   #finish:disabled { background: var(--panel); border-color: var(--rule); color: var(--ink-3); animation: none; } #finish .spin { margin-right: 4px; }
@@ -196,9 +231,10 @@
      so `max-width: 1399px` stops matching one pixel early and the desktop grid
      reappears. Ending on .98 keeps each window width inside exactly one tier. */
 
-  #scrim { display: none; position: fixed; inset: 0; background: rgba(31, 28, 24, .38); z-index: 20; }
+  #scrim { display: none; position: fixed; inset: 0; background: var(--scrim); z-index: 20; }
   #scrim.on { display: block; }
   #pager, #discuss { display: none; }
+
   /* A drawer needs an explicit way out: the rail sheet leaves only ~55px of scrim exposed on a
      390px screen, which is not a tap target. The rail's bar is a real element in the markup; the
      discussion's is placed over its existing heading so neither panel needs re-rendering around it. */
@@ -242,7 +278,8 @@
 
     /* the topic takes its own line; controls above it, status beside them */
     header { flex-wrap: wrap; gap: 5px 10px; padding: 9px 12px 8px; }
-    #terms-toggle, #visualize { order: 1; }
+    #terms-toggle, #visualize, #theme-toggle { order: 1; }
+    #terms-toggle, #visualize, #theme-toggle { min-height: 40px; padding: 6px 10px; }
     header .status { order: 2; font-size: 12px; }
     header h1 { order: 3; flex-basis: 100%; font-size: 17px; }
     header .path { order: 4; flex-basis: 100%; font-size: 12px; }
@@ -259,7 +296,7 @@
     /* the discussion is a bottom sheet, overriding the rail's drawer rule above */
     aside { position: fixed; left: 0; right: 0; bottom: 0; top: auto; width: auto; height: 74%; z-index: 21;
             border-left: 0; border-top: 0; border-radius: 14px 14px 0 0;
-            box-shadow: 0 -8px 30px rgba(0, 0, 0, .16); transform: translateY(100%);
+            box-shadow: var(--sheet-shadow); transform: translateY(100%);
             transition: transform .22s cubic-bezier(.2, .8, .2, 1); }
     body.sheet-discuss aside { transform: none; animation: sheet-b .22s cubic-bezier(.2, .8, .2, 1); }
 
@@ -311,6 +348,19 @@
     #finish.ready { animation-duration: 2.4s !important; animation-iteration-count: infinite !important; }
   }
 </style>
+<script>
+/* Theme before first paint: `system` is resolved here and written as a concrete data-theme,
+   so a dark reader never sees a white flash and there is exactly one dark token block.
+   The choice itself lives in localStorage (grill-theme), never in state.json — it is the
+   reader's preference, not the session's. */
+(function () {
+  var m = "system";
+  try { m = localStorage.getItem("grill-theme") || "system"; } catch {}
+  if (m !== "light" && m !== "dark") m = "system";
+  document.documentElement.dataset.theme =
+    m === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : m;
+})();
+</script>
 </head>
 <body>
 <div id="banner"></div>
@@ -320,6 +370,7 @@
   <span id="intent"></span>
   <button id="terms-toggle" type="button">Terms</button>
   <div id="terms"></div>
+  <button id="theme-toggle" type="button"></button>
   <button id="visualize" type="button" hidden>Visualize</button>
   <span class="status"><span class="dot" id="agent-dot"></span><span id="agent-status">connecting…</span></span>
   <div id="progress"></div>
@@ -905,6 +956,33 @@ $("send").onclick = send;
 $("intent").onclick = () => { if ($("intent").classList.contains("show")) { intentOpen = !intentOpen; render(); } };
 $("visualize").onclick = () => { if (hasVisual()) { local.view = activeView() === "visualize" ? "questions" : "visualize"; commit(); } else visualize(); };
 $("terms-toggle").onclick = () => { if ($("terms").classList.toggle("show")) fetchGlossary(); }; // refresh on every open
+// ---- theme: System → Light → Dark, cycled by one header button -----------------
+// The head script already painted a concrete data-theme; this keeps it in step when the
+// choice changes or the OS flips its preference while `system` is selected.
+const THEME_KEY = "grill-theme";
+const THEME_NEXT = { system: "light", light: "dark", dark: "system" };
+const THEME_WORD = { system: "follow system", light: "light", dark: "dark" };
+// Authored icons, one stroke and weight, no glyph fonts — the cycle is shown, not spelled out.
+const THEME_ICON = {
+  system: '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1.75" y="2.75" width="12.5" height="8.5" rx="1.5"/><path d="M8 11.25v2M5.25 13.75h5.5"/></svg>',
+  light: '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="3.1"/><path d="M8 1.4v1.5M8 13.1v1.5M1.4 8h1.5M13.1 8h1.5M3.4 3.4l1.05 1.05M11.55 11.55l1.05 1.05M12.6 3.4l-1.05 1.05M4.45 11.55L3.4 12.6"/></svg>',
+  dark: '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.35 9.65A5.75 5.75 0 0 1 6.35 2.65a5.75 5.75 0 1 0 7 7z"/></svg>',
+};
+const sysTheme = matchMedia("(prefers-color-scheme: dark)");
+let themeMode = (() => { try { const v = localStorage.getItem(THEME_KEY); return v === "light" || v === "dark" ? v : "system"; } catch { return "system"; } })();
+function applyTheme() {
+  document.documentElement.dataset.theme = themeMode === "system" ? (sysTheme.matches ? "dark" : "light") : themeMode;
+  const b = $("theme-toggle"), word = THEME_WORD[themeMode];
+  b.innerHTML = THEME_ICON[themeMode];
+  b.setAttribute("aria-label", `Theme: ${word}`); b.title = `Theme: ${word}`;
+}
+sysTheme.addEventListener("change", () => { if (themeMode === "system") applyTheme(); });
+$("theme-toggle").onclick = () => {
+  themeMode = THEME_NEXT[themeMode];
+  try { localStorage.setItem(THEME_KEY, themeMode); } catch {}
+  applyTheme();
+};
+applyTheme();
 $("q-open").onclick = () => openSheet("nav");
 $("discuss").onclick = () => openSheet("discuss");
 $("prev").onclick = () => step(-1);
