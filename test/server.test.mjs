@@ -46,6 +46,38 @@ test("new: outside git the key comes from the cwd; state.json skeleton is writte
   assert.match(state.created, /^\d{4}-\d{2}-\d{2}T/);
 });
 
+test("new: the default doc is .grill-with-ui/<yymmdd-slug>/design.md; explicit --doc wins; a same-day rerun reuses the folder", () => {
+  const cwd = tmp("grill-defaultdoc-");
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  const day = `${String(d.getFullYear()).slice(-2)}${p(d.getMonth() + 1)}${p(d.getDate())}`;
+  const out = newSession(cwd, "Auth & Sessions across tabs!");
+  assert.equal(out.doc, `.grill-with-ui/${day}-auth-sessions-across-tabs/design.md`, "stamp prefixes the topic slug");
+  assert.equal(stateOf(out.session).doc, out.doc, "state.doc carries the same default the CLI printed");
+  const again = newSession(cwd, "Auth & Sessions across tabs!");
+  assert.equal(again.doc, out.doc, "the same topic on the same day resolves to one folder");
+  const explicit = JSON.parse(run(["new", "--topic", "Auth", "--doc", "docs/auth-design.md"], { cwd }));
+  assert.equal(explicit.doc, "docs/auth-design.md");
+  assert.equal(stateOf(explicit.session).doc, "docs/auth-design.md");
+  const empty = JSON.parse(run(["new"], { cwd }));
+  assert.equal(empty.doc, `.grill-with-ui/${day}-untitled/design.md`, "no topic still yields a usable folder");
+  const blank = JSON.parse(run(["new", "--topic", "Blank doc flag", "--doc", ""], { cwd }));
+  assert.equal(blank.doc, `.grill-with-ui/${day}-blank-doc-flag/design.md`, "an empty --doc is no doc: the default applies");
+  const punctuated = JSON.parse(run(["new", "--topic", "  -- Payments?! "], { cwd }));
+  assert.equal(punctuated.doc, `.grill-with-ui/${day}-payments/design.md`, "leading/trailing punctuation never reaches the folder name");
+});
+
+test("new: the stamp is fixed-width zero-padded yymmdd as the prefix, so stamped folders sort chronologically", () => {
+  const cwd = tmp("grill-stamp-");
+  const doc = JSON.parse(run(["new", "--topic", "Sort me"], { cwd })).doc;
+  const m = doc.match(/^\.grill-with-ui\/(\d{6})-sort-me\/design\.md$/);
+  assert.ok(m, `expected a six-digit stamp prefix in ${doc}`);
+  assert.match(m[1], /^\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])$/, "yymmdd: two-digit year, zero-padded month and day");
+  assert.deepEqual([`${m[1]}-topic`, "991231-topic", "000101-topic"].sort(),
+    ["000101-topic", `${m[1]}-topic`, "991231-topic"],
+    "the stamp leads the name, so plain name sort orders oldest folder first");
+});
+
 test("new: a git repo and one of its worktrees share one key; two sessions never collide", () => {
   const repo = tmp("grill-repo-");
   const git = (args, cwd) => execFileSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", ...args], { cwd, stdio: "pipe" });
@@ -253,8 +285,8 @@ test("sessions: lists this project's sessions newest first, unfinished by defaul
 
   const lines = run(["sessions"], { cwd }).split("\n").map((l) => JSON.parse(l));
   assert.deepEqual(lines.map((l) => l.session), [b.session, a.session]);
-  assert.deepEqual(lines[0], { session: b.session, id: b.id, topic: "Second topic", intent: "", doc: "", created: sb.created, finished: null, open: 2, answered: 1, handled: 2, lastSeq: 3 });
-  assert.deepEqual(lines[1], { session: a.session, id: a.id, topic: "First topic", intent: "", doc: "", created: stateOf(a.session).created, finished: null, open: 0, answered: 0, handled: 0, lastSeq: 0 });
+  assert.deepEqual(lines[0], { session: b.session, id: b.id, topic: "Second topic", intent: "", doc: b.doc, created: sb.created, finished: null, open: 2, answered: 1, handled: 2, lastSeq: 3 });
+  assert.deepEqual(lines[1], { session: a.session, id: a.id, topic: "First topic", intent: "", doc: a.doc, created: stateOf(a.session).created, finished: null, open: 0, answered: 0, handled: 0, lastSeq: 0 });
   const all = run(["sessions", "--all"], { cwd }).split("\n").map((l) => JSON.parse(l));
   assert.deepEqual(all.map((l) => l.session), [c.session, b.session, a.session]);
   assert.deepEqual(all[0].finished, { doc: "docs/x.md", at: "y" });
