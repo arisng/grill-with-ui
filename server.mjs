@@ -7,12 +7,16 @@
 //                                                   line to stdout (this process is the agent's Monitor command).
 //                                                   Without --port it retries the port it used last time, then falls
 //                                                   back to an ephemeral one, so an open tab survives a restart.
-//                                                   GET /context reads the project's CONTEXT.md glossary.
+//                                                   GET /context reads the glossary finished.context records,
+//                                                   else the project's root CONTEXT.md
 //   sessions [--all]                                list this project's sessions (newest first; --all adds finished ones)
 //   pending  --session DIR                          print every Send past agent.handled (replay on resume)
 //   wait     --session DIR [--after N] [--timeout S] block until a Send newer than seq N lands, print it, exit 0
 //                                                   (exit 3 on timeout) — for agents without a Monitor tool
 //   url      --session DIR [--timeout S]            print the running server's url (from server.json)
+//   context  --session DIR                          parse the repo's CONTEXT-MAP.md and print one JSON line:
+//                                                   {map, rootGlossary, fallback, fallbackAdr, contexts:[{name,path,folder,adr}]}
+//                                                   — the bounded-context locations the Finish step picks from
 //   patch    --session DIR [--file P]               apply a JSON patch (stdin, or the file P) to state.json: merge,
 //                                                   validate, write atomically, print one short summary line
 //
@@ -54,6 +58,32 @@ function mustSession(o) {
   const dir = path.resolve(o.session);
   if (!fs.existsSync(dir)) die(`no such session folder: ${dir}`);
   return dir;
+}
+
+// True when `p` falls outside `base` (absolute, or a `..` walk out of the tree).
+const escapes = (base, p) => { const r = path.relative(base, p); return r === ".." || r.startsWith(`..${path.sep}`) || path.isAbsolute(r); };
+
+// ---- glossary location: what Finish recorded, else the root file ----
+// Finish writes the glossary and records its path in finished.context — the repo root
+// normally, or the matching bounded context's CONTEXT.md when the repo keeps a
+// CONTEXT-MAP.md (its root belongs to the map). The recorded path must resolve inside the
+// project: a stray absolute or `..` path never wins, so the Terms panel cannot read a
+// stray file outside the repo.
+function pickContextFile(project, st) {
+  const root = path.join(project, "CONTEXT.md");
+  const c = st && st.finished && st.finished.context;
+  if (typeof c !== "string" || !c) return root;
+  const file = path.resolve(project, c);
+  return escapes(project, file) ? root : file;
+}
+
+// ADR folder inside a location: whichever of docs/adr or .docs/adr already exists there;
+// neither → docs/adr (and docs/adr wins when both exist).
+function adrFolderIn(folder) {
+  const plain = path.join(folder, "docs", "adr");
+  if (fs.existsSync(plain)) return plain;
+  const dotted = path.join(folder, ".docs", "adr");
+  return fs.existsSync(dotted) ? dotted : plain;
 }
 
 // ---- session key: git common root (all worktrees share it), cwd outside git ----
@@ -179,9 +209,10 @@ function cmdServe(o) {
       // a mid-write corrupt file keeps serving the last parse that worked.
       try { const raw = fs.readFileSync(stateFile, "utf8"); JSON.parse(raw); lastGoodState = raw; } catch { /* keep lastGoodState */ }
       if (lastGoodState === null) return json(res, 404, { error: "no state" });
-      const project = JSON.parse(lastGoodState)?.project; // never re-throws: lastGoodState only holds parses that worked
+      const st = JSON.parse(lastGoodState); // never re-throws: lastGoodState only holds parses that worked
+      const project = st?.project;
       if (typeof project !== "string" || !path.isAbsolute(project)) return json(res, 404, { error: "no project" }); // before join: patch {"project":null} deletes the key; join(undefined) throws, join("") resolves against cwd
-      try { return send(res, 200, fs.readFileSync(path.join(project, "CONTEXT.md")), "text/markdown; charset=utf-8"); } catch { return json(res, 404, { error: "no context" }); }
+      try { return send(res, 200, fs.readFileSync(pickContextFile(project, st)), "text/markdown; charset=utf-8"); } catch { return json(res, 404, { error: "no context" }); }
     }
     if (req.method === "POST" && pathname === "/send") {
       // Browsers set Origin on every POST, same-origin or not; reject a mismatch so another
@@ -260,6 +291,51 @@ function cmdUrl(o) {
     setTimeout(tick, 100);
   };
   tick();
+}
+
+// ---- context (bounded-context discovery: parse the repo's CONTEXT-MAP.md) ----
+// One JSON line the Finish step reads instead of the map itself: which contexts exist,
+// where each one's glossary and ADR folder live, and what a non-mapped glossary would use.
+function cmdContext(o) {
+  const session = mustSession(o);
+  const st = readState(session);
+  if (!st) die(`no state.json in ${session}`, 1);
+  const project = st.project;
+  if (typeof project !== "string" || !path.isAbsolute(project)) die("state has no project", 1);
+  const rel = (p) => posix(path.relative(project, p));
+  const hasMap = fs.existsSync(path.join(project, "CONTEXT-MAP.md"));
+  // The map is the index of bounded contexts: `- [Name](./path/CONTEXT.md) — description`.
+  // Only bullet links to a CONTEXT.md count; relationship prose and other links are not contexts.
+  const contexts = [];
+  if (hasMap) {
+    const seen = new Set();
+    const text = fs.readFileSync(path.join(project, "CONTEXT-MAP.md"), "utf8");
+    for (const [, name, target] of text.matchAll(/^\s*[-*]\s+\[([^\]]+)\]\(([^)\s]+)[^)]*\)/gm)) {
+      if (!/(^|\/)CONTEXT\.md$/i.test(target)) continue;
+      const file = path.resolve(project, target);
+      if (escapes(project, file)) continue; // the map may point anywhere; we never follow outside
+      const inner = path.relative(project, file);
+      const key = posix(inner);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const folder = path.dirname(file);
+      contexts.push({ name, path: key, folder: rel(folder), adr: rel(adrFolderIn(folder)) });
+    }
+  }
+  // "beside the design doc" — the offer when no mapped context fits. Never outside the project.
+  const doc = typeof st.doc === "string" && st.doc ? st.doc : "";
+  let fallback = "CONTEXT.md";
+  if (doc) {
+    const dir = path.dirname(path.resolve(project, doc));
+    if (!escapes(project, dir)) fallback = posix(path.join(path.relative(project, dir), "CONTEXT.md"));
+  }
+  print({
+    map: hasMap,
+    rootGlossary: fs.existsSync(path.join(project, "CONTEXT.md")),
+    fallback,
+    fallbackAdr: hasMap ? rel(adrFolderIn(project)) : "docs/adr", // no map: the standing docs/adr convention
+    contexts,
+  });
 }
 
 // ---- patch (the agent's only way to write state.json) ----
@@ -505,7 +581,7 @@ function cmdPatch(o) {
 }
 
 const o = parseArgs(process.argv.slice(2));
-const cmds = { new: cmdNew, serve: cmdServe, sessions: cmdSessions, pending: cmdPending, wait: cmdWait, url: cmdUrl, patch: cmdPatch };
+const cmds = { new: cmdNew, serve: cmdServe, sessions: cmdSessions, pending: cmdPending, wait: cmdWait, url: cmdUrl, context: cmdContext, patch: cmdPatch };
 // own keys only: `toString` and friends are inherited, not subcommands
 (Object.hasOwn(cmds, o._[0] ?? "") ? cmds[o._[0]]
-  : () => die("usage: server.mjs new|serve|sessions|pending|wait|url|patch [--session DIR] ..."))(o);
+  : () => die("usage: server.mjs new|serve|sessions|pending|wait|url|context|patch [--session DIR] ..."))(o);
