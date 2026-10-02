@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { spawn, spawnSync, execFileSync } from "node:child_process";
-import { closeSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, statSync, unlinkSync, writeFileSync } from "node:fs";
+import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, realpathSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
@@ -14,6 +14,7 @@ const home = mkdtempSync(join(tmpdir(), "grill-home-"));
 const env = { ...process.env, GRILL_HOME: home };
 const tmp = (p) => mkdtempSync(join(tmpdir(), p));
 const run = (args, opts = {}) => execFileSync(process.execPath, [SERVER, ...args], { encoding: "utf8", env, ...opts }).trim();
+const stampOf = (d = new Date()) => { const p = (n) => String(n).padStart(2, "0"); return `${String(d.getFullYear()).slice(-2)}${p(d.getMonth() + 1)}${p(d.getDate())}`; };
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const post = (url, body) => fetch(url + "send", { method: "POST", headers: { "content-type": "application/json" }, body: typeof body === "string" ? body : JSON.stringify(body) });
 
@@ -217,6 +218,76 @@ test("serve: /context serves the project's CONTEXT.md (no-store), 404 JSON when 
   const miss = await fetch(s.ready.url + "context?v=1");
   assert.equal(miss.status, 404);
   assert.deepEqual(await miss.json(), { error: "no context" });
+});
+
+test("serve: /context serves finished.context when Finish recorded a path inside the project", async (t) => {
+  const { session, project } = newSession(tmp("grill-ctxmap-"));
+  const folder = join(project, "src", "Modules", "Billing");
+  mkdirSync(folder, { recursive: true });
+  const scoped = "# Billing glossary\n";
+  writeFileSync(join(folder, "CONTEXT.md"), scoped);
+  const st = stateOf(session);
+  st.finished = { doc: ".grill-with-ui/261002-billing/design.md", context: "src/Modules/Billing/CONTEXT.md", at: new Date().toISOString() };
+  writeFileSync(join(session, "state.json"), JSON.stringify(st));
+  const s = await startServe(session); t.after(s.stop);
+  const hit = await fetch(s.ready.url + "context");
+  assert.equal(hit.status, 200);
+  assert.equal(await hit.text(), scoped, "the glossary Finish wrote in a bounded context is what the panel reads");
+  unlinkSync(join(folder, "CONTEXT.md"));
+  const miss = await fetch(s.ready.url + "context?v=1");
+  assert.equal(miss.status, 404, "no recorded file is no glossary, never a silent fallthrough");
+  assert.deepEqual(await miss.json(), { error: "no context" });
+});
+
+test("serve: /context ignores a finished.context that escapes the project and serves the root file", async (t) => {
+  const { session, project } = newSession(tmp("grill-ctxout-"));
+  const root = "# Root glossary\n";
+  writeFileSync(join(project, "CONTEXT.md"), root);
+  const st = stateOf(session);
+  st.finished = { doc: "design.md", context: join(tmp("grill-elsewhere-"), "CONTEXT.md"), at: new Date().toISOString() };
+  writeFileSync(join(session, "state.json"), JSON.stringify(st));
+  const s = await startServe(session); t.after(s.stop);
+  const hit = await fetch(s.ready.url + "context");
+  assert.equal(hit.status, 200);
+  assert.equal(await hit.text(), root, "an out-of-project path never wins over the root file");
+});
+
+test("context: parses CONTEXT-MAP.md into bounded-context locations; no map means no contexts", () => {
+  const cwd = tmp("grill-ctxcli-");
+  const bare = newSession(cwd, "No map");
+  assert.deepEqual(JSON.parse(run(["context", "--session", bare.session])), {
+    map: false, rootGlossary: false,
+    fallback: `.grill-with-ui/${stampOf()}-no-map/CONTEXT.md`,
+    fallbackAdr: "docs/adr", contexts: [],
+  }, "no map: the standing conventions and nothing to match against");
+
+  // A map shaped like the real one: an entry whose file does not exist yet, a duplicate,
+  // a relationship line linking a non-CONTEXT.md, and one context already on .docs/adr.
+  writeFileSync(join(bare.project, "CONTEXT-MAP.md"), [
+    "# Context Map", "", "## Contexts", "",
+    "- [Billing](./src/Modules/Billing/CONTEXT.md) — money things",
+    "- [Billing](./src/Modules/Billing/CONTEXT.md) — listed twice",
+    "- [Planning](./.docs/reference/planning/CONTEXT.md) — milestone terms",
+    "", "## Relationships", "",
+    "- **Billing → Planning**: owns ([notes](./README.md))", "",
+  ].join("\n"));
+  mkdirSync(join(bare.project, "src", "Modules", "Billing", ".docs", "adr"), { recursive: true });
+  writeFileSync(join(bare.project, "CONTEXT.md"), "# Root\n");
+  const mapped = JSON.parse(run(["context", "--session", bare.session]));
+  assert.equal(mapped.map, true, "the map is detected");
+  assert.equal(mapped.rootGlossary, true);
+  assert.deepEqual(mapped.contexts, [
+    { name: "Billing", path: "src/Modules/Billing/CONTEXT.md", folder: "src/Modules/Billing", adr: "src/Modules/Billing/.docs/adr" },
+    { name: "Planning", path: ".docs/reference/planning/CONTEXT.md", folder: ".docs/reference/planning", adr: ".docs/reference/planning/docs/adr" },
+  ], "each map entry becomes a location: the existing .docs/adr wins, no adr folder means docs/adr, and neither a duplicate nor the README link becomes a context");
+  assert.equal(mapped.fallbackAdr, "docs/adr", "root has neither → docs/adr");
+
+  mkdirSync(join(bare.project, "src", "Modules", "Billing", "docs", "adr"), { recursive: true });
+  const both = JSON.parse(run(["context", "--session", bare.session]));
+  assert.equal(both.contexts[0].adr, "src/Modules/Billing/docs/adr", "docs/adr wins the tie when both exist");
+  mkdirSync(join(bare.project, ".docs", "adr"), { recursive: true });
+  assert.equal(JSON.parse(run(["context", "--session", bare.session])).fallbackAdr, ".docs/adr",
+    "a root with only .docs/adr points the no-context case there");
 });
 
 test('serve: /context with state.json corrupted before any read → 404 {"error":"no state"}', async (t) => {
