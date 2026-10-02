@@ -1,6 +1,6 @@
 ---
 name: grill-with-ui
-description: Run a grilling interview on a local browser page instead of the terminal. Every question is laid out with its recommendation, answerable in any order, with a per-question discussion thread and one "Send to Agent" button. An opt-in first question can additionally land settled terms in a repo CONTEXT.md and durable decisions as ADRs. Use when the user says "grill with ui", invokes /grill-with-ui with a topic, or says "/grill-with-ui resume".
+description: Run a grilling interview on a local browser page instead of the terminal. Every question is laid out with its recommendation, answerable in any order, with a per-question discussion thread and one "Send to Agent" button. An opt-in first question can additionally land settled terms in a CONTEXT.md glossary and durable decisions as ADRs. Use when the user says "grill with ui", invokes /grill-with-ui with a topic, or says "/grill-with-ui resume".
 metadata:
    version: 0.1.0
 ---
@@ -118,11 +118,15 @@ GRILL_PATCH
    domain-modeling-mode question, first, id `q-domain`:
    - `title`: "Also keep a glossary and ADRs?"
    - `body`: At Finish the design doc is always written to `doc`; opting in additionally
-     keeps a repo-root `CONTEXT.md` glossary of settled terms and one short ADR per durable
-     decision in `docs/adr/`, both written when the grill finishes.
+     keeps a `CONTEXT.md` glossary of settled terms and one short ADR per durable
+     decision, both written when the grill finishes. The glossary lands at the repo root —
+     except in a repo that keeps a `CONTEXT-MAP.md` at its root, where each bounded
+     context owns its own `CONTEXT.md`: there Finish reads the map, lands the glossary in
+     the bounded context this topic belongs to (confirmed with you at Finish when unclear)
+     and the ADRs in that context's own ADR folder.
    - `options`: A "Yes — also write CONTEXT.md and ADRs", B "No — the design doc only (default)".
    - `rec`: option A, why: locked decisions then live where the next engineer already looks —
-     CONTEXT.md and docs/adr/ — not only in a dated design doc; the cost is two small repo
+     the glossary and docs/adr/ — not only in a dated design doc; the cost is two small repo
      files.
    - `durable: false` (it is session meta, never a topic decision).
    Then the usual one to three independent topic questions follow (round 1: after
@@ -370,12 +374,22 @@ On a `finish` action, or when the user says finish in the terminal:
 2. If `domainModeling` is true — in state or in the changes collected for this send's
    patch, a `q-domain` reopen/revoke among them turning it off — write the repo-level docs
    per `$SKILL/domain-brief.md`:
-   (a) merge this grill's terms into repo-root `CONTEXT.md` (create lazily; merge, never
-   clobber); (b) for each answered question with `durable: true`, write
-   `docs/adr/NNNN-slug.md` per the brief (scan existing numbers; create lazily);
+   (a) **locate the glossary first**: run `node $SKILL/server.mjs context --session
+   <session>`. `map: false` → the repo-root `CONTEXT.md`. `map: true` → the repo scopes one
+   glossary per bounded context: match this grill's topic and intent to the single clear
+   candidate in `contexts` (the brief gives the criteria) and use it — merge the context's
+   `CONTEXT.md` when it exists, create it in the context's `folder` when it does not. No
+   clear match or several → ask the user in the terminal, offering the candidates, then
+   `fallback`, then "no glossary this grill", and use their answer.
+   (b) merge this grill's terms into the located file (create lazily; merge, never
+   clobber); for each answered question with `durable: true`, write
+   `NNNN-slug.md` into the ADR folder the brief picks — the matched context's `adr` from
+   `context`, else `fallbackAdr` (scan existing numbers; create lazily);
    (c) remember the paths — the step that patches `finished` must then also include
-   `"context": <path>` (when `CONTEXT.md` was written) and `"adrs": [<paths…>]` (when any
-   ADR was written), alongside `doc`/`at` as that step already does.
+   `"context": <path>` (when the glossary was written, wherever it resolved to) and
+   `"adrs": [<paths…>]` (when any
+   ADR was written), alongside `doc`/`at` as that step already does. Neither was written:
+   leave the key out.
 3. Patch `"finished": { "doc": … }` and `"agent": { "status": "waiting" }`
    (after a page Finish this is the send's one patch, with `handled`); the page shows the
    finished banner and locks staging.
@@ -393,7 +407,7 @@ On a `finish` action, or when the user says finish in the terminal:
    stamps `at`).
 5. Once there is no draw in flight and the exports are complete, stop the persistent
    Monitor with TaskStop, or stop the server as described in Wait mode.
-6. Print one line with the doc path (and the visual's, plus `CONTEXT.md` and the ADRs when
+6. Print one line with the doc path (and the visual's, plus the glossary's path and the ADRs when
    domain-modeling mode wrote them). End.
 
 ## Wait mode (agents without a Monitor tool)
@@ -442,7 +456,8 @@ What each field means. You write it only through `patch`.
   "note": "optional short sentence shown above the question list",
   "domainModeling": true,  // domain-modeling mode on: Finish also writes CONTEXT.md + docs/adr/ per domain-brief.md; absent = off
   "finished": { "doc": ".grill-with-ui/x/design.md", "visual": ".grill-with-ui/x/visual.html",
-                "context": "CONTEXT.md", "adrs": ["docs/adr/0001-slug.md"], "at": "ISO" },  // only after Finish
+                "context": "CONTEXT.md", "adrs": ["docs/adr/0001-slug.md"], "at": "ISO" },  // only after Finish; context is project-relative —
+                // project-relative: repo-root CONTEXT.md, or the matched bounded context's CONTEXT.md in a CONTEXT-MAP.md repo
   "visual": {                                                   // only after a visualize action
     "kind": "prototype|diagram", "version": 3, "at": "ISO",
     "note": "v3: discussion panel moved to the right per Q3",
