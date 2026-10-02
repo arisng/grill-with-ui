@@ -50,7 +50,7 @@ only when the first ADR is needed.
 
 ## Relation to the design doc
 
-The exhaustive design doc (`.grill-with-ui/<topic-slug>/design.md`) is always written and
+The exhaustive design doc (`.grill-with-ui/<yymmdd>-<topic-slug>/design.md`) is always written and
 remains the per-topic record; `CONTEXT.md` and the ADRs are cumulative, repo-level artifacts
 across grills. Session-meta questions (id `q-domain`) produce no ADR — they are never durable,
 so this falls out naturally.

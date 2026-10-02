@@ -103,9 +103,13 @@ GRILL_PATCH
 ## Start (`/grill-with-ui <topic>`, `$grill-with-ui <topic>`, or "grill with ui: <topic>")
 
 1. From the project directory run
-   `node $SKILL/server.mjs new --topic "<topic>" --intent "<why this grill exists, 1-2 sentences>" --doc "<doc path>"`.
-   The doc path defaults to `.grill-with-ui/<slug-of-topic>/design.md` under the project root
-   (create the nested folder later if needed). Pass `--intent` with the user's goal in their
+   `node $SKILL/server.mjs new --topic "<topic>" --intent "<why this grill exists, 1-2 sentences>" [--doc "<doc path>"]`.
+   `--doc` defaults to `.grill-with-ui/<yymmdd>-<slug-of-topic>/design.md` under the project
+   root, where `<yymmdd>` is the grill's start date (two-digit year, month, day) prefixed to
+   the slug so the topic folders auto-sort oldest to newest; `new` computes that path and
+   prints it, so use the printed `doc` rather than deriving the stamp yourself (create the
+   nested folder later if needed). Pass `--doc` only when the user asks for another location.
+   Pass `--intent` with the user's goal in their
    words (1-2 sentences), taken from the topic message that started this grill. The topic is
    the title; the intent is the why. Omit it only when the topic arrived as a bare phrase with
    no goal attached. The page shows it under the topic so several open grills stay
