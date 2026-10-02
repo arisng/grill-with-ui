@@ -54,6 +54,8 @@ page.on("pageerror", (e) => errors.push(String(e)));
 page.on("response", (r) => { if (r.status() === 404) notFound.push(r.url()); });
 const results = [];
 const check = (name, ok, extra = "") => { results.push({ name, ok, extra }); if (!ok) console.log("FAIL", name, extra); };
+// the discussion-count pill on one rail row (scoped to .item: the Discussion button has a badge too)
+const railBadge = (id) => page.locator(".item", { has: page.locator(".id", { hasText: id }) }).locator(".badge");
 
 try {
   await page.goto(url);
@@ -61,6 +63,10 @@ try {
   check("default selection = first open question in the current round", (await page.locator(".item.selected .id").textContent()) === "Q3");
   // the updated marker is a real element in the item's meta line (id + updated + status on one row)
   check("updated marker on q3", await page.locator(".item", { has: page.locator(".id", { hasText: "Q3" }) }).locator(".upd").count() === 1);
+  // the rail carries each question's discussion size without opening it: persisted messages only
+  check("rail shows the discussion count on q1 and nothing on the empty threads",
+    (await railBadge("Q1").textContent()) === "2"
+    && await railBadge("Q2").count() === 0 && await railBadge("Q3").count() === 0 && await railBadge("Q4").count() === 0);
   check("crumb shows recommendation updated", (await page.locator(".crumb .upd").textContent()) === "recommendation updated");
   check("send disabled with nothing staged", await page.locator("#send").isDisabled());
   check("no Accept button (clicking the recommended option is the accept)", await page.locator("#accept").count() === 0);
@@ -132,6 +138,7 @@ try {
   check("explore button shows exploring and is disabled; staging untouched", await page.locator("#explore").isDisabled() && (await page.locator("#send").textContent()) === "Send 2 to Agent");
   check("footer shows the explore send as sent", (await page.locator("#staged-list").textContent()).includes("Sent #1"));
   check("nav shows staged", (await page.locator(".item.selected .mark").textContent()) === "staged");
+  check("staging a thread message leaves the rail count alone (persisted messages only)", await railBadge("Q3").count() === 0);
   await page.locator("#free").fill("draft text that should survive reload");
   await page.screenshot({ path: "/tmp/grill-v1.png" });
 
@@ -203,6 +210,7 @@ try {
   check("a long reply landing in a short thread leaves the panel at its first line",
     beforeReply.room === 0 && replyPos.room > 200 && replyPos.top === 0,
     JSON.stringify({ beforeReply, replyPos }));
+  check("the rail count picks up the landing reply", (await railBadge("Q4").textContent()) === "1");
 
   // Then on one that does scroll: the panel is rebuilt on every render, so it used to snap back
   // to the top of a long thread on each send. q1 is answered with nothing staged on it, so its
