@@ -2,6 +2,7 @@
 // grill-with-ui server. Plain Node, no dependencies, no build step.
 //
 //   new      --topic T [--intent I] [--doc P]         create a session folder under GRILL_HOME, print {session,key,project,id,doc,intent}
+//                                                   --doc defaults to .grill-with-ui/<yymmdd>-<slug>/design.md (stamp = start date)
 //   serve    --session DIR [--port N]               serve the page; append each Send to events.jsonl AND print the same
 //                                                   line to stdout (this process is the agent's Monitor command).
 //                                                   Without --port it retries the port it used last time, then falls
@@ -64,10 +65,14 @@ function projectRoot(cwd) {
   } catch { return fs.realpathSync(cwd); }
 }
 const keyOf = (root) => root.replace(/^[\\/]+/, "").replace(/[\\/:]+/g, "-");
+const pad2 = (n) => String(n).padStart(2, "0");
 function stamp(d = new Date()) {
-  const p = (n) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}-${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
 }
+const dateStamp = (d = new Date()) => `${String(d.getFullYear()).slice(-2)}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`;
+const slugOf = (topic) => String(topic ?? "").toLocaleLowerCase()
+  .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "untitled";
+const posix = (p) => p.split(path.sep).join("/");
 
 function cmdNew(o) {
   const project = projectRoot(process.cwd());
@@ -79,14 +84,17 @@ function cmdNew(o) {
   for (let n = 2; fs.existsSync(session); n++) session = path.join(dir, `${id}-${n}`);
   fs.mkdirSync(session);
   const now = new Date().toISOString();
+  const doc = typeof o.doc === "string" && o.doc
+    ? o.doc
+    : posix(path.join(".grill-with-ui", `${dateStamp()}-${slugOf(o.topic)}`, "design.md"));
   writeJson(path.join(session, "state.json"), {
     topic: typeof o.topic === "string" ? o.topic : "",
     intent: typeof o.intent === "string" ? o.intent : "",
-    doc: typeof o.doc === "string" ? o.doc : "",
+    doc,
     project, created: now, agent: { status: "working", since: now }, terms: [], questions: [],
   });
   fs.writeFileSync(path.join(session, "events.jsonl"), "");
-  print({ session, key, project, id: path.basename(session), doc: typeof o.doc === "string" ? o.doc : "", intent: typeof o.intent === "string" ? o.intent : "" });
+  print({ session, key, project, id: path.basename(session), doc, intent: typeof o.intent === "string" ? o.intent : "" });
 }
 
 // ---- events.jsonl helpers ----
