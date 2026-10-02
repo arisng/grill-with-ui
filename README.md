@@ -82,7 +82,9 @@ column on a wide window, a drawer or a bottom sheet on a narrow one); use **Defe
 you want to. Everything you do is staged (and survives a reload) until you press **Send N to
 Agent** (⌘↩). The one exception is **Explore deeper** next to a question's title: it goes to
 the agent the moment you click it, and the pros and cons table for that question's options
-appears in the discussion panel when the agent is done. The agent answers
+appears in the discussion panel when the agent is done. The question list shows each
+question's discussion message count once it has any, so you can see where a discussion is
+waiting without opening it. The agent answers
 threads, writes the tables, records your answers, and adds the next round of questions to
 the page.
 
