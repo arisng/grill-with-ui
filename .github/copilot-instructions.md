@@ -112,7 +112,7 @@ iframe with no same-origin access: one file, inline everything, no CDN/fetch/ext
 (only allowed URL is a Mermaid script tag). Questions are the source of truth; open
 questions are drawn from their recommendation and marked "assumed".
 
-Per-topic outputs group under `.grill-with-ui/<slug>/` (`design.md` + exported
+Per-topic outputs group under `.grill-with-ui/<yymmdd>-<slug>/` (`design.md` + exported
 `visual.html`); standing artifacts stay at the conventional locations (root `CONTEXT.md`,
 `docs/adr/`).
 

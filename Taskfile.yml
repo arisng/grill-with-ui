@@ -79,12 +79,11 @@ tasks:
 
   new:
     desc: Create a session folder for this project
-    summary: 'Usage: task new TOPIC="What to grill" DOC=docs/my-design.md'
+    summary: 'Usage: task new TOPIC="What to grill" [DOC=.grill-with-ui/<yymmdd>-<slug>/design.md]'
     vars:
       TOPIC: '{{.TOPIC | default "Untitled grill"}}'
-      DOC: '{{.DOC | default "docs/design.md"}}'
     cmds:
-      - node server.mjs new --topic "{{.TOPIC}}" --doc "{{.DOC}}"
+      - node server.mjs new --topic "{{.TOPIC}}"{{if .DOC}} --doc "{{.DOC}}"{{end}}
 
   sessions:
     desc: List this project's sessions, newest first (unfinished only)

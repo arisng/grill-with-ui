@@ -125,11 +125,11 @@ lines of markup stay out of the interview's context. The draw runs in the backgr
 Send keeps working and the interview goes on while it is drawn; the header says
 Visualizing… (or the strip says regenerating…) until the new version lands. Finish
 reconciles and copies the final visual next to the design doc as
-`.grill-with-ui/<topic-slug>/visual.html` — design and visual grouped per topic.
+`.grill-with-ui/<yymmdd>-<topic-slug>/visual.html` — design and visual grouped per topic.
 
 **Finish grill** sends at once (after an inline confirm), together with anything you had
 staged; the agent writes the design doc to the path shown in the header (default
-`.grill-with-ui/<topic-slug>/design.md` in your project), plus the glossary and ADRs in
+`.grill-with-ui/<yymmdd>-<topic-slug>/design.md` in your project), plus the glossary and ADRs in
 domain-modeling mode, and stops.
 
 To pick up an unfinished grill, in the same project:
@@ -156,9 +156,11 @@ Session state lives outside your repo, so there is nothing to gitignore:
 `<project-key>` is the git common root of the project with slashes turned into dashes, so
 every worktree of a repo sees the same sessions; outside git it is the working directory.
 
-Repo-side outputs are few and grouped per topic under `.grill-with-ui/<topic-slug>/` —
+Repo-side outputs are few and grouped per topic under `.grill-with-ui/<yymmdd>-<topic-slug>/` —
 `design.md` plus the optional `visual.html` — while standing files stay at `CONTEXT.md`
-and `docs/adr/`. These are committed deliverables: commit `.grill-with-ui/` (it is the
+and `docs/adr/`. `<yymmdd>` is the grill's start date (e.g. `261002-auth`), so the folders
+sort chronologically without opening them. These are committed deliverables: commit
+`.grill-with-ui/` (it is the
 product), or gitignore it deliberately if you don't want them in the repo.
 
 Only in domain-modeling mode does Finish also write these standing files: `CONTEXT.md` at

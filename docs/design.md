@@ -141,6 +141,14 @@ keeps one Claude session behind it so nothing is ever out of context.
   the design doc (grouping follows the doc under `--doc` overrides); standing artifacts
   stay conventional — root `CONTEXT.md`, ADRs in `docs/adr/`. Supersedes the Q8/Q9
   "project docs folder" default; that dated text stays as recorded.
+- **The slug folder carries a `yymmdd` prefix** (2026-10-02). The default doc path is now
+  `.grill-with-ui/<yymmdd>-<slug>/design.md`, the stamp being the grill's start date in
+  local time (two-digit year, month, day), so topic folders auto-sort chronologically —
+  the stamp leads the name, which is what makes a plain name sort date-ordered.
+  `server.mjs new` computes the path — an explicit `--doc` still wins — and SKILL.md uses
+  the printed value instead of deriving it; `visual.html` follows the doc as before.
+  Folders created before this entry keep their unstamped names; no rename pass. Refines
+  the 2026-09-23 grouping choice, which stays as recorded.
 - **Glossary in the Terms panel** (2026-09-23). The Terms dropdown merges this session's
   `terms` with the repo's standing `CONTEXT.md` behind a read-only `GET /context`;
   rows are badged `session`, `glossary`, or `✓ glossary`, the session definition
