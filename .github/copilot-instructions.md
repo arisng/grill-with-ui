@@ -113,17 +113,23 @@ iframe with no same-origin access: one file, inline everything, no CDN/fetch/ext
 questions are drawn from their recommendation and marked "assumed".
 
 Per-topic outputs group under `.grill-with-ui/<yymmdd>-<slug>/` (`design.md` + exported
-`visual.html`); standing artifacts stay at the conventional locations (root `CONTEXT.md`,
+`visual.html`); standing artifacts stay at the conventional locations (`CONTEXT.md`,
 `docs/adr/`).
 
 The opt-in **domain-modeling mode** opens round 1 with a `q-domain` question ("Also keep
 a glossary and ADRs?"); a yes stores a top-level `domainModeling: true` in state (absent
-= off, reopen clears it). At Finish, when on, the agent also writes repo-root
-`CONTEXT.md` (merged, never clobbered) and one ADR per answered durable question under
-`docs/adr/`, per the sibling brief `domain-brief.md`. The design doc is written either
-way, unchanged.
+= off, reopen clears it). At Finish, when on, the agent also writes
+`CONTEXT.md` (merged, never clobbered) and one ADR per answered durable question in
+the ADR folder the brief picks — `docs/adr/`, or the matched bounded context's own
+folder — per the sibling brief `domain-brief.md`. The design doc is written either
+way, unchanged. The glossary's location resolves by rule: repo root normally; in a repo
+with a `CONTEXT-MAP.md` at its root, Finish parses the map (`server.mjs context
+--session <session>` lists each bounded context's name, `CONTEXT.md` path, folder and ADR
+folder), matches the grill's topic to one context — asking the user when the match is
+unclear — and writes the glossary and its ADRs inside that context.
 
-The header **Terms** panel merges live `state.terms` with the repo's `CONTEXT.md` —
+The header **Terms** panel merges live `state.terms` with the glossary `GET /context`
+resolves to —
 fetched via read-only `GET /context` (no-store markdown; 404 `no context`/
 `no project`/`no state`), parsed for the `## Language` section in page.html, session
 wins collisions, provenance pills shown once ≥1 glossary entry parses; viewing is

@@ -738,7 +738,7 @@ function renderHeader() {
   $("terms").innerHTML = (rows.length
     ? rows.map((t) => `<div class="term"><b>${esc(t.term)}</b> — ${esc(t.def)}${hasGloss ? `<span class="pill">${esc(t.pill)}</span>` : ""}${t.avoid && t.avoid.length ? `<div class="avoid">Avoid: ${t.avoid.map(esc).join(", ")}</div>` : ""}</div>`).join("")
     : `<div class="term" style="color:var(--ink-3)">No terms yet. The agent adds vocabulary here as it settles.</div>`)
-    + (glossaryMissing && S.domainModeling && !S.finished ? `<div class="glossary-note">CONTEXT.md is written at Finish.</div>` : "");
+    + (glossaryMissing && S.domainModeling && !S.finished ? `<div class="glossary-note">The glossary is written at Finish.</div>` : "");
   renderVisualizeButton();
   renderStatus();
 }

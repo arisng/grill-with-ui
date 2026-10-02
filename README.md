@@ -95,12 +95,17 @@ Everything staged survives opening and closing those panels. The visual is view-
 phone — send feedback on it from a wider window.
 
 The first question of every grill asks whether settled terms and durable decisions should
-also be kept as standing files — a `CONTEXT.md` glossary at the project root and one short
-ADR per durable decision in `docs/adr/` — alongside the design doc, which is written
-either way; no (the default) changes nothing else.
+also be kept as standing files — a `CONTEXT.md` glossary and one short
+ADR per durable decision — alongside the design doc, which is written
+either way; no (the default) changes nothing else. The glossary goes to the project root,
+except in a repo that keeps a `CONTEXT-MAP.md` at its root: there the root belongs to the
+context map, so Finish reads it, lands the glossary in the bounded context this topic
+belongs to — asking you to confirm when the match is unclear — and writes the ADRs into
+that context's own `docs/adr/` or `.docs/adr/`.
 
-The header **Terms** panel also shows the project's standing glossary from `CONTEXT.md`
-once it exists — session terms and standing terms in one list, each marked where it came
+The header **Terms** panel also shows the project's standing glossary once it exists —
+from the root `CONTEXT.md`, or from wherever Finish recorded a scoped one —
+session terms and standing terms in one list, each marked where it came
 from. Declining the mode changes nothing: you still see a glossary a previous grill left
 behind.
 
@@ -163,8 +168,10 @@ sort chronologically without opening them. These are committed deliverables: com
 `.grill-with-ui/` (it is the
 product), or gitignore it deliberately if you don't want them in the repo.
 
-Only in domain-modeling mode does Finish also write these standing files: `CONTEXT.md` at
-the project root (merged into, never overwritten) and `docs/adr/NNNN-slug.md`, recorded in
+Only in domain-modeling mode does Finish also write these standing files: `CONTEXT.md`
+(merged into, never overwritten; the project root, or the matched bounded context's file
+when a `CONTEXT-MAP.md` scopes it) and `NNNN-slug.md` in `docs/adr/` or that context's
+ADR folder, recorded in
 `finished.context`/`finished.adrs`.
 
 In this repo: `server.mjs` (the server and CLI), `page.html` (the page), `SKILL.md` (the

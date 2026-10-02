@@ -149,6 +149,18 @@ keeps one Claude session behind it so nothing is ever out of context.
   the printed value instead of deriving it; `visual.html` follows the doc as before.
   Folders created before this entry keep their unstamped names; no rename pass. Refines
   the 2026-09-23 grouping choice, which stays as recorded.
+- **A context map redirects the glossary and its ADRs into a bounded context**
+  (2026-10-02). A `CONTEXT-MAP.md` at the repo root (the DDD convention: the map owns the
+  root, one `CONTEXT.md` per bounded context) stops Finish writing a root glossary. The
+  new `server.mjs context` command parses the map into `{name, path, folder, adr}`
+  candidates; Finish matches the grill's topic to one of them — a confident single match
+  proceeds, several or none asks the user (offering the candidates, "beside the design
+  doc", "no glossary this grill") — then merges the matched context's `CONTEXT.md`
+  (creating it in the context's folder when absent) and writes the ADRs to that context's
+  existing `docs/adr/` or `.docs/adr/` (`docs/adr/` when neither or both). `GET /context`
+  now serves the path `finished.context` records, guarded to the project, instead of
+  probing a fixed location, so the Terms panel reads exactly what was written; no new
+  state field. Refines the 2026-09-23 root-`CONTEXT.md` default, which stays as recorded.
 - **Glossary in the Terms panel** (2026-09-23). The Terms dropdown merges this session's
   `terms` with the repo's standing `CONTEXT.md` behind a read-only `GET /context`;
   rows are badged `session`, `glossary`, or `✓ glossary`, the session definition
