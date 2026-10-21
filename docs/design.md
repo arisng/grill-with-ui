@@ -59,6 +59,8 @@ keeps one Claude session behind it so nothing is ever out of context.
 5. **Finish writes the exhaustive topic design doc, with two borrows** (Q8, Q9).
    *Superseded in part 2026-09-23: the default path and the `CONTEXT.md`/`docs/adr/` opt-in
    have shipped — see Routine choices ("Per-topic outputs…", "Domain-modeling mode…").*
+   *Inverted in part 2026-10-21: the "sparse `docs/adr/` files" half is now its opposite —
+   see Routine choices ("An ADR records a decision, not a question…").*
    The doc path is asked once at start (default: the project's docs folder, slug from the
    topic).
    Borrowed from Matt Pocock's domain-modeling skill: a per-decision **durable** flag
@@ -201,6 +203,31 @@ keeps one Claude session behind it so nothing is ever out of context.
   and small labels (the light numbers are byte-for-byte what they were). Chosen over
   a two-state toggle whose first visit guesses (a guess you cannot undo without a second
   guess), and over per-session state (theme is not a decision about the topic).
+- **An ADR records a decision, not a question** (2026-10-21). The ADRs stopped being a
+  mechanical 1:1 map off the answered `durable` questions and became one file per
+  architecturally significant *decision*, written in a full template (status, date,
+  authors, context, drivers, considered options, outcome, consequences). Three changes
+  carry it. **Cluster, split, screen** — durable questions whose answers could not change
+  independently are one decision and share one file; an answer stating two independent
+  commitments is two; a group that fails the screen (*delete this ADR, would they build
+  the same thing?*) gets no file at all and stays a Locked decision in the design doc.
+  **The server owns the mechanical parts** — `server.mjs adr --session --folder --title`
+  scaffolds the file from `adr-template.md`, claims the next *free* number (two grills
+  finishing at once cannot pick the same one, and an existing file is never overwritten),
+  and fills the date (the grill's start day, in local time) and the author
+  (`git config user.name`, else `grill-with-ui`); the agent only adds content under the
+  headings, so the shape cannot drift. **The doc cites the ADRs** — the design doc is
+  written after them and each Locked-decisions bullet ends with `→ ADR-NNNN` where its
+  decision has one, so the missing pointer is the visible trace of the filter, and the
+  Finish line says how many durable decisions got no ADR. Chosen over the previous
+  1:1 rule because a question is not a decision — one grill's six durable questions were
+  two choices, and two files said the same thing twice; over a richer template alone
+  because the old 1–3 sentence paragraph could not carry a trade-off; and over letting the
+  agent derive the date, the number and the author by hand, because this repo keeps
+  mechanical derivations in the CLI (`server.mjs context` exists so the agent does not
+  hand-parse `CONTEXT-MAP.md`) and each of them is a way to write a wrong file. Refines
+  the 2026-09-23 "Domain-modeling mode is an opt-in round-1 question" entry, which stays
+  as recorded, and inverts the "sparse `docs/adr/` files" half of locked decision 5.
 
 ## Verified facts (2026-09-06)
 
