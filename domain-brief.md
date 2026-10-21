@@ -55,25 +55,104 @@ The definition comes from the term's `def`; the `_Avoid_` list from `state.terms
 Location: the folder `$SKILL/server.mjs context` reports for the location chosen above —
 its `adr` for a matched context (whichever of `docs/adr/` or `.docs/adr/` already exists
 inside that context, `docs/adr/` when neither or both), `fallbackAdr` otherwise (the
-standing `docs/adr/` convention). Files numbered sequentially as `NNNN-slug.md` (four
-digits) **within that folder**. Scan it for the highest existing number and increment;
-create the folder lazily, only when the first ADR is needed.
+standing `docs/adr/` convention). Files are numbered sequentially as `NNNN-slug.md` (four
+digits) **within that folder**, and the folder is created lazily, only when the first ADR
+is needed.
 
-- Write an ADR for exactly the grill's questions with `durable: true` AND status answered —
-  that flag already encodes the three gates: hard to reverse, surprising without context,
-  a real trade-off. Everything else never gets an ADR.
-- Template:
+An ADR records a **decision**, not a question: one file per architecturally significant
+decision — never one file per question, and never one file for two independent decisions.
 
-      # {Short title}
+### Which decisions get an ADR
 
-      {1-3 sentences: the context, the decision, and why.}
+The candidates are the answered `durable: true` questions — the ones that pass the three
+gates (hard to reverse, surprising without context, a real trade-off). A question that is
+open, reopened or deferred is never a candidate, and a decision reached only in a thread
+was never recorded as a decision: a thread message never answers the question itself, so
+do not mine threads for answers.
 
-  An ADR can be a single paragraph. The value is recording that a decision was made and
-  why, not filling out sections.
-- Add a **Considered options** bullet list only when the rejected alternatives are
-  non-obvious — source material: the question's `options` and `rec.why` (the design doc
-  records the same rejections under Locked decisions). Most ADRs won't need it.
-- Never renumber or rewrite an existing ADR.
+Work in this order — **cluster, split, then screen** — and screen groups, never questions.
+
+1. **Cluster.** Two candidates settle the same decision when their answers could not
+   change independently. Test: could you change one answer without changing the other? If
+   yes, they are two decisions. Questions that all answer "where does this live" are one
+   decision; storage engine and retry budget are two.
+2. **Split.** If one answer states two commitments that could change independently, that is
+   two decisions, each with its own ADR.
+3. **Screen.** A group gets an ADR only when a newcomer who has the code but not the grill
+   would plausibly have chosen differently. Test: *delete this ADR — would they build the
+   same thing?* If yes, the code already tells them: **no ADR**. If no, the ADR is
+   required. A decision that binds a contract, a data store, an external dependency, or a
+   deployment unit always passes. Screen the group: commitments that are individually
+   local but jointly structural are significant together.
+
+Zero ADRs is a valid outcome, and the Finish line says so. A durable decision that gets
+no ADR is **not lost**: it stays a Locked decision in the design doc, and the design doc
+cites `→ ADR-NNNN` only where a decision does have one — the missing pointer is the
+visible trace of the filter.
+
+### Writing the file
+
+For each decision that survives the screen:
+
+```sh
+node $SKILL/server.mjs adr --session <session> --folder <adr-folder> --title "<decision title>" [--status Proposed]
+```
+
+The command scaffolds `NNNN-slug.md` from `$SKILL/adr-template.md`: it claims the next
+free number in the folder (never overwriting an existing file), writes the title, the
+status, the date (the grill's start day, in local time) and the author (`git config
+user.name` in the project, else `grill-with-ui`), and leaves every section heading in
+place. It prints one line:
+`{"path":"docs/adr/0003-storage-layout.md","number":3,"title":"Storage layout"}`.
+Add `--status Proposed` only when the user's own answer reserved approval; the default is
+`Accepted`.
+
+Then fill the sections. **Add content under the headings; never delete a heading and never
+reorder them.** A section with nothing to say says "None.", and no placeholder may
+survive — replace `Option name` and the `…` in Decision Outcome.
+
+Where each section comes from — every one from the session, never from the design doc
+(the doc is written from the same material):
+
+| Section | Source |
+| --- | --- |
+| Context and Problem Statement | the group's question bodies, the grill's `intent`, and what forced the decision now |
+| Decision Drivers | every member's `rec.why` and `explore` pros |
+| Considered Options | the union of the members' `options`, plus the `explore` cons — real options only, never invented; "None." when there were none |
+| Decision Outcome | the accepted answer(s) in active voice: "We will …" |
+| Technical Implementation | the settled answers and the thread notes; "Not applicable." when the decision is not about implementation |
+| Consequences | Good/Bad from the trade-off (`rec.why`, `explore` cons); Risks from the risks the session raised (deferred questions, thread notes) |
+
+Write the outcome in active voice — "We will store blobs on the filesystem", not "it was
+decided that blobs are stored…".
+
+### The three rules
+
+1. **Immutable.** The record — Context, Drivers, Considered Options, Outcome,
+   Implementation, Consequences — is never edited. Only the `Status` line may change, and
+   only to `Superseded by ADR-NNN`. To supersede: scaffold the new ADR (which allocates
+   its number), write its body, then update the old file's Status line — one line,
+   nothing else. The new ADR names the one it replaces in its Context section. When the
+   superseding decision arrives from outside a grill — a pull request, a human later — the
+   new ADR still names the old one, and updating the old Status line is the author's job;
+   the rule travels in the file (the template's closing comment).
+2. **Live in git.** The files live in the repository and are reviewed by pull request.
+   This one is for the human reader, so it rides in the template's closing comment.
+3. **One decision per record.** Never bundle two unrelated choices in one ADR.
+
+### Status
+
+`Accepted` unless the user's own answer reserved approval ("propose it and I'll decide"),
+which is `Proposed`. A grill never writes `Rejected` — a rejected *option* is a
+Considered Option, not the record's status — and never writes `Superseded by …` at
+creation. A conditional answer ("we will try X and revisit") is still `Accepted` for X;
+the review trigger goes under Consequences → Risks.
+
+### Recording them
+
+`finished.adrs` records the paths written, **one entry per file** (never one per
+decision), project-relative. The server accepts any array of strings, so this is the
+brief's rule, not the server's.
 
 ## Relation to the design doc
 
@@ -81,4 +160,9 @@ The exhaustive design doc (`.grill-with-ui/<yymmdd>-<topic-slug>/design.md`) is 
 remains the per-topic record; the glossary and the ADRs are cumulative, standing artifacts
 across grills — each in the bounded context a map scopes them to, or the repo's root
 `CONTEXT.md` and `docs/adr/` where no context map applies. Session-meta questions (id `q-domain`) produce no ADR — they are never durable,
-so this falls out naturally.
+so this falls out naturally. A durable decision that the screen rules out produces no ADR
+either: it stays a Locked decision in the design doc, which cites `→ ADR-NNNN` only where a
+decision does have one.
+
+The design doc is written **after** the ADRs, because it cites their numbers. Write the
+ADRs first, then the design doc. The glossary needs neither and can land at any point.

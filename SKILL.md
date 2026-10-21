@@ -1,8 +1,8 @@
 ---
 name: grill-with-ui
-description: Run a grilling interview on a local browser page instead of the terminal. Every question is laid out with its recommendation, answerable in any order, with a per-question discussion thread and one "Send to Agent" button. An opt-in first question can additionally land settled terms in a CONTEXT.md glossary and durable decisions as ADRs. Use when the user says "grill with ui", invokes /grill-with-ui with a topic, or says "/grill-with-ui resume".
+description: Run a grilling interview on a local browser page instead of the terminal. Every question is laid out with its recommendation, answerable in any order, with a per-question discussion thread and one "Send to Agent" button. An opt-in first question can additionally land settled terms in a CONTEXT.md glossary and durable decisions as ADRs — one per architecturally significant decision. Use when the user says "grill with ui", invokes /grill-with-ui with a topic, or says "/grill-with-ui resume".
 metadata:
-   version: 0.1.0
+   version: 0.2.0
 ---
 
 # grill-with-ui
@@ -118,16 +118,18 @@ GRILL_PATCH
    domain-modeling-mode question, first, id `q-domain`:
    - `title`: "Also keep a glossary and ADRs?"
    - `body`: At Finish the design doc is always written to `doc`; opting in additionally
-     keeps a `CONTEXT.md` glossary of settled terms and one short ADR per durable
-     decision, both written when the grill finishes. The glossary lands at the repo root —
+     keeps a `CONTEXT.md` glossary of settled terms and one ADR per architecturally
+     significant decision — the big, hard-to-reverse choices, grouped where several
+     questions settle the same one — both written when the grill finishes. The glossary
+     lands at the repo root —
      except in a repo that keeps a `CONTEXT-MAP.md` at its root, where each bounded
      context owns its own `CONTEXT.md`: there Finish reads the map, lands the glossary in
      the bounded context this topic belongs to (confirmed with you at Finish when unclear)
      and the ADRs in that context's own ADR folder.
    - `options`: A "Yes — also write CONTEXT.md and ADRs", B "No — the design doc only (default)".
    - `rec`: option A, why: locked decisions then live where the next engineer already looks —
-     the glossary and docs/adr/ — not only in a dated design doc; the cost is two small repo
-     files.
+     the glossary and docs/adr/ — not only in a dated design doc; the cost is the glossary
+     plus one file per significant decision.
    - `durable: false` (it is session meta, never a topic decision).
    Then the usual one to three independent topic questions follow (round 1: after
    `q-domain`), each with lettered options, one recommendation, and a one-paragraph why,
@@ -360,36 +362,46 @@ also be changed this way ("write the doc to …" → patch `"doc"`).
 
 On a `finish` action, or when the user says finish in the terminal:
 
-1. Write the design doc to `doc` (relative to the project root). It is exhaustive and
-   self-contained, in this order: a one-paragraph summary (linking `visual.html` in the doc's
-   folder when there is one, see step 4); **Terms** (each with its
-   Avoid list); **Why** (the problem in the user's words); **Locked decisions** (every
-   `durable` question: the decision, the rejected options and why each lost); **Routine
-   choices** (every other answered question, one bullet each); **Verified facts** (anything
-   you established by exploring rather than asking, if any); **Risks**; **Deferred**
-   (deferred questions, with what would reopen them); **Open threads** (discussion points
-   that ended without a decision). Exclude the domain-modeling-mode meta question (`q-domain`) from
-   every section: it is session meta, not a topic decision. Do not compress: a reader with
-   no access to the session must be able to build from it.
-2. If `domainModeling` is true — in state or in the changes collected for this send's
+1. If `domainModeling` is true — in state or in the changes collected for this send's
    patch, a `q-domain` reopen/revoke among them turning it off — write the repo-level docs
-   per `$SKILL/domain-brief.md`:
-   (a) **locate the glossary first**: run `node $SKILL/server.mjs context --session
+   per `$SKILL/domain-brief.md`, **ADRs before the design doc**: the doc cites their
+   numbers.
+   (a) **locate the locations first**: run `node $SKILL/server.mjs context --session
    <session>`. `map: false` → the repo-root `CONTEXT.md`. `map: true` → the repo scopes one
    glossary per bounded context: match this grill's topic and intent to the single clear
    candidate in `contexts` (the brief gives the criteria) and use it — merge the context's
    `CONTEXT.md` when it exists, create it in the context's `folder` when it does not. No
    clear match or several → ask the user in the terminal, offering the candidates, then
    `fallback`, then "no glossary this grill", and use their answer.
-   (b) merge this grill's terms into the located file (create lazily; merge, never
-   clobber); for each answered question with `durable: true`, write
-   `NNNN-slug.md` into the ADR folder the brief picks — the matched context's `adr` from
-   `context`, else `fallbackAdr` (scan existing numbers; create lazily);
-   (c) remember the paths — the step that patches `finished` must then also include
+   (b) **ADRs**: take the answered questions with `durable: true` and cluster them into
+   the decisions they settle, split any that state two independently-changeable
+   commitments, then screen each group (the brief gives the three tests) — a decision
+   that fails the screen gets no ADR and stays a Locked decision in the design doc. For
+   every decision that survives, run
+   `node $SKILL/server.mjs adr --session <session> --folder <adr-folder> --title "<decision title>"`
+   — the folder is the matched context's `adr` from `context`, else `fallbackAdr` — which
+   scaffolds the file with the next free number, the date and the author; then fill its
+   sections per the brief. Keep the paths it prints.
+   (c) **the glossary**: merge this grill's terms into the located file (create lazily;
+   merge, never clobber).
+   (d) remember the paths — the step that patches `finished` must then also include
    `"context": <path>` (when the glossary was written, wherever it resolved to) and
    `"adrs": [<paths…>]` (when any
-   ADR was written), alongside `doc`/`at` as that step already does. Neither was written:
-   leave the key out.
+   ADR was written — one entry per file, never one per decision), alongside `doc`/`at` as
+   that step already does. Neither was written: leave the key out.
+2. Write the design doc to `doc` (relative to the project root). It is exhaustive and
+   self-contained, in this order: a one-paragraph summary (linking `visual.html` in the doc's
+   folder when there is one, see step 4); **Terms** (each with its
+   Avoid list); **Why** (the problem in the user's words); **Locked decisions** (every
+   `durable` question: the decision, the rejected options and why each lost; when that
+   decision has an ADR, end the bullet with `→ ADR-NNNN` — the same pointer on every
+   bullet of a cluster, two pointers on a question that was split); **Routine
+   choices** (every other answered question, one bullet each); **Verified facts** (anything
+   you established by exploring rather than asking, if any); **Risks**; **Deferred**
+   (deferred questions, with what would reopen them); **Open threads** (discussion points
+   that ended without a decision). Exclude the domain-modeling-mode meta question (`q-domain`) from
+   every section: it is session meta, not a topic decision. Do not compress: a reader with
+   no access to the session must be able to build from it.
 3. Patch `"finished": { "doc": … }` and `"agent": { "status": "waiting" }`
    (after a page Finish this is the send's one patch, with `handled`); the page shows the
    finished banner and locks staging.
@@ -408,7 +420,9 @@ On a `finish` action, or when the user says finish in the terminal:
 5. Once there is no draw in flight and the exports are complete, stop the persistent
    Monitor with TaskStop, or stop the server as described in Wait mode.
 6. Print one line with the doc path (and the visual's, plus the glossary's path and the ADRs when
-   domain-modeling mode wrote them). End.
+   domain-modeling mode wrote them). When durable decisions produced no ADR, say how many
+   ("…, 2 ADRs to docs/adr/, 3 durable decisions had no ADR") — the page banner only
+   counts the files that exist. End.
 
 ## Wait mode (agents without a Monitor tool)
 
