@@ -17,6 +17,10 @@
 //   context  --session DIR                          parse the repo's CONTEXT-MAP.md and print one JSON line:
 //                                                   {map, rootGlossary, fallback, fallbackAdr, contexts:[{name,path,folder,adr}]}
 //                                                   — the bounded-context locations the Finish step picks from
+//   adr      --session DIR --folder F --title T     scaffold one ADR file (NNNN-slug.md) from adr-template.md:
+//                                                   [--status Accepted|Proposed] the number is the next free one in F,
+//                                                   the date is the grill's start day, the author is git's user.name;
+//                                                   print one JSON line {path,number,title}
 //   patch    --session DIR [--file P]               apply a JSON patch (stdin, or the file P) to state.json: merge,
 //                                                   validate, write atomically, print one short summary line
 //
@@ -338,6 +342,85 @@ function cmdContext(o) {
   });
 }
 
+// ---- adr (scaffold one ADR file: the template, the number, the date, the author) ----
+// The agent writes the sections; the server owns the mechanical parts. The number is
+// claimed once — two grills finishing at once in one repo cannot pick the same one, and
+// an existing file is never overwritten — and the header always matches the template.
+function gitAuthor(project) {
+  try {
+    const name = execFileSync("git", ["config", "--get", "user.name"],
+      { cwd: project, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    if (name) return name;
+  } catch { /* no git, not a repo, or no identity configured */ }
+  return "grill-with-ui";
+}
+// The local day of the grill's start: state.created is UTC, the doc folder's stamp is
+// local, so the ADR's date has to be rendered in local time to match it.
+function startDate(created) {
+  const d = typeof created === "string" ? new Date(created) : new Date();
+  const when = Number.isNaN(d.getTime()) ? new Date() : d;
+  return `${when.getFullYear()}-${pad2(when.getMonth() + 1)}-${pad2(when.getDate())}`;
+}
+const replaceLine = (text, prefix, value) => {
+  const lines = text.split("\n");
+  const i = lines.findIndex((l) => l.startsWith(prefix));
+  if (i < 0) return text;
+  lines[i] = value;
+  return lines.join("\n");
+};
+function cmdAdr(o) {
+  const session = mustSession(o);
+  const st = readState(session);
+  if (!st) die(`no state.json in ${session}`, 1);
+  const project = st.project;
+  if (typeof project !== "string" || !path.isAbsolute(project)) die("state has no project", 1);
+  if (!o.folder || o.folder === true) die("--folder <adr-folder> is required");
+  if (!o.title || o.title === true) die("--title <decision title> is required");
+  const title = String(o.title).trim();
+  if (!title) die("--title <decision title> is required");
+  const status = o.status && o.status !== true ? String(o.status).trim() : "Accepted";
+  if (status !== "Accepted" && status !== "Proposed") die(`--status must be Accepted or Proposed, not ${status}`);
+  const folder = path.resolve(project, String(o.folder));
+  if (escapes(project, folder)) die(`the ADR folder ${o.folder} is outside the project`);
+  const tplFile = path.join(HERE, "adr-template.md");
+  if (!fs.existsSync(tplFile)) die("adr-template.md is missing from the skill folder");
+  const tpl = fs.readFileSync(tplFile, "utf8");
+  const author = gitAuthor(project);
+  const date = startDate(st.created);
+  try { fs.mkdirSync(folder, { recursive: true }); } catch (e) { die(`could not create the ADR folder ${o.folder}: ${e.code || oneLine(e.message)}`, 1); }
+  // The next number after the highest one in the folder, then up until an unused one is
+  // free: the highest can already be taken by a file that appeared since the scan.
+  const used = () => {
+    const seen = new Set();
+    for (const name of fs.readdirSync(folder)) {
+      const m = /^(\d{4})-/.exec(name);
+      if (m) seen.add(Number(m[1]));
+    }
+    return seen;
+  };
+  let number = 0, file = "", text = "";
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const taken = used();
+    number = 1;
+    for (const n of taken) if (n >= number) number = n + 1;
+    while (taken.has(number)) number++;
+    const num = String(number).padStart(4, "0");
+    file = path.join(folder, `${num}-${slugOf(title)}.md`);
+    text = replaceLine(replaceLine(replaceLine(replaceLine(tpl,
+      "# NNNN:", `# ${num}: ${title}`),
+      "* **Status:**", `* **Status:** ${status}`),
+      "* **Date:**", `* **Date:** ${date}`),
+      "* **Authors:**", `* **Authors:** ${author}`);
+    try { fs.writeFileSync(file, text, { flag: "wx" }); break; }
+    catch (e) {
+      if (e.code === "EEXIST") continue; // claimed between the scan and the write
+      die(`could not write the ADR ${path.basename(file)}: ${e.code || oneLine(e.message)}`, 1);
+    }
+  }
+  if (!fs.existsSync(file)) die("could not claim a free ADR number", 1);
+  print({ path: posix(path.relative(project, file)), number, title });
+}
+
 // ---- patch (the agent's only way to write state.json) ----
 // The agent sends only what changed, so the whole state never passes through its context.
 //   null deletes a key, at any level
@@ -581,7 +664,7 @@ function cmdPatch(o) {
 }
 
 const o = parseArgs(process.argv.slice(2));
-const cmds = { new: cmdNew, serve: cmdServe, sessions: cmdSessions, pending: cmdPending, wait: cmdWait, url: cmdUrl, context: cmdContext, patch: cmdPatch };
+const cmds = { new: cmdNew, serve: cmdServe, sessions: cmdSessions, pending: cmdPending, wait: cmdWait, url: cmdUrl, context: cmdContext, adr: cmdAdr, patch: cmdPatch };
 // own keys only: `toString` and friends are inherited, not subcommands
 (Object.hasOwn(cmds, o._[0] ?? "") ? cmds[o._[0]]
-  : () => die("usage: server.mjs new|serve|sessions|pending|wait|url|context|patch [--session DIR] ..."))(o);
+  : () => die("usage: server.mjs new|serve|sessions|pending|wait|url|context|adr|patch [--session DIR] ..."))(o);
