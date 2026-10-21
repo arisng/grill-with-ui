@@ -97,8 +97,9 @@ Everything staged survives opening and closing those panels. The visual is view-
 phone — send feedback on it from a wider window.
 
 The first question of every grill asks whether settled terms and durable decisions should
-also be kept as standing files — a `CONTEXT.md` glossary and one short
-ADR per durable decision — alongside the design doc, which is written
+also be kept as standing files — a `CONTEXT.md` glossary and one ADR per architecturally
+significant decision, the big hard-to-reverse choices, grouped where several questions
+settle the same one — alongside the design doc, which is written
 either way; no (the default) changes nothing else. The glossary goes to the project root,
 except in a repo that keeps a `CONTEXT-MAP.md` at its root: there the root belongs to the
 context map, so Finish reads it, lands the glossary in the bounded context this topic
@@ -174,10 +175,15 @@ Only in domain-modeling mode does Finish also write these standing files: `CONTE
 (merged into, never overwritten; the project root, or the matched bounded context's file
 when a `CONTEXT-MAP.md` scopes it) and `NNNN-slug.md` in `docs/adr/` or that context's
 ADR folder, recorded in
-`finished.context`/`finished.adrs`.
+`finished.context`/`finished.adrs`. Each ADR follows one template — status, date,
+authors, context, drivers, the options that were weighed, the outcome, and the
+consequences — and records **one decision**, not one question: durable questions that
+settle the same choice share a file, and a durable choice too small to be worth a record
+keeps its place in the design doc alone.
 
 In this repo: `server.mjs` (the server and CLI), `page.html` (the page), `SKILL.md` (the
-prompt the agent follows), `test/`, and `design/` + `docs/design.md` (how it was designed).
+prompt the agent follows), `domain-brief.md` and `adr-template.md` (the standing docs it
+writes and their shape), `test/`, and `design/` + `docs/design.md` (how it was designed).
 `design/record-demo.mjs` re-records the GIF above by driving the real page; it needs
 Playwright and `ffmpeg`.
 
@@ -190,8 +196,14 @@ node server.mjs sessions [--all]                               list this project
 node server.mjs pending  --session DIR                         print sends past agent.handled
 node server.mjs wait     --session DIR [--after N] [--timeout S]  block until the next send (exit 3 on timeout)
 node server.mjs url      --session DIR [--timeout S]           print the running server's url
+node server.mjs context  --session DIR                          print the glossary and ADR locations for this repo
+node server.mjs adr      --session DIR --folder F --title T     scaffold one ADR file from adr-template.md
 node server.mjs patch    --session DIR [--file P]              apply a JSON patch (stdin or P) to state.json
 ```
+
+`adr` claims the next free `NNNN` in the folder (never overwriting an existing file),
+writes the title, status, date and author, and leaves the sections for the agent to fill;
+it prints one line with the path and the number.
 
 `patch` merges by the rules in `SKILL.md` ("Patching state.json"). A bad patch exits
 non-zero and leaves the file untouched; a good one prints one short summary line, never the
