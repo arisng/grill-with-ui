@@ -119,10 +119,14 @@ Per-topic outputs group under `.grill-with-ui/<yymmdd>-<slug>/` (`design.md` + e
 The opt-in **domain-modeling mode** opens round 1 with a `q-domain` question ("Also keep
 a glossary and ADRs?"); a yes stores a top-level `domainModeling: true` in state (absent
 = off, reopen clears it). At Finish, when on, the agent also writes
-`CONTEXT.md` (merged, never clobbered) and one ADR per answered durable question in
-the ADR folder the brief picks — `docs/adr/`, or the matched bounded context's own
-folder — per the sibling brief `domain-brief.md`. The design doc is written either
-way, unchanged. The glossary's location resolves by rule: repo root normally; in a repo
+`CONTEXT.md` (merged, never clobbered) and one ADR per architecturally significant
+decision in the ADR folder the brief picks — `docs/adr/`, or the matched bounded
+context's own folder — per the sibling brief `domain-brief.md`. An ADR records a
+decision, not a question: durable questions that settle the same choice share one file,
+and a durable choice the screen rules out gets none and stays a Locked decision in the
+design doc alone. The design doc is written after the ADRs, so it can cite their
+numbers. The design doc is written either way, unchanged. The glossary's location
+resolves by rule: repo root normally; in a repo
 with a `CONTEXT-MAP.md` at its root, Finish parses the map (`server.mjs context
 --session <session>` lists each bounded context's name, `CONTEXT.md` path, folder and ADR
 folder), matches the grill's topic to one context — asking the user when the match is
@@ -151,13 +155,16 @@ independent of the session's domain-modeling mode.
   action*, *durable decision*, *session folder* — and avoid their listed _Avoid_ words
   (batch, wave, submit, reply, ADR, …) — where ADR is banned only as a synonym for the
   decision concept (*durable decision* is the concept word); naming the artifact file
-  (`docs/adr/0001-slug.md`, "one ADR per durable decision") is correct usage. Keep
+  (`docs/adr/0001-storage-layout.md`, "one ADR per significant decision") is correct
+  usage. "Architecturally significant" is an adjective the ADR brief uses to screen
+  durable decisions, not a second concept word — it gets no Terms entry of its own. Keep
   SKILL.md, README.md, and page UI strings consistent when wording changes.
 - **`SKILL.md` is the product**: its YAML frontmatter `description` (the trigger phrase
   "grill with ui"), the listening-mode rules, and the state/send schemas at the bottom are
   the contract the page, server, and tests all implement — now including top-level
   `domainModeling` and `finished.context`/`adrs`, with `domain-brief.md` (the Finish-time
-  docs formats) part of the same contract. Schema changes ripple through `validateState`
+  docs formats) and `adr-template.md` (the ADR shape `server.mjs adr` scaffolds) part of
+  the same contract. Schema changes ripple through `validateState`
   in `server.mjs`, the page render code, `visual-brief.md`, and the tests — update all of
   them together.
 - **Error/output contracts are tested**: CLI failures exit non-zero with exactly one stderr
