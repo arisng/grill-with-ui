@@ -1,6 +1,6 @@
 # Commit Scope Constitution
 
-Last Updated: 2026-09-23
+Last Updated: 2026-10-21
 
 ## Purpose
 
@@ -52,7 +52,7 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 ### `agent` (Tier 2 — skill assets)
 
 - `skill`: the skill's prompt contract and companion briefs:
-  `SKILL.md`, `visual-brief.md`, `domain-brief.md`.
+  `SKILL.md`, `visual-brief.md`, `domain-brief.md`, `adr-template.md`.
 
 ### `copilot` (Tier 2 — GitHub Copilot assets)
 
@@ -95,6 +95,20 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 3. Record the change under Amendment History and bump Last Updated.
 
 ## Amendment History
+
+### 2026-10-21 - Amendment #2
+
+**Changes:**
+- Extended the `agent`/`skill` scope to `adr-template.md`, the ADR shape that
+  `server.mjs adr` scaffolds at Finish.
+
+**Rationale:**
+The ADR template is a skill asset the agent writes verbatim, so it belongs beside
+`domain-brief.md`. The scope named only the prompt and the two briefs, and the
+constitution asks for an amendment before a file that fits no scope is committed.
+
+**Migration Notes:**
+No history rewriting; the scope grows from three files to four.
 
 ### 2026-09-23 - Amendment #1
 
