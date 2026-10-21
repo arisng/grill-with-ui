@@ -290,6 +290,94 @@ test("context: parses CONTEXT-MAP.md into bounded-context locations; no map mean
     "a root with only .docs/adr points the no-context case there");
 });
 
+// ---- adr: the server scaffolds the file, the agent fills it ----
+const ADR_SECTIONS = ["## Context and Problem Statement", "## Decision Drivers", "## Considered Options",
+  "## Decision Outcome", "### Technical Implementation", "## Consequences"];
+
+test("adr: scaffolds the template with the number, the status and the date; the agent fills the sections", () => {
+  const { session, project } = newSession(tmp("grill-adr-"), "Storage layout");
+  const out = JSON.parse(run(["adr", "--session", session, "--folder", "docs/adr", "--title", "Store blobs on the filesystem"]));
+  assert.equal(out.path, "docs/adr/0001-store-blobs-on-the-filesystem.md", "the path is project-relative");
+  assert.equal(out.number, 1, "the first ADR in the folder is 0001");
+  assert.equal(out.title, "Store blobs on the filesystem");
+  const text = readFileSync(join(project, "docs", "adr", "0001-store-blobs-on-the-filesystem.md"), "utf8");
+  assert.match(text, /^# 0001: Store blobs on the filesystem$/m, "the heading carries the number and the title");
+  assert.match(text, /^\* \*\*Status:\*\* Accepted$/m, "Accepted by default");
+  assert.match(text, /^\* \*\*Date:\*\* \d{4}-\d{2}-\d{2}$/m, "the date is written as YYYY-MM-DD");
+  assert.match(text, /^\* \*\*Authors:\*\* \S/m, "the author is filled in, never left as a placeholder");
+  for (const h of ADR_SECTIONS) assert.ok(text.includes(h), `the scaffold carries ${h}`);
+  assert.ok(!text.includes("NNNN:"), "the number placeholder is gone from the heading");
+  assert.ok(!text.includes("YYYY-MM-DD"), "the date placeholder is gone");
+  const second = JSON.parse(run(["adr", "--session", session, "--folder", "docs/adr", "--title", "Second choice"]));
+  assert.equal(second.number, 2, "the next scaffold claims the next free number");
+  assert.equal(second.path, "docs/adr/0002-second-choice.md");
+});
+
+test("adr: an existing ADR is never overwritten; the number after the highest is claimed", () => {
+  const { session, project } = newSession(tmp("grill-adr-num-"), "Numbering");
+  const dir = join(project, "docs", "adr");
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "0003-taken.md"), "# 0003: taken\n");
+  const out = JSON.parse(run(["adr", "--session", session, "--folder", "docs/adr", "--title", "After the gap"]));
+  assert.equal(out.number, 4, "the number after the highest existing one is used");
+  assert.equal(readFileSync(join(dir, "0003-taken.md"), "utf8"), "# 0003: taken\n", "the taken file is untouched");
+});
+
+test("adr: the date is the local day of the grill's start, and the author is git's user.name", () => {
+  const { session, project } = newSession(tmp("grill-adr-meta-"), "Metadata");
+  // Near a day boundary in UTC, so a naive slice of the timestamp would land on the wrong day.
+  const st = stateOf(session);
+  st.created = "2026-03-01T02:00:00.000Z";
+  writeFileSync(join(session, "state.json"), JSON.stringify(st));
+  const when = new Date(st.created);
+  const local = `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, "0")}-${String(when.getDate()).padStart(2, "0")}`;
+  const cfg = join(tmp("grill-gitcfg-"), "gitconfig");
+  writeFileSync(cfg, "[user]\n\tname = Ada Lovelace\n");
+  const out = JSON.parse(run(["adr", "--session", session, "--folder", "docs/adr", "--title", "Dated"],
+    { env: { ...env, GIT_CONFIG_GLOBAL: cfg, GIT_CONFIG_SYSTEM: cfg, GIT_CONFIG_NOSYSTEM: "1" } }));
+  const text = readFileSync(join(project, out.path), "utf8");
+  assert.match(text, new RegExp(`^\\* \\*\\*Date:\\*\\* ${local}$`, "m"), "the date is the local day of state.created");
+  assert.match(text, /^\* \*\*Authors:\*\* Ada Lovelace$/m, "the author is git's user.name in the project");
+});
+
+test("adr: with no git identity the author falls back to grill-with-ui", () => {
+  const { session, project } = newSession(tmp("grill-adr-noauthor-"), "No author");
+  const cfg = join(tmp("grill-gitcfg-"), "gitconfig");
+  writeFileSync(cfg, "");
+  const out = JSON.parse(run(["adr", "--session", session, "--folder", "docs/adr", "--title", "Anonymous"],
+    { env: { ...env, GIT_CONFIG_GLOBAL: cfg, GIT_CONFIG_SYSTEM: cfg, GIT_CONFIG_NOSYSTEM: "1" } }));
+  const text = readFileSync(join(project, out.path), "utf8");
+  assert.match(text, /^\* \*\*Authors:\*\* grill-with-ui$/m, "an unset identity falls back to the tool's name");
+});
+
+test("adr: a folder outside the project is refused with one line, and nothing is written", () => {
+  const { session } = newSession(tmp("grill-adr-out-"), "Outside");
+  const outside = tmp("grill-adr-outside-");
+  const res = spawnSync(process.execPath, [SERVER, "adr", "--session", session, "--folder", join(outside, "adr"), "--title", "Nope"], { encoding: "utf8", env });
+  assert.notEqual(res.status, 0, "the command fails");
+  assert.equal(res.stderr.trim().split("\n").length, 1, "one stderr line, never a stack trace");
+  assert.match(res.stderr, /outside the project/, "the message names the reason");
+  assert.equal(readdirSync(outside).length, 0, "nothing was written outside the project");
+  assert.equal(res.stdout.trim(), "", "a failure prints nothing on stdout");
+});
+
+test("adr: a bad status is refused, and a Proposed record is written when it is asked for", () => {
+  const { session, project } = newSession(tmp("grill-adr-status-"), "Status");
+  const bad = spawnSync(process.execPath, [SERVER, "adr", "--session", session, "--folder", "docs/adr", "--title", "Nope", "--status", "Rejected"], { encoding: "utf8", env });
+  assert.notEqual(bad.status, 0, "Rejected is not a status a grill writes");
+  assert.match(bad.stderr, /--status must be Accepted or Proposed/, "the message names the allowed values");
+  const out = JSON.parse(run(["adr", "--session", session, "--folder", "docs/adr", "--title", "Proposed one", "--status", "Proposed"]));
+  assert.match(readFileSync(join(project, out.path), "utf8"), /^\* \*\*Status:\*\* Proposed$/m, "the status is written as asked");
+});
+
+test("the ADR template carries every section, and domain-brief.md names the file", () => {
+  const tpl = readFileSync(join(here, "..", "adr-template.md"), "utf8");
+  for (const h of [...ADR_SECTIONS, "* **Status:**", "* **Date:**", "* **Authors:**", "* **Good:**", "* **Bad:**", "* **Risks:**"])
+    assert.ok(tpl.includes(h), `adr-template.md must carry ${h}`);
+  assert.ok(readFileSync(join(here, "..", "domain-brief.md"), "utf8").includes("adr-template.md"),
+    "domain-brief.md must name the template the agent copies");
+});
+
 test('serve: /context with state.json corrupted before any read → 404 {"error":"no state"}', async (t) => {
   const { session } = newSession(tmp("grill-cs-"));
   // Corrupt BEFORE this serve process's first GET: one good read would keep lastGoodState
