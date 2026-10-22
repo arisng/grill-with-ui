@@ -184,3 +184,14 @@ independent of the session's domain-modeling mode.
   the prompt, next to the unit tests for the server.
 - Commit messages follow a light conventional style scoped to the file
   (`docs(skill):`, `test(server):`, `no-mistakes(document):`).
+- **This repo is a fork.** Upstream is `jasonku09/grill-with-ui` (git remote `upstream`);
+  the method lineage is `mattpocock/skills` (not a git ancestor — the interview method and
+  the `durable`/glossary/ADR rules were ported from it). Keep the fork's own shape:
+  domain-modeling mode, responsive tiers, the writing-clarity profile, the Taskfile, the
+  waza eval suite, and the client-side three-state dark theme are *not* upstream's, and
+  upstream's server-backed theme and different `state.json` fields must not be taken
+  wholesale. To sync, use the `fork-sync` skill in `.github/skills/fork-sync/` — it
+  classifies every incoming commit as ADOPT (cherry-pick), ADAPT (port the intent, run
+  the contract ripple checklist), REWORK (contract file the fork also changed), or DEFER.
+  Never merge upstream wholesale. Report with
+  `node .github/skills/fork-sync/scripts/sync-report.mjs` (read-only).
