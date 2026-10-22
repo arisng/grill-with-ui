@@ -36,10 +36,17 @@ agent looks for skills, under the name `grill-with-ui`. A symlink keeps `git pul
 update path; copying the folder works too. Node 20 or newer is the only requirement.
 
 ```sh
-git clone https://github.com/jasonku09/grill-with-ui ~/Projects/grill-with-ui
+git clone https://github.com/arisng/grill-with-ui ~/Projects/grill-with-ui
 ln -s ~/Projects/grill-with-ui ~/.claude/skills/grill-with-ui   # Claude Code (Cursor reads it too)
 ln -s ~/Projects/grill-with-ui ~/.agents/skills/grill-with-ui   # Codex, Gemini CLI, Cursor, Copilot
 ```
+
+This repository is a fork of [jasonku09/grill-with-ui](https://github.com/jasonku09/grill-with-ui),
+which remains the upstream code source. The fork adds domain-modeling mode (a `CONTEXT.md`
+glossary and ADRs), a responsive layout for phone and tablet, a writing-clarity profile, a
+Taskfile, and an evaluation suite. Install from the fork to get those; the upstream
+repository stays the place to watch for new upstream work. See
+[Keeping the fork in sync](#keeping-the-fork-in-sync) below.
 
 Where each agent looks, and how to start a grill once it is there:
 
@@ -294,3 +301,46 @@ Both specs set `inject_skill_body: false` and `trigger_skill_routing: true`. The
 body is not pasted into the agent's system prompt, so the agent has to *route* to the
 skill the way a real one does — and waza's "did it trigger?" detector then measures that
 routing instead of counting an invocation that an injected body made unnecessary.
+
+## Keeping the fork in sync
+
+This repository is a fork. It has three upstreams, and each needs a different kind of
+attention:
+
+| Source | Kind | Attention |
+|--------|------|-----------|
+| [`jasonku09/grill-with-ui`](https://github.com/jasonku09/grill-with-ui) | The code this was forked from | Adopt its changes, adapted to the fork's contract |
+| [`mattpocock/skills`](https://github.com/mattpocock/skills) | The method this grew out of (the interview method, the `durable` flag, the glossary and ADR rules) | Watch for method drift; there is no git ancestry to merge |
+| The installed copy in `~/.agents/skills/grill-with-ui` | What the agent actually runs | Refresh after a sync, or the change nobody has |
+
+The `fork-sync` skill in [`.github/skills/fork-sync/SKILL.md`](.github/skills/fork-sync/SKILL.md)
+runs the whole routine. Start with its read-only report:
+
+```sh
+node .github/skills/fork-sync/scripts/sync-report.mjs
+```
+
+It fetches upstream, finds the merge base, and prints every incoming commit tiered by
+how much of the fork's contract it touches:
+
+| Tier | What it means | What to do |
+|------|---------------|------------|
+| **ADOPT** | No contract file, no overlap | Cherry-pick as-is |
+| **ADAPT** | Touches a contract file | Port the intent; run the contract ripple checklist |
+| **REWORK** | Touches a contract file the fork also changed | Port the intent onto the fork's structure |
+| **DEFER** | Not upstream yet, or a design question | Leave it, and say why |
+
+**Never merge upstream wholesale.** The fork's own shape — domain-modeling mode, the
+responsive tiers, the writing-clarity profile, the Taskfile, the eval suite, and the
+client-side three-state dark theme — is not upstream's, and upstream's equivalents
+(server-backed theme, a different `state.json`) are not drop-in replacements. A commit's
+diff is evidence of intent, not a patch to apply.
+
+Two things make a sync land safely. First, `SKILL.md` is the product: its schema is
+implemented by `server.mjs`, `page.html`, the briefs, and the tests, so a schema change
+must move through all of them — see the skill's `references/contract-ripple.md`. Second,
+bump `metadata.version` in `SKILL.md` and reinstall:
+
+```sh
+npx skills update -g -y
+```
