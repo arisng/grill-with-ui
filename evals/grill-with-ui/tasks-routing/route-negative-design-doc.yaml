@@ -1,0 +1,20 @@
+id: route-negative-design-doc
+name: Does not route to grill-with-ui — a design document is not a grill
+description: >-
+  The prompt asks for a written design document. It is design work, but it is not
+  a request for a grilling interview, so the skill must stay out of it.
+tags:
+  - routing
+  - negative
+inputs:
+  prompt: |
+    Draft a short design document for a rate limiter.
+expected:
+  should_trigger: false
+graders:
+  - name: skill-not-invoked
+    type: skill_invocation
+    weight: 1
+    config:
+      forbidden_skills:
+        - grill-with-ui

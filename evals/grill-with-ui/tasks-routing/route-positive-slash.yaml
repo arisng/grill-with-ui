@@ -1,0 +1,25 @@
+id: route-positive-slash
+name: Routes to grill-with-ui — route-positive-slash
+description: >-
+  The prompt names the skill's trigger phrase, so the agent must invoke the skill
+  rather than answer the request directly.
+tags:
+  - routing
+  - positive
+inputs:
+  prompt: |
+    /grill-with-ui design the onboarding flow for new accounts
+
+    This is an automated run: there is no browser and no interactive user. If the
+    skill applies, do what it asks as far as it can go without a browser, then stop
+    and report. Make sure no server process is left running when you stop.
+expected:
+  should_trigger: true
+graders:
+  - name: skill-invoked
+    type: skill_invocation
+    weight: 1
+    config:
+      required_skills:
+        - grill-with-ui
+      mode: any_order

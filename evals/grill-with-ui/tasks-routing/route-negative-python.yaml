@@ -1,0 +1,20 @@
+id: route-negative-python
+name: Does not route to grill-with-ui — route-negative-python
+description: >-
+  The prompt is ordinary work with no grilling interview asked for, so the skill
+  must stay out of it and the agent answers directly.
+tags:
+  - routing
+  - negative
+inputs:
+  prompt: |
+    Write a Python function that reverses a linked list.
+expected:
+  should_trigger: false
+graders:
+  - name: skill-not-invoked
+    type: skill_invocation
+    weight: 1
+    config:
+      forbidden_skills:
+        - grill-with-ui

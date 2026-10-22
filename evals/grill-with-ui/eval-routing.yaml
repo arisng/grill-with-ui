@@ -1,0 +1,34 @@
+# Routing evaluation: does SKILL.md's description send the right prompts to the skill?
+#
+# The main suite injects the SKILL.md body into every task's system prompt, so the
+# agent always has the skill in context and waza's "did the skill trigger?" detector
+# cannot see a real routing decision. This spec turns the body off
+# (inject_skill_body: false) and asks the agent to route through the skill itself
+# (trigger_skill_routing: true), so a SkillInvoked event is the routing decision.
+#
+# Run it on its own:
+#   waza run evals/grill-with-ui/eval-routing.yaml
+name: grill-with-ui-routing-eval
+description: >-
+  Routing evaluation for grill-with-ui: the description's trigger phrases decide
+  which prompts reach the skill and which are answered directly.
+skill: grill-with-ui
+version: "1.0"
+config:
+  trials_per_task: 1
+  timeout_seconds: 420
+  parallel: false
+  executor: copilot-sdk
+  model: xiaomi/mimo-v2.6-flash
+  judge_model: xiaomi/mimo-v2.6-flash
+  inject_skill_body: false
+  trigger_skill_routing: true
+  skill_directories:
+    - ../..
+metrics:
+  - name: routing_accuracy
+    weight: 1.0
+    threshold: 0.9
+    description: Did the right prompts reach the skill and only those?
+tasks:
+  - "tasks-routing/*.yaml"

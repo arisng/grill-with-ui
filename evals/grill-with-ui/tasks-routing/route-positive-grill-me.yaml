@@ -1,0 +1,25 @@
+id: route-positive-grill-me
+name: Routes to grill-with-ui — "grill me on <topic>"
+description: >-
+  The natural-language form of the trigger phrase. The user asks for an
+  interview in plain words, so the skill must take it.
+tags:
+  - routing
+  - positive
+inputs:
+  prompt: |
+    Grill me on how we should structure our CI pipeline.
+
+    This is an automated run: there is no browser and no interactive user. If the
+    skill applies, do what it asks as far as it can go without a browser, then stop
+    and report. Make sure no server process is left running when you stop.
+expected:
+  should_trigger: true
+graders:
+  - name: skill-invoked
+    type: skill_invocation
+    weight: 1
+    config:
+      required_skills:
+        - grill-with-ui
+      mode: any_order

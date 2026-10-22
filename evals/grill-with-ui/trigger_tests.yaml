@@ -1,0 +1,27 @@
+skill: grill-with-ui
+should_trigger_prompts:
+  - prompt: "grill with ui: how should we structure our CI pipeline"
+    reason: The explicit trigger phrase with a topic.
+    confidence: high
+  - prompt: "/grill-with-ui design the onboarding flow for new accounts"
+    reason: The slash invocation with a topic.
+    confidence: high
+  - prompt: "/grill-with-ui resume"
+    reason: The resume trigger.
+    confidence: high
+  - prompt: "grill with ui: choose a storage backend for event log retention"
+    reason: The trigger phrase in a sentence, with a topic.
+    confidence: high
+should_not_trigger_prompts:
+  - prompt: "Give me a short checklist for reviewing a pull request that changes a database schema."
+    reason: Design-adjacent, but no grilling interview is requested.
+    confidence: high
+  - prompt: "Write a Python function that reverses a linked list."
+    reason: Unrelated programming task.
+    confidence: high
+  - prompt: "What is the difference between a mutex and a semaphore?"
+    reason: A plain question that must be answered directly.
+    confidence: high
+  - prompt: "Draft a two-paragraph blog post about why configuration files are useful."
+    reason: A writing task that must not be turned into a design interview.
+    confidence: high
