@@ -70,8 +70,9 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 ### `devtool` (Tier 2 — developer tooling)
 
 - `config`: `.waza.yaml` — the project configuration for the waza CLI
-  (token budgets per file). Proposed on demand for `scripts/*`,
-  `.vscode/settings.json`, `.vscode/tasks.json`.
+  (token budgets per file).
+- `taskfile`: `Taskfile.yml` — the taskfile.dev wrappers over the
+  repository's own commands.
 
 ### `codex` (Tier 2 — reserved)
 
@@ -120,14 +121,17 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
   skills that ship in the repository (`.github/skills/<name>/**`).
 - Clarified the boundary between that scope and the `agent` type's `skill`
   scope, which covers the shipped skill's own prompt contract and briefs.
+- Added the `taskfile` scope under the `devtool` type, for `Taskfile.yml`.
 
 **Rationale:**
 The `fork-sync` skill (`.github/skills/fork-sync/`) keeps this fork in step
 with its upstreams. It is a repository tool, not part of the skill users
-install and run, so `agent(skill)` would have claimed it wrongly.
+install and run, so `agent(skill)` would have claimed it wrongly. The
+Taskfile already had a scope in the historical inventory, but the
+constitution never granted it.
 
 **Migration Notes:**
-No history rewriting; the scope is new, so no earlier commit is affected.
+No history rewriting; the scopes are new, so no earlier commit is affected.
 
 ### 2026-10-22 - Amendment #3
 

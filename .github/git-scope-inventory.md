@@ -36,7 +36,6 @@
 
 - config
 - taskfile
-
 ### `docs`
 
 - constitution
