@@ -234,3 +234,48 @@ server restart, finished state).
 offers `task demo`, which serves a throwaway session seeded with every card state (its own
 temp `GRILL_HOME`, cleaned by `task clean`) so you can click through the page without a real
 grill running.
+
+## Skill evaluation
+
+The skill's own behaviour is measured with [waza](https://github.com/microsoft/waza), a
+CLI that runs a skill against a real agent and grades the outcome. The suite lives in
+`evals/grill-with-ui/` and comes in two parts: `eval.yaml` runs the skill's contracts,
+`eval-routing.yaml` runs only the routing decision. `trigger_tests.yaml` holds the
+routing prompts the main spec also picks up.
+
+| Task | What it pins down |
+|------|-------------------|
+| `start-grill` | `server.mjs new` → patch round 1 (`q-domain` first, then topic questions with options, a recommendation and a why) → open the page → print the URL |
+| `answer-glossary-yes` | a terminal answer on `q-domain` sets `domainModeling: true` |
+| `finish-design-doc` | Finish writes the self-contained design doc with its prescribed sections and records it in `finished` |
+| `finish-domain-docs` | domain-modeling mode also writes `CONTEXT.md` and one ADR per significant decision |
+| `patch-only-no-direct-write` | the skill overrides a request to hand-edit `state.json` — the change goes through `patch` |
+| `negative-trigger` | a design-adjacent request does not start a grill |
+| `resume-no-session` | `/grill-with-ui resume` with nothing to resume reports that and stops |
+
+```sh
+waza check .                                   # readiness: compliance, tokens, schema
+waza run evals/grill-with-ui/eval.yaml         # behavioural benchmark (needs an LLM)
+waza run evals/grill-with-ui/eval-routing.yaml # routing only: does the description send the right prompts here?
+waza quality .                                 # LLM-judge score of SKILL.md itself
+waza gate --baseline <before.json> --current <after.json>   # CI gate: fail on a regression
+```
+
+`waza run` needs a model. With BYOK the provider vars are inherited by the Copilot CLI,
+so a profile is enough:
+
+```powershell
+. skills/copilot-byok/scripts/byok-profile.ps1 set-env <profile>
+waza run evals/grill-with-ui/eval.yaml --model <the provider's model id>
+```
+
+Two harness notes, both visible in the task prompts: the suite has no browser, so every
+task says so and stops at a point that ends inside one agent turn (the real skill waits
+for browser sends, which an automated run cannot produce); and `config.model` must equal
+the model id the provider serves, because the CLI sends the id from the eval spec rather
+than from the environment.
+
+Both specs set `inject_skill_body: false` and `trigger_skill_routing: true`. The skill
+body is not pasted into the agent's system prompt, so the agent has to *route* to the
+skill the way a real one does — and waza's "did it trigger?" detector then measures that
+routing instead of counting an invocation that an injected body made unnecessary.
