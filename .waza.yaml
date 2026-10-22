@@ -1,0 +1,21 @@
+# waza project configuration for the grill-with-ui skill.
+#
+# This skill ships a full runtime (server.mjs, page.html) plus the sub-briefs the
+# host agent reads, so SKILL.md is deliberately far larger than the 500-token
+# default. The budgets below reflect that design instead of pretending it away.
+#
+# Never use a bare `tokens.limits.max` key — it is not in the schema and hard-fails
+# waza check with "field max not found in type projectconfig.TokenLimitsConfig".
+tokens:
+  warningThreshold: 2500
+  fallbackLimit: 2000
+  limits:
+    defaults:
+      "SKILL.md": 10000
+      "*.md": 3000
+      "docs/*.md": 5500
+    overrides:
+      "README.md": 3600
+      ".github/copilot-instructions.md": 3000
+      "domain-brief.md": 2400
+      "docs/visualize-design.md": 2600
