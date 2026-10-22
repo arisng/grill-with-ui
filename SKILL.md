@@ -1,8 +1,9 @@
 ---
 name: grill-with-ui
-description: "Run a grilling interview on a local browser page instead of the terminal: each question shows its recommendation, takes any order, has a discussion thread and one Send button. An opt-in first question also lands terms in a CONTEXT.md glossary and durable decisions as ADRs. USE FOR: "grill with ui", /grill-with-ui with a topic, "/grill-with-ui resume", "grill me on a topic". DO NOT USE FOR: plain design questions, reviews, tasks, repo questions — answer directly."
+description: >
+   Run a grilling interview on a local browser page instead of the terminal: each question shows its recommendation, takes any order, has a discussion thread and one Send button. An opt-in first question also lands terms in a CONTEXT.md glossary and durable decisions as ADRs. USE FOR: "grill with ui", /grill-with-ui with a topic, "/grill-with-ui resume", "grill me on a topic". DO NOT USE FOR: plain design questions, reviews, tasks, repo questions — answer directly."
 metadata:
-   version: 0.4.1
+   version: 0.4.2
 ---
 
 # grill-with-ui
