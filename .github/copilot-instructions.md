@@ -22,6 +22,11 @@ node test/page.e2e.mjs
 
 # Regression check for Visualize staleness/manual flows
 PLAYWRIGHT_PKG=/path/to/node_modules/@playwright/test/index.mjs node test/manual-visual.e2e.mjs
+
+# Skill evaluation (waza) — readiness/schema check is offline, the benchmark needs an LLM
+waza check .
+waza run evals/grill-with-ui/eval.yaml
+waza quality .
 ```
 
 Commands are POSIX shell; in PowerShell set `PLAYWRIGHT_PKG` with
@@ -170,5 +175,12 @@ independent of the session's domain-modeling mode.
 - **Error/output contracts are tested**: CLI failures exit non-zero with exactly one stderr
   line and leave `state.json` untouched; successes print one short line (never the state);
   unknown subcommands print usage and exit 2. Keep this shape when adding commands.
+- **The skill's behaviour is evaluated, not just described**: `evals/grill-with-ui/` holds a
+  [waza](https://github.com/microsoft/waza) suite — one task per contract in `SKILL.md`
+  (start, patch-only ownership, terminal answers, domain-modeling mode, Finish artefacts,
+  routing) plus `trigger_tests.yaml`. `waza check .` validates the spec offline; `waza run`
+  drives a real agent and needs a model whose id matches `config.model`. Change a rule in
+  `SKILL.md` and the matching task changes with it — the suite is the regression net for
+  the prompt, next to the unit tests for the server.
 - Commit messages follow a light conventional style scoped to the file
   (`docs(skill):`, `test(server):`, `no-mistakes(document):`).
