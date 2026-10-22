@@ -51,7 +51,9 @@ GRILL_PATCH
 ```
 
 The delimiter is quoted, so the shell expands nothing inside it. (`--file <path>` reads the
-patch from a file instead, for harnesses where heredocs are awkward.) It merges the patch,
+patch from a file instead, for harnesses where heredocs are awkward. Name that file
+anything but `state.json`, so a patch file can never be mistaken for the session's own.)
+It merges the patch,
 validates the result, and swaps the file in atomically, so the page sees one consistent
 update per patch. It works whether or not `serve` is running. It prints one line,
 `{"ok":true,"questions":12,"open":3,"handled":14,"bytes":41233}`, never the state. A bad
