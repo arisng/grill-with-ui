@@ -1,36 +1,70 @@
 # Scopes Inventory
 
 **Repository:** grill-with-ui
-**Last Updated:** 2026-09-23
+**Last Updated:** 2026-10-22
 **Source:** Git commit history analysis
 
 ## Summary
 
-- **Total Commit Types:** 5
-- **Total Unique Scopes:** 6
+- **Total Commit Types:** 11
+- **Total Unique Scopes:** 16
 - **Analysis Period:** All time
 
 ## Scopes by Commit Type
 
-### `docs`
+### `agent`
 
 - skill
+
+### `chore`
+
+- deps
+- gate
+- repo
+
+### `ci`
+
+- *(no scope used)*
+
+### `copilot`
+
+- instruction
+- mcp
+
+### `devtool`
+
+- config
+- taskfile
+
+### `docs`
+
+- constitution
+- design
+- readme
+- skill
+
+### `feat`
+
+- page
+- server
 
 ### `fix`
 
 - page
+- server
 
 ### `no-mistakes`
 
 - document
 - review
 
-### `page`
+### `page` (legacy)
 
 - *(no scope used)*
 
 ### `test`
 
+- eval
 - server
 
 ---

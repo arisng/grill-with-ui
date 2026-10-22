@@ -1,6 +1,6 @@
 # Commit Scope Constitution
 
-Last Updated: 2026-10-21
+Last Updated: 2026-10-22
 
 ## Purpose
 
@@ -48,6 +48,9 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 
 - `server`: `test/*` — unit and e2e suites (server contract, page
   flows).
+- `eval`: `evals/*` — the waza behavioural evaluation specs for the
+  skill (one task per contract in `SKILL.md`, plus the routing
+  triggers).
 
 ### `agent` (Tier 2 — skill assets)
 
@@ -60,16 +63,26 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
   (`.github/copilot-instructions.md`).
 - `mcp`: MCP server configuration (`.vscode/mcp.json`).
 
-### `devtool` / `codex` (Tier 2 — reserved)
+### `devtool` (Tier 2 — developer tooling)
+
+- `config`: `.waza.yaml` — the project configuration for the waza CLI
+  (token budgets per file). Proposed on demand for `scripts/*`,
+  `.vscode/settings.json`, `.vscode/tasks.json`.
+
+### `codex` (Tier 2 — reserved)
 
 - No repository files currently map here. Proposed on demand for
-  `scripts/*`, `.vscode/settings.json`, `.vscode/tasks.json`,
   `.codex/*`.
 
 ### Universal types without entries (`style`, `perf`, `build`, `ci`,
-`chore`, `revert`)
+`revert`)
 
 - Scope is the affected module; propose an amendment when first used.
+
+### `chore`
+
+- `repo`: repository housekeeping that touches no product file —
+  `.gitignore`, `.gitattributes`.
 
 ### Legacy / external types
 
@@ -95,6 +108,25 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 3. Record the change under Amendment History and bump Last Updated.
 
 ## Amendment History
+
+### 2026-10-22 - Amendment #3
+
+**Changes:**
+- Added the `eval` scope under `test` for `evals/*`, the waza behavioural
+  evaluation suite for the skill.
+- Split the reserved `devtool`/`codex` section: `devtool` now holds the
+  `config` scope for `.waza.yaml`; `codex` stays reserved.
+- Added the `chore` scope `repo` for `.gitignore`.
+
+**Rationale:**
+The evaluation suite, its project configuration, and the ignore rule for
+the run artifacts are three new file kinds with no approved scope, and
+the constitution asks for an amendment before a file that fits no scope
+is committed. The `chore` type had no entry at all, so the ignore rule
+needed one.
+
+**Migration Notes:**
+No history rewriting; the scopes grow from the previous set.
 
 ### 2026-10-21 - Amendment #2
 
