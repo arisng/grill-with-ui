@@ -325,10 +325,15 @@ how much of the fork's contract it touches:
 
 | Tier | What it means | What to do |
 |------|---------------|------------|
-| **ADOPT** | No contract file, no overlap | Cherry-pick as-is |
-| **ADAPT** | Touches a contract file | Port the intent; run the contract ripple checklist |
-| **REWORK** | Touches a contract file the fork also changed | Port the intent onto the fork's structure |
+| **REWORK** | A contract file the fork also changed | Port the intent onto the fork's structure |
+| **ADAPT** | A contract file the fork did not change | Port the intent; run the contract ripple checklist |
+| **ADOPT** | No contract file | Cherry-pick; resolve any overlap by hand |
+| **MERGE** | A merge commit | Take the commits it merged, not the merge |
 | **DEFER** | Not upstream yet, or a design question | Leave it, and say why |
+
+Commits that change the server's request handling — a host check, an origin check, a
+body cap, a CSP sandbox — are flagged `[security]`, because the fork is behind upstream
+on those today.
 
 **Never merge upstream wholesale.** The fork's own shape — domain-modeling mode, the
 responsive tiers, the writing-clarity profile, the Taskfile, the eval suite, and the

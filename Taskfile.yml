@@ -73,8 +73,10 @@ tasks:
     desc: Report how far the fork has drifted from upstream (read-only)
     summary: |-
       Fetches upstream, finds the merge base, and tiers every incoming commit as
-      ADOPT (cherry-pick), ADAPT (port the intent), REWORK (contract file the fork
-      also changed), or DEFER. Writes nothing. See .github/skills/fork-sync/.
+      REWORK (a contract file the fork also changed), ADAPT (a contract file),
+      ADOPT (no contract file), MERGE (a merge commit), or DEFER (a decision to
+      leave alone). Security-relevant server changes are flagged. Writes nothing
+      to the working tree. See .github/skills/fork-sync/.
     cmds:
       - node .github/skills/fork-sync/scripts/sync-report.mjs {{.CLI_ARGS}}
 
