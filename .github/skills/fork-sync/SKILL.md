@@ -1,6 +1,8 @@
 ---
 name: fork-sync
 description: Keep the grill-with-ui fork in sync with its upstreams — the jasonku09/grill-with-ui code repo, the mattpocock/skills method lineage, and the installed skill copy. Use when asked to sync, refresh, update, catch up, or rebase the fork; when checking for new upstream commits, branches, or PRs; when deciding whether to adopt, adapt, or skip an incoming change; or when a schema or contract change needs the full ripple update. Do not use for ordinary feature work inside the repo.
+metadata:
+  version: 0.2.0
 ---
 
 # fork-sync
@@ -11,8 +13,8 @@ description: Keep the grill-with-ui fork in sync with its upstreams — the jaso
 **Never merge upstream wholesale.** The fork is not a mirror: it carries domain-modeling
 mode, responsive tiers, a writing-clarity profile, a Taskfile, a waza eval suite, and its
 own dark theme. Upstream's equivalents are older or differently shaped. Every incoming
-change is classified and either adopted as-is, adapted to the fork's shape, deferred, or
-skipped on purpose. Blind application is the failure mode this skill exists to prevent.
+change is classified and then either adopted as-is, adapted to the fork's shape, deferred,
+or skipped on purpose. Blind application is the failure mode this skill exists to prevent.
 
 ## Sources
 
@@ -50,27 +52,40 @@ git switch -c sync/upstream-YYYY-MM develop
 node $REPO/.github/skills/fork-sync/scripts/sync-report.mjs
 ```
 
-Read-only. Fetches upstream, finds the merge base, and prints every incoming commit
-tiered, the contested files, the installed copy's freshness, and the open upstream PRs.
-Add `--json` to consume it programmatically, `--no-fetch` to stay offline.
+Read-only with respect to the working tree. It fetches upstream, finds the merge base,
+and prints every incoming commit tiered, the contested files, the installed copy's
+freshness, and the open upstream PRs. Add `--json` to consume it programmatically,
+`--no-fetch` to stay offline, `--upstream owner/repo` to point at a different repo.
 
 The script classifies by two independent questions: does the commit touch a **contract
-file** (the schema and its docs), and did the fork **also** change that file? The four
-tiers follow from the answers.
+file** (the schema and its docs), and did the fork **also change that file**?
+
+**The contract files** are: `SKILL.md`, `server.mjs`, `page.html`, `visual-brief.md`,
+`domain-brief.md`, `writing-clarity.md`, `adr-template.md`, `README.md`,
+`docs/design.md`, `docs/visualize-design.md`, `.github/copilot-instructions.md`. Test
+files are deliberately not among them: a test change follows its subject change, it
+does not define the contract.
 
 ### 3. Classify
 
 | Tier | Meaning | Action |
 |------|---------|--------|
-| **ADOPT** | No contract file, no overlap | Cherry-pick as-is |
-| **ADOPT (conflicting)** | No contract file, but the fork changed it | Cherry-pick; expect a conflict in a test or a doc — resolve in favour of the fork's shape |
-| **ADAPT** | Contract file, no overlap | Port the intent; **do not** take the diff. The contract file means the change ripples — run the [ripple checklist](references/contract-ripple.md) |
-| **REWORK** | Contract file **and** the fork changed it | Port the intent onto the fork's structure. This is where the fork's richer implementation wins |
-| **DEFER** | Not yet upstream, or a design question | Leave it. Record why in the commit or PR body |
+| **REWORK** | A contract file the fork also changed | Port the intent onto the fork's structure. This is where the fork's richer implementation wins |
+| **ADAPT** | A contract file the fork did not change | Port the intent; **do not** take the diff. The contract file means the change ripples — run the [ripple checklist](references/contract-ripple.md) |
+| **ADOPT** | No contract file | Cherry-pick. The reason line says whether a file the fork also changed is involved — if so, expect a conflict and resolve it in favour of the fork's shape |
+| **MERGE** | A merge commit | No diff of its own. Take the commits it merged, not the merge |
+| **DEFER** | Not upstream yet, or a design question | Leave it. Record why in the commit or PR body |
 
 The rule behind the table: **a commit's diff is evidence, not a patch.** Read it to learn
-what upstream wanted, then write the change against the fork's contract. Take the diff only
-when the commit touches nothing the fork has shaped.
+what upstream wanted, then write the change against the fork's contract. Take the diff
+only when the commit touches nothing the fork has shaped.
+
+The script also marks commits that add a **security control** to the server (a body cap, a
+host check, an origin check, a CSP sandbox, an auth token) or a **test that asserts a
+protected endpoint is refused** — with a `[security]` flag. The subject line is not
+consulted, because upstream files a hardening commit under a documentation or review
+name. **Port those first** — they close real holes, and the fork is behind upstream on
+all of them today.
 
 ### 4. Apply, in dependency order
 
@@ -88,13 +103,14 @@ copilot(instruction):         the repo instructions
 docs(design):                 only when a decision was made
 ```
 
-Bump `metadata.version` in `SKILL.md` when the contract changes — it is the only version
-marker either lineage has, and how an installed copy tells it is stale.
+Bump `metadata.version` in `SKILL.md` **in the same commit** as the contract change it
+describes — not at the end of the sync, and not after each cherry-pick.
 
 Never use a bare `feat:`/`fix:` subject; the constitution bans it, and upstream's own
 commits (which use `feat:`, `fix(page):`, `no-mistakes(document):`) are the exception, not
-the rule. See [references/upstream-repo.md](references/upstream-repo.md) for how to
-re-label an upstream commit when adopting it.
+the rule. `feat`/`fix` accept only the `server` and `page` scopes; `skill` belongs to
+`docs`, `agent`, and `copilot`. See [references/upstream-repo.md](references/upstream-repo.md)
+for how to re-label an upstream commit and record its provenance in the body.
 
 ### 5. Validate
 
@@ -107,12 +123,13 @@ waza check .     # skill spec + token budgets
 On Windows, do not trust a full unit-suite run — three tests are known-broken there.
 Diagnose with `node --test --test-name-pattern "<name>" test/server.test.mjs`.
 
-Re-record the demo GIF when the page changes visibly: `node design/record-demo.mjs`
-(needs Playwright and ffmpeg).
+Re-record the demo GIF when the page changes visibly: `task gif` (needs Playwright and
+ffmpeg).
 
 ### 6. Land and refresh the install
 
-Push the branch, open a PR against `develop`, and — once merged — refresh source 3:
+Push the branch, open a PR against `develop`, merge, then push `develop` — the installed
+copy tracks the **remote** branch, so an unpushed merge is not yet installable. Then:
 
 ```sh
 npx skills update -g -y
@@ -120,6 +137,52 @@ npx skills update -g -y
 
 The installed copy is what the agent runs. A fork change that is never reinstalled is a
 change nobody has.
+
+## Edge cases the report cannot decide for you
+
+**Renames and deletions.** The report lists the files a commit touches, and a rename
+shows both the old and the new path. When upstream renames or deletes a file the fork
+has, decide per path — keep the fork's name, follow upstream, or read both — and record
+it. Check the whole divergence, not just the commits you are taking:
+
+```sh
+git diff --diff-filter=R --name-status <base>..upstream/main   # renames
+git diff --diff-filter=D --name-status <base>..upstream/main   # deletions
+```
+
+**Schema compatibility.** The fork's `validateState` accepts fields upstream's does not
+(`domainModeling`, `writingProfile`), and upstream accepts fields the fork's does not
+(`multi`, `rec.options`, `answer.options`). After a sync that touches `server.mjs` or
+`SKILL.md`, confirm the fork's own fields are still accepted and that the two schemas
+have not silently drifted apart:
+
+```sh
+git diff <base>..HEAD -- server.mjs | grep -E '^\+.*(domainModeling|writingProfile)'
+```
+
+**Long divergence.** Per-commit cherry-picking is right while the gap is a few dozen
+commits. Past that, the conflict cost of each individual commit outweighs the benefit of
+taking the history: make an anchor commit instead.
+
+```sh
+git merge -s ours upstream/main -m "chore: record the upstream boundary for the sync"
+```
+
+That records the fork's divergence once, and the work continues as ordinary fork commits
+on top. Use it deliberately, and say in the commit body why.
+
+**Double-applied commits.** The skill tells you to cherry-pick, so the fork can end up
+holding a commit it already took. `git cherry` shows which upstream commits are already
+present:
+
+```sh
+git cherry -v upstream/main develop     # '-' means already applied
+```
+
+**When the fork wins.** A REWORK commit sometimes turns out to be a design disagreement
+where the fork's implementation is the better one. That is a legitimate outcome — but
+record it, or the next sync re-litigates it. Name the upstream commit and the reason in
+`docs/design.md` under the decision it belongs to.
 
 ## The two failure modes this prevents
 
@@ -143,5 +206,6 @@ gh api repos/mattpocock/skills/contents/skills/productivity/grilling/SKILL.md --
 gh api repos/mattpocock/skills/contents/skills/engineering/domain-modeling/SKILL.md --jq .content
 ```
 
-Details and the specific divergences to protect are in
-[references/mattpocock-lineage.md](references/mattpocock-lineage.md).
+The lineage moves slowly — `grilling` last changed in October 2026, `domain-modeling` in
+September 2026 — so check it quarterly. Details and the specific divergences to protect
+are in [references/mattpocock-lineage.md](references/mattpocock-lineage.md).
