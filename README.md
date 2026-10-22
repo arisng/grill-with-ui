@@ -88,6 +88,20 @@ waiting without opening it. The agent answers
 threads, writes the tables, records your answers, and adds the next round of questions to
 the page.
 
+### Writing clarity
+
+Every grill uses a plain-language clarity baseline. Question cards ask one decision and
+use distinct options. The recommendation reason explains the benefit and trade-off.
+Discussion replies answer the user's point directly and keep a natural tone. These rules
+also guide terms, visual labels, and Finish documents while preserving technical meaning
+and uncertainty.
+
+When the agent detects procedural or other text where stricter rules may help, it asks
+before enabling the strictest available ASD-STE100-inspired profile. The choice lasts for
+that grill only. The separate `asd-ste100` skill is optional. If it is not available, the
+grill uses its built-in guidance. The official word list is not included, so the grill does
+not claim full ASD-STE100 compliance.
+
 The page also fits a phone and a tablet. A wide window keeps three columns. Below 1400px the
 discussion moves into a drawer you open with **Discussion**, leaving the question list and the
 card side by side. Below 740px the card takes the whole screen, with a band under it: ‹ and ›
@@ -182,7 +196,8 @@ settle the same choice share a file, and a durable choice too small to be worth 
 keeps its place in the design doc alone.
 
 In this repo: `server.mjs` (the server and CLI), `page.html` (the page), `SKILL.md` (the
-prompt the agent follows), `domain-brief.md` and `adr-template.md` (the standing docs it
+prompt the agent follows), `writing-clarity.md` (its writing rules), `visual-brief.md` (the
+visual subagent's contract), `domain-brief.md` and `adr-template.md` (the standing docs it
 writes and their shape), `test/`, and `design/` + `docs/design.md` (how it was designed).
 `design/record-demo.mjs` re-records the GIF above by driving the real page; it needs
 Playwright and `ffmpeg`.

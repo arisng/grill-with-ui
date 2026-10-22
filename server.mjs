@@ -563,6 +563,8 @@ function validateState(s) {
   };
   for (const k of ["topic", "intent", "doc", "project", "created", "note"]) check(s, k, str, `${k} must be a string`);
   check(s, "domainModeling", bool, "domainModeling must be a boolean");
+  check(s, "writingProfile", (v) => v === "clarity-baseline" || v === "strictest-available",
+    'writingProfile must be "clarity-baseline" or "strictest-available"');
   if ("finished" in s) {
     need(isObj(s.finished), 'finished must be an object ({"doc","visual","context","adrs","at"})');
     texts(s.finished, ["doc", "visual", "at", "context"], "finished");

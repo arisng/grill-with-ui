@@ -728,6 +728,19 @@ test("patch: domainModeling: true is accepted whole, domainModeling: null delete
   rejected(session, { domainModeling: "yes" }, /domainModeling must be a boolean/);
 });
 
+test("patch: writingProfile accepts supported values, defaults by omission, and rejects invalid values without changing state", () => {
+  const session = seeded({ questions: [qn("q1", 1)] });
+  assert.ok(!("writingProfile" in stateOf(session)), "new sessions default to the clarity baseline by omission");
+  applied(session, { writingProfile: "strictest-available" });
+  assert.equal(stateOf(session).writingProfile, "strictest-available");
+  applied(session, { writingProfile: "clarity-baseline" });
+  assert.equal(stateOf(session).writingProfile, "clarity-baseline");
+  applied(session, { writingProfile: null });
+  assert.ok(!("writingProfile" in stateOf(session)), "null restores the baseline default by deleting the profile");
+  rejected(session, { writingProfile: "full-compliance" }, /writingProfile must be/);
+  rejected(session, { writingProfile: true }, /writingProfile must be/);
+});
+
 test("patch: finished.context and finished.adrs read back; a bad adrs is rejected, state untouched", () => {
   const session = seeded({ questions: [qn("q1", 1)] });
   applied(session, { finished: { doc: "docs/design.md", context: "CONTEXT.md", adrs: ["docs/adr/0001-a.md"] } });

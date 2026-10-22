@@ -7,10 +7,10 @@ file holds the rules; follow every one.
 
 ## What you read
 
-- `<session>/state.json`: `topic`, `terms` (use these words in labels), `questions`. Each
-  question has `status`, `options`, `rec` (the recommendation), `answer` when answered,
-  `thread`, and sometimes `explore`. `visual.thread` holds the user's feedback on earlier
-  versions, newest last.
+- `<session>/state.json`: `topic`, `terms` (use these words in labels), `writingProfile`, and
+  `questions`. Each question has `status`, `options`, `rec` (the recommendation), `answer`
+  when answered, `thread`, and sometimes `explore`. `visual.thread` holds the user's feedback
+  on earlier versions, newest last.
 - `<session>/visual.html` when it exists (a redraw): edit it. Keep layout, names, and
   everything the change list does not mention stable, so the user can see what moved.
 - The project root when the visual should match real UI or code (a prototype of a page that
@@ -22,13 +22,26 @@ file holds the rules; follow every one.
 
 The questions are the source of truth; the visual is derived from them.
 
-- The session-meta question (id `q-domain`) is not a design decision: do not draw it.
+- The session-meta questions (ids `q-domain` and `q-writing-profile`) are not design
+  decisions: do not draw them.
 - **Answered** question: draw the decision, plain.
 - **Open, reopened, or deferred** question: draw its recommended option and mark that region
   **assumed · Qn open** (dashed outline, or a small tag in the corner), so the visual reads
   as a map of what is settled and what is not.
 - Never draw something the questions contradict, even if feedback asks for it. The
   interviewer handles that by reopening the question; you draw what the change list says.
+
+## Writing clarity
+
+Use the profile in `state.json`. If `writingProfile` is absent or `clarity-baseline`, write
+clear labels in plain language. Keep labels short but unambiguous. Define necessary technical
+terms in a legend or nearby text. Do not remove a condition, scope limit, or uncertainty to
+shorten a label. Diagram labels may use concise phrases when the relationship is clear.
+
+If `writingProfile` is `strictest-available`, invoke the separate `asd-ste100` skill when
+available and apply its strictest available rules to visible text. If it is unavailable, use
+the baseline above. Do not claim full ASD-STE100 compliance. Keep the layout, visual style,
+and interaction rules independent from the writing profile.
 
 ## The file
 

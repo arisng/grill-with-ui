@@ -843,7 +843,7 @@ function renderMain() {
     ? `<li class="opt chosen text-answer"><span class="k"></span><span><div class="tag">Your answer</div>${esc(q.answer.text)}</span><span class="check">${CHECK}</span></li>` : "")
     + (pendAnswer && pendAnswer.kind === "text" && pendAnswer.text
     ? `<li class="opt pending text-answer"><span class="k"></span><span><div class="tag">Your answer · sending</div>${esc(pendAnswer.text)}</span><span class="check pending"><span class="spin"></span></span></li>` : "");
-  const why = rec.option ? `<p class="why"><b>Why ${esc(rec.option)}.</b> ${esc(rec.why)}</p>`
+  const why = rec.option ? `<p class="why"><b>Why we recommend ${esc(rec.option)}:</b> ${esc(rec.why)}</p>`
     : rec.text ? `<p class="why"><b>Suggested.</b> ${esc(rec.text)}${rec.why ? " — " + esc(rec.why) : ""}</p>` : rec.why ? `<p class="why">${esc(rec.why)}</p>` : "";
   let stagedLine = "";
   if (s.defer) stagedLine = "Staged: defer this question";

@@ -6,6 +6,19 @@ decision records in the folders the rules below pick. This file holds the rules;
 from the `domain-modeling` skill in mattpocock/skills (MIT):
 https://github.com/mattpocock/skills/tree/main/skills/engineering
 
+## Writing clarity
+
+Follow the active writing profile in `SKILL.md` for the design doc, glossary entries, and
+ADRs. The clarity baseline uses direct words and clear sentence structure. Strict mode uses
+the strictest available ASD-STE100-inspired rules only after the user opts in. Invoke the
+separate skill when it is available. Otherwise, use the built-in guidance. Do not claim full
+compliance with ASD-STE100.
+
+Keep every term, condition, trade-off, and uncertainty that the source records. Do not make
+a document shorter by dropping decision context or technical meaning. Use active voice when
+it makes the actor clear. Keep each glossary definition to one or two sentences, as required
+below. Keep ADR content complete under every required heading.
+
 ## CONTEXT.md
 
 Location: resolve it before writing anything — `node $SKILL/server.mjs context --session
@@ -159,10 +172,11 @@ brief's rule, not the server's.
 The exhaustive design doc (`.grill-with-ui/<yymmdd>-<topic-slug>/design.md`) is always written and
 remains the per-topic record; the glossary and the ADRs are cumulative, standing artifacts
 across grills — each in the bounded context a map scopes them to, or the repo's root
-`CONTEXT.md` and `docs/adr/` where no context map applies. Session-meta questions (id `q-domain`) produce no ADR — they are never durable,
-so this falls out naturally. A durable decision that the screen rules out produces no ADR
-either: it stays a Locked decision in the design doc, which cites `→ ADR-NNNN` only where a
-decision does have one.
+`CONTEXT.md` and `docs/adr/` where no context map applies. Session-meta questions (ids
+`q-domain` and `q-writing-profile`) produce no ADR — they are never durable, so this falls out
+naturally. A durable decision that the screen rules out produces no ADR either: it stays a
+Locked decision in the design doc, which cites `→ ADR-NNNN` only where a decision does have
+one.
 
 The design doc is written **after** the ADRs, because it cites their numbers. Write the
 ADRs first, then the design doc. The glossary needs neither and can land at any point.

@@ -16,6 +16,9 @@ Nobody writes the other's file. The page polls `state.json`; how you receive eve
 on the listening mode below.
 A third file, `visual.html`, is also yours, drawn by a subagent you run (see Visualize).
 
+Before starting or resuming a grill, read `$SKILL/writing-clarity.md` and follow it for all
+agent-authored text.
+
 ## Listening mode and turn boundaries
 
 Choose the mode from the tools actually available, not the agent's model name:
@@ -73,6 +76,8 @@ The patch is shaped like `state.json` (schema at the end):
 - `thread` (on a question and on `visual`) and `visual.queued` append: list only the new
   messages or bullets.
 - `terms` is keyed by `term`: a known term is replaced whole, a new one appended.
+- `writingProfile` replaces the whole value. Accepted values are `clarity-baseline` and
+  `strictest-available`; omit it for the baseline. `null` deletes it and restores the baseline.
 - Every other key (`note`, `intent`, `finished`, `doc`, `domainModeling`, …) is replaced whole.
 
 **Never write the current time; the server stamps every time you leave out**: `agent.since`
@@ -194,6 +199,7 @@ described there, then return to listening.
      deletes the key). A `reopen` → `"domainModeling": null` too: never write repo files the user is
      reconsidering; domain-modeling mode takes effect again only when re-answered yes. Defer and
      never-answered leave the key absent: domain-modeling mode off.
+   - The top-level `writingProfile` key follows `q-writing-profile`: a yes answer (kind accept, option A, or clear affirmative text) → set it to `"strictest-available"`; a no answer → set it to `"clarity-baseline"`. Reopening `q-writing-profile` sets it to `null` and restores the baseline. Defer or no answer leaves the baseline active. This question is session metadata, not a topic decision.
    - `explore` → set the question's `explore`: `{ rows: [{ option, pros: [...], cons: [...] }] }`,
      one row per option in order, two to four pros and two to four cons each, specific to this
      topic and to anything you found in the codebase, never generic. Be as honest about the
@@ -259,6 +265,10 @@ decisions in order:
 - Set `durable: true` on a question whose decision passes all three gates: hard to reverse,
   surprising without context, a real trade-off. Everything else is a routine choice.
 - Stop asking when the tree is walked. Say so with `note`; do not pad with filler questions.
+
+## Writing clarity and profiles
+
+`writing-clarity.md` defines the writing rules. This section defines the `writingProfile` state and patch behavior.
 
 ## Visualize
 
@@ -403,11 +413,10 @@ On a `finish` action, or when the user says finish in the terminal:
    (deferred questions, with what would reopen them); **Open threads** (discussion points
    that ended without a decision, plus every question that was published and never answered —
    a reader must see what is still open; name each one, never leave it out). The
-   domain-modeling-mode meta question (`q-domain`) is
-   session meta, not a topic decision: it appears in **no** section — not as a decision, not
-   as a routine choice, and not as a note explaining that the glossary and the ADRs were
-   written. Do not compress: a reader with
-   no access to the session must be able to build from it.
+   domain-modeling-mode question (`q-domain`) and writing-profile question (`q-writing-profile`)
+   are session metadata, not topic decisions. They appear in **no** section — not as decisions,
+   routine choices, or notes about glossary, ADR, or profile processing. Do not compress: a
+   reader with no access to the session must be able to build from it.
 3. Patch `"finished": { "doc": … }` and `"agent": { "status": "waiting" }`
    (after a page Finish this is the send's one patch, with `handled`); the page shows the
    finished banner and locks staging.
@@ -475,6 +484,7 @@ What each field means. You write it only through `patch`.
   "agent": { "status": "waiting|working", "since": "ISO", "handled": 3 },
   "note": "optional short sentence shown above the question list",
   "domainModeling": true,  // domain-modeling mode on: Finish also writes CONTEXT.md + docs/adr/ per domain-brief.md; absent = off
+  "writingProfile": "clarity-baseline|strictest-available",  // optional; absent = clarity-baseline; strictest-available requires opt-in and lasts this grill
   "finished": { "doc": ".grill-with-ui/x/design.md", "visual": ".grill-with-ui/x/visual.html",
                 "context": "CONTEXT.md", "adrs": ["docs/adr/0001-slug.md"], "at": "ISO" },  // only after Finish; context is project-relative —
                 // project-relative: repo-root CONTEXT.md, or the matched bounded context's CONTEXT.md in a CONTEXT-MAP.md repo
