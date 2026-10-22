@@ -21,9 +21,8 @@ The install is tracked in `~/.agents/.skill-lock.json`:
 }
 ```
 
-`ref: develop` and `skillFolderHash` are the commit that was installed. That hash is
-what the sync report compares against `HEAD` to decide whether the installed copy is
-stale.
+`ref` is the branch the install tracks, and `skillFolderHash` is the commit that was
+installed. Together they say exactly what is installed.
 
 ## Refreshing
 
@@ -31,40 +30,67 @@ stale.
 npx skills update -g -y
 ```
 
-Then confirm the hash moved:
-
-```sh
-node -e "const l=require(process.env.USERPROFILE+'/.agents/.skill-lock.json');
-console.log(l.skills['grill-with-ui'].skillFolderHash)"
-```
-
 `npx skills update` re-reads the recorded `source` and `ref` from the lock file, so it
 pulls the fork's `develop` — the same branch the sync work lands on. That is why the
 lock's `ref` must stay `develop`: pointing it at `main` would install a month-old copy.
 
-## Verifying the install landed
+## Two different questions about freshness
+
+**Is the install current with its source?** That is what the lock answers: compare
+`skillFolderHash` with the tip of `sourceUrl` at `ref`.
+
+```sh
+git ls-remote https://github.com/arisng/grill-with-ui.git refs/heads/develop
+```
+
+The report does this and prints `current with its source` or `BEHIND its source`. Only
+`BEHIND` needs a refresh.
+
+**Is the fork itself published?** The lock's `ref` is a *remote* branch, so after
+merging a sync you must **push** before updating. Until then the report says
+`the source tip is behind local HEAD — push the fork, then update again`.
+
+Do not confuse these two. An install that is behind local HEAD but matches the source
+tip is **not** stale — the local commits simply are not published yet.
+
+**Is the installed skill the version you think?** That is the `metadata.version` check,
+and it is a separate signal from the commit hash:
 
 ```sh
 grep -n "version:" ~/.agents/skills/grill-with-ui/SKILL.md
 ```
 
-The `metadata.version` in the installed `SKILL.md` must match the repo's. If it does not,
-the update did not run, or it ran before the sync was merged.
+The `metadata.version` in the installed `SKILL.md` must match the repo's. If it does
+not, the update did not run, or it ran before the sync was merged.
+
+| Signal | Meaning | Fix |
+|--------|---------|-----|
+| Installed commit ≠ source tip | The install is behind its source | `npx skills update -g -y` |
+| Installed commit = source tip, but ≠ local HEAD | The fork's commits are not pushed | Push the fork, then update |
+| Installed `metadata.version` < repo's | The install predates a shipped change | `npx skills update -g -y` |
+| Installed `metadata.version` > repo's | The install came from a different branch | Check the lock's `ref` |
+
+A commit-hash difference does **not** imply a missing version bump: any commit, even a
+README-only change, moves the hash. The version tracks the *contract*; the hash tracks
+the *content*.
 
 ## The `metadata.version` marker
 
-`SKILL.md`'s frontmatter carries `metadata.version` (currently `0.4.2` in the fork). It is
+`SKILL.md`'s frontmatter carries `metadata.version` (currently `0.5.0` in the fork). It is
 the only version marker in the project — there is no CHANGELOG, and upstream publishes no
-releases or tags. Bump it when the contract changes, and read it to confirm an install is
-current:
+releases or tags. Bump it when the **shipped package** changes, and read it to confirm an
+install is current.
 
-| Situation | Meaning |
-|-----------|---------|
-| Installed version < repo version | The install is behind; run `npx skills update -g -y` |
-| Installed version > repo version | The install came from a different branch; check the lock's `ref` |
-| Versions equal but hashes differ | A commit landed without a version bump — fix the bump |
+What counts as a change to the shipped package:
 
-A version bump without a contract change is noise; a contract change without a version
+| Change | Bump |
+|--------|------|
+| A contract change — the `state.json`/send schemas, the frontmatter `description`, the listening-mode rules | minor (or patch for a fix) |
+| A new bundled file users receive — a brief, a template, a bundled skill | minor |
+| A fix that does not change any contract | patch |
+| A change that only touches repository tooling, not the shipped package | none |
+
+A version bump without a shipped change is noise; a shipped change without a version
 bump is a silent stale install. Keep them paired.
 
 ## Other agents' copies
@@ -86,9 +112,14 @@ Refresh them all in one go, or per agent:
 npx skills update -g -y
 ```
 
-If the repo is installed as a **symlink** rather than a copy, the refresh is automatic —
-`git pull` in the clone is the whole update path, and no lock refresh is needed. Check
-which you have:
+## Other install routes
+
+Agents that do not use the skills CLI install the folder by hand — a symlink, a copy, or
+a git clone. The README documents the symlink route for Claude Code, Codex, Gemini CLI,
+Cursor, and Copilot. For those, the update path is `git pull` in the clone, plus a manual
+copy if the install is a copy rather than a symlink.
+
+Check which you have:
 
 ```sh
 ls -l ~/.agents/skills/grill-with-ui    # '->' means symlink
@@ -99,9 +130,10 @@ ties the running skill to whatever branch the clone is on — including an in-pr
 branch, which would put a half-merged skill into a live grill. Prefer a copy for the
 installed path, and keep the clone's working branch clean while a sync is in flight.
 
-## Other install routes
+## A note on `skillFolderHash` and other source types
 
-Agents that do not use the skills CLI install the folder by hand — a symlink, a copy, or
-a git clone. The README documents the symlink route for Claude Code, Codex, Gemini CLI,
-Cursor, and Copilot. For those, the update path is `git pull` in the clone, plus a manual
-copy if the install is a copy rather than a symlink.
+The lock's `skillFolderHash` is a **commit sha** for a GitHub install, because the
+install came from a branch. For other `sourceType` values it can be a tree hash of the
+folder's content instead. The report compares the hash with a commit, so it only draws
+a conclusion for GitHub-sourced installs; for anything else it reports the state as
+`unknown` rather than guessing.
