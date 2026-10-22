@@ -69,6 +69,15 @@ tasks:
     cmds:
       - '"{{.IMPECCABLE}}" detect --json {{.TARGETS}}'
 
+  sync-report:
+    desc: Report how far the fork has drifted from upstream (read-only)
+    summary: |-
+      Fetches upstream, finds the merge base, and tiers every incoming commit as
+      ADOPT (cherry-pick), ADAPT (port the intent), REWORK (contract file the fork
+      also changed), or DEFER. Writes nothing. See .github/skills/fork-sync/.
+    cmds:
+      - node .github/skills/fork-sync/scripts/sync-report.mjs {{.CLI_ARGS}}
+
   check:
     desc: Everything local — unit tests, page e2e, design detector
     deps: [test, test:e2e]
