@@ -62,6 +62,10 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 - `instruction`: repository Copilot instructions
   (`.github/copilot-instructions.md`).
 - `mcp`: MCP server configuration (`.vscode/mcp.json`).
+- `skill`: project-scoped agent skills that ship with the repository —
+  `.github/skills/<name>/**`. Distinct from the `agent` type's `skill`
+  scope, which covers the shipped skill's own prompt contract
+  (`SKILL.md`, the briefs) that users install and run.
 
 ### `devtool` (Tier 2 — developer tooling)
 
@@ -108,6 +112,22 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 3. Record the change under Amendment History and bump Last Updated.
 
 ## Amendment History
+
+### 2026-10-22 - Amendment #4
+
+**Changes:**
+- Added the `skill` scope under the `copilot` type, for project-scoped agent
+  skills that ship in the repository (`.github/skills/<name>/**`).
+- Clarified the boundary between that scope and the `agent` type's `skill`
+  scope, which covers the shipped skill's own prompt contract and briefs.
+
+**Rationale:**
+The `fork-sync` skill (`.github/skills/fork-sync/`) keeps this fork in step
+with its upstreams. It is a repository tool, not part of the skill users
+install and run, so `agent(skill)` would have claimed it wrongly.
+
+**Migration Notes:**
+No history rewriting; the scope is new, so no earlier commit is affected.
 
 ### 2026-10-22 - Amendment #3
 

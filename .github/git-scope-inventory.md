@@ -7,7 +7,7 @@
 ## Summary
 
 - **Total Commit Types:** 11
-- **Total Unique Scopes:** 16
+- **Total Unique Scopes:** 17
 - **Analysis Period:** All time
 
 ## Scopes by Commit Type
@@ -30,6 +30,7 @@
 
 - instruction
 - mcp
+- skill
 
 ### `devtool`
 
