@@ -62,6 +62,8 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 - `instruction`: repository Copilot instructions
   (`.github/copilot-instructions.md`).
 - `mcp`: MCP server configuration (`.vscode/mcp.json`).
+- `memory`: `.github/copilot-memories.jsonl` — the durable repository
+  facts the agent store keeps, one JSON record per line.
 - `skill`: project-scoped agent skills that ship with the repository —
   `.github/skills/<name>/**`. Distinct from the `agent` type's `skill`
   scope, which covers the shipped skill's own prompt contract
@@ -122,6 +124,8 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 - Clarified the boundary between that scope and the `agent` type's `skill`
   scope, which covers the shipped skill's own prompt contract and briefs.
 - Added the `taskfile` scope under the `devtool` type, for `Taskfile.yml`.
+- Added the `memory` scope under the `copilot` type, for
+  `.github/copilot-memories.jsonl`.
 
 **Rationale:**
 The `fork-sync` skill (`.github/skills/fork-sync/`) keeps this fork in step
