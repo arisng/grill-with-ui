@@ -147,7 +147,8 @@ independent of the session's domain-modeling mode.
 ## Key conventions
 
 - **Patch semantics** (SKILL.md → "Patching state.json"): `null` deletes; `agent`/`visual`
-  merge one level; `questions` merge one level by lowercase id (`q7`, never `Q7`); `thread`
+  merge one level; `questions` merge one level by id, and ids are case-sensitive
+  (`q7`, never `Q7`); `thread`
   and `visual.queued` append; everything else replaces whole. Never include the current time
   — the server stamps what you leave out; an explicit time only wins when copied from a send
   line. `patch` prints one short summary JSON line, never the state.
@@ -191,7 +192,8 @@ independent of the session's domain-modeling mode.
   waza eval suite, and the client-side three-state dark theme are *not* upstream's, and
   upstream's server-backed theme and different `state.json` fields must not be taken
   wholesale. To sync, use the `fork-sync` skill in `.github/skills/fork-sync/` — it
-  classifies every incoming commit as ADOPT (cherry-pick), ADAPT (port the intent, run
-  the contract ripple checklist), REWORK (contract file the fork also changed), or DEFER.
-  Never merge upstream wholesale. Report with
-  `node .github/skills/fork-sync/scripts/sync-report.mjs` (read-only).
+  classifies every incoming commit as REWORK (a contract file the fork also changed),
+  ADAPT (a contract file), ADOPT (no contract file), MERGE (a merge commit), or DEFER (a
+  decision to leave alone). Never merge upstream wholesale. Report with
+  `node .github/skills/fork-sync/scripts/sync-report.mjs` (read-only) or `task
+  sync-report`.
