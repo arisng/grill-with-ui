@@ -1,0 +1,93 @@
+id: start-grill
+name: Start a grill and publish round 1
+description: >-
+  The agent must create the session with server.mjs new, patch round 1 through
+  server.mjs patch (q-domain first, then one to three topic questions that carry
+  options, a recommendation and a why), open the page server and print the URL.
+  state.json must never be written with a file-write tool.
+golden: true
+tags:
+  - behavioral
+  - start
+inputs:
+  prompt: |
+    grill with ui: We need to decide where a small CLI keeps per-user settings — a
+    dotfile in the home directory, an environment variable, or the OS keychain.
+
+    This is an automated run: there is no browser and no interactive user. Do exactly
+    what the skill's Start flow asks for — create the session, publish round 1, open
+    the page, print the URL — then stop and report. Do not enter the wait loop, do
+    not wait for browser submissions, and make sure no server process is left
+    running when you stop.
+expected:
+  should_trigger: true
+graders:
+  - name: skill-invoked
+    type: skill_invocation
+    weight: 1
+    config:
+      required_skills:
+        - grill-with-ui
+      mode: any_order
+  - name: start-protocol
+    type: program
+    weight: 3
+    config:
+      command: node
+      timeout: 60
+      args:
+        - -e
+        - |
+          const fs=require('fs'),p=require('path'),os=require('os');
+          const ws=process.env.WAZA_WORKSPACE_DIR||process.cwd();
+          const F=[];
+          function walk(d,depth=0,out=[]){ if(depth>8) return out; let e=[]; try{e=fs.readdirSync(d,{withFileTypes:true})}catch{return out}
+            for(const x of e){ if(x.name==='.git'||x.name==='node_modules') continue; const f=p.join(d,x.name);
+              if(x.isDirectory()) walk(f,depth+1,out); else out.push(f);} return out; }
+          const tag=p.basename(ws);
+          const root=p.join(os.homedir(),'.grill-with-ui','sessions');
+          const keys=fs.existsSync(root)?fs.readdirSync(root).filter(k=>k.includes(tag)):[];
+          const roots=[ws,...keys.map(k=>p.join(root,k))];
+          const cands=[];
+          for(const r of roots) for(const f of walk(r)) if(p.basename(f)==='state.json') cands.push(f);
+          if(!cands.length){ console.error('FAIL: no grill session state.json in this task workspace. Roots: '+roots.join(', ')); process.exit(1); }
+          const best=cands.map(f=>[f,fs.statSync(f).mtimeMs]).sort((a,b)=>b[1]-a[1])[0][0];
+          const s=JSON.parse(fs.readFileSync(best,'utf8'));
+          const qs=s.questions||[];
+          if(!(s.intent||'').trim()) F.push('intent empty');
+          if(!/^\.grill-with-ui\//.test(s.doc||'')) F.push('doc path unexpected: '+JSON.stringify(s.doc));
+          if(qs.length<2) F.push('expected >=2 questions, got '+qs.length);
+          const dom=qs.find(q=>q.id==='q-domain');
+          if(!dom) F.push('q-domain missing');
+          else {
+            if(dom.title!=='Also keep a glossary and ADRs?') F.push('q-domain title: '+JSON.stringify(dom.title));
+            if(dom.durable!==false) F.push('q-domain must be durable:false');
+            if(!Array.isArray(dom.options)||dom.options.length<2) F.push('q-domain needs >=2 options');
+            if(!dom.rec||!dom.rec.option||!(dom.rec.why||'').trim()) F.push('q-domain needs rec.option + rec.why');
+            if(dom.status!=='open') F.push('q-domain status: '+dom.status);
+            if(qs[0]&&qs[0].id!=='q-domain') F.push('q-domain is not the first question');
+          }
+          for(const q of qs.filter(q=>q.id!=='q-domain')){
+            if(Number(q.round)!==1) F.push(q.id+' round='+q.round);
+            if(!(q.title||'').trim()) F.push(q.id+' missing title');
+            if(!(q.body||'').trim()) F.push(q.id+' missing body');
+            if(!Array.isArray(q.options)||q.options.length<2||q.options.length>4) F.push(q.id+' options='+((q.options||[]).length));
+            if(!q.rec||!(q.rec.why||'').trim()) F.push(q.id+' missing rec.why');
+            if(!Array.isArray(q.deps)) F.push(q.id+' missing deps');
+            if(q.status!=='open') F.push(q.id+' status='+q.status);
+          }
+          if((s.agent||{}).status!=='waiting') F.push('agent.status='+JSON.stringify((s.agent||{}).status));
+          if(F.length){ console.error('FAIL:\n - '+F.join('\n - ')); process.exit(1); }
+          console.log('start protocol OK ('+qs.length+' questions) at '+best);
+  - name: server-cli-usage
+    type: tool_constraint
+    weight: 1
+    config:
+      expect_tools:
+        - tool: "bash|powershell|shell|terminal|run_in_terminal"
+          command_pattern: "server\\.mjs['\"]*\\s+new"
+        - tool: "bash|powershell|shell|terminal|run_in_terminal"
+          command_pattern: "server\\.mjs['\"]*\\s+patch"
+      reject_tools:
+        - tool: "edit|write|create_file|apply_patch|str_replace|delete_file"
+          path_pattern: "state\\.json"

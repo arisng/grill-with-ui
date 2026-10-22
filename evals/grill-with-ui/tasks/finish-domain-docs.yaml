@@ -1,0 +1,87 @@
+id: finish-domain-docs
+name: Finish in domain-modeling mode writes CONTEXT.md and ADRs
+description: >-
+  The user opts into domain-modeling mode, answers the questions and finishes.
+  The agent must write the repo-level glossary and one ADR per significant
+  durable decision, and record both in state.finished.
+tags:
+  - behavioral
+  - finish
+  - domain-modeling
+inputs:
+  prompt: |
+    grill with ui: We need to decide where a small CLI keeps per-user settings — a
+    dotfile in the home directory, an environment variable, or the OS keychain.
+
+    This is an automated run: there is no browser and no interactive user. Do exactly
+    what the skill's Start flow asks for — create the session, publish round 1, open
+    the page, print the URL — then stop and report. Do not enter the wait loop, do
+    not wait for browser submissions, and make sure no server process is left
+    running when you stop.
+  follow_up_prompts:
+    - "Answer the glossary question with Yes — that is option A."
+    - "Answer every open question with option A."
+    - "Finish the grill."
+expected:
+  should_trigger: true
+graders:
+  # No skill_invocation grader: the skill body is already in the agent's context and
+  # the CLI does not re-invoke the skill on later turns, so the check would be a
+  # harness artifact rather than a skill signal.
+  - name: domain-docs-written
+    type: program
+    weight: 3
+    config:
+      command: node
+      timeout: 60
+      args:
+        - -e
+        - |
+          const fs=require('fs'),p=require('path'),os=require('os');
+          const ws=process.env.WAZA_WORKSPACE_DIR||process.cwd();
+          const F=[];
+          function walk(d,depth=0,out=[]){ if(depth>8) return out; let e=[]; try{e=fs.readdirSync(d,{withFileTypes:true})}catch{return out}
+            for(const x of e){ if(x.name==='.git'||x.name==='node_modules') continue; const f=p.join(d,x.name);
+              if(x.isDirectory()) walk(f,depth+1,out); else out.push(f);} return out; }
+          const tag=p.basename(ws);
+          const root=p.join(os.homedir(),'.grill-with-ui','sessions');
+          const keys=fs.existsSync(root)?fs.readdirSync(root).filter(k=>k.includes(tag)):[];
+          const roots=[ws,...keys.map(k=>p.join(root,k))];
+          const files=[];
+          for(const r of roots) for(const f of walk(r)) files.push(f);
+          const ctx=files.filter(f=>p.basename(f)==='CONTEXT.md');
+          const adrDir=p.join(ws,'docs','adr');
+          const adrs=fs.existsSync(adrDir)?fs.readdirSync(adrDir).filter(n=>n.endsWith('.md')):[];
+          const cands=files.filter(f=>p.basename(f)==='state.json')
+            .map(f=>[f,fs.statSync(f).mtimeMs]).sort((a,b)=>b[1]-a[1]);
+          if(!cands.length){ console.error('FAIL: no grill session state.json in this task workspace. Roots: '+roots.join(', ')); process.exit(1); }
+          const best=cands[0][0];
+          const s=JSON.parse(fs.readFileSync(best,'utf8'));
+          if(s.domainModeling!==true) F.push('domainModeling is not true');
+          const fin=s.finished||{};
+          // The glossary is created lazily: only when the grill settled terms.
+          const terms=(s.terms||[]).length;
+          if(terms){
+            if(!ctx.length) F.push('the grill settled terms but no CONTEXT.md glossary was written');
+            else {
+              const text=fs.readFileSync(ctx[0],'utf8');
+              if(!/##\s*Language/i.test(text)) F.push('CONTEXT.md has no "## Language" section');
+              if(!/\*\*.+\*\*/.test(text)) F.push('CONTEXT.md has no bold-term entry');
+            }
+            if(!fin.context) F.push('finished.context missing (glossary path)');
+          } else if(fin.context) F.push('finished.context points at a glossary that was never written');
+          // An ADR exists per significant durable decision that was actually
+          // settled. Zero ADRs is the correct outcome when every durable
+          // question is still open, so the check is conditional.
+          const settled=(s.questions||[]).filter(q=>q.durable===true && q.status==='answered');
+          if(settled.length){
+            if(!adrs.length) F.push('a durable decision was settled but no ADR was written under docs/adr/');
+            else {
+              const body=fs.readFileSync(p.join(adrDir,adrs[0]),'utf8');
+              if(!/^#\s*\d{4}:/m.test(body)) F.push('ADR does not start with "# NNNN: title": '+adrs[0]);
+              if(!/Decision Outcome/i.test(body)) F.push('ADR has no "Decision Outcome" section');
+            }
+            if(!Array.isArray(fin.adrs)||!fin.adrs.length) F.push('finished.adrs missing (ADR paths)');
+          } else if((fin.adrs||[]).length) F.push('finished.adrs lists ADRs but no durable decision was settled');
+          if(F.length){ console.error('FAIL:\n - '+F.join('\n - ')); process.exit(1); }
+          console.log('glossary + '+adrs.length+' ADR(s) written, '+settled.length+' durable decision(s) settled, '+terms+' term(s)');

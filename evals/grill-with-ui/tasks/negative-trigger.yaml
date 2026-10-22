@@ -1,0 +1,49 @@
+id: negative-trigger
+name: A design-adjacent request must not start a grill
+description: >-
+  The request smells like a design review but never asks for a grilling
+  interview. The skill must not be invoked and no session may be created.
+tags:
+  - routing
+  - negative
+inputs:
+  prompt: |
+    Give me a short checklist for reviewing a pull request that changes a database
+    schema. No interactive interview — just the checklist, as a list.
+expected:
+  should_trigger: false
+graders:
+  - name: skill-not-invoked
+    type: skill_invocation
+    weight: 3
+    config:
+      forbidden_skills:
+        - grill-with-ui
+  - name: no-session-created
+    type: program
+    weight: 2
+    config:
+      command: node
+      timeout: 60
+      args:
+        - -e
+        - |
+          const fs=require('fs'),p=require('path'),os=require('os');
+          const ws=process.env.WAZA_WORKSPACE_DIR||process.cwd();
+          function walk(d,depth=0,out=[]){ if(depth>8) return out; let e=[]; try{e=fs.readdirSync(d,{withFileTypes:true})}catch{return out}
+            for(const x of e){ if(x.name==='.git'||x.name==='node_modules') continue; const f=p.join(d,x.name);
+              if(x.isDirectory()) walk(f,depth+1,out); else out.push(f);} return out; }
+          const tag=p.basename(ws);
+          const root=p.join(os.homedir(),'.grill-with-ui','sessions');
+          const keys=fs.existsSync(root)?fs.readdirSync(root).filter(k=>k.includes(tag)):[];
+          const roots=[ws,...keys.map(k=>p.join(root,k))];
+          const states=[];
+          for(const r of roots) for(const f of walk(r)) if(p.basename(f)==='state.json') states.push(f);
+          if(states.length){ console.error('FAIL: the agent created a grill session: '+states.map(c=>c).join(', ')); process.exit(1); }
+          console.log('no session created');
+  - name: answered-directly
+    type: text
+    weight: 1
+    config:
+      contains:
+        - "schema"

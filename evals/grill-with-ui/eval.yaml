@@ -1,0 +1,41 @@
+# Behavioral evaluation for the grill-with-ui skill.
+#
+# The skill drives a long-lived, browser-driven interview, so every task here is
+# scoped to a step that terminates inside one agent turn (setup, a terminal answer,
+# Finish) and carries an explicit "no browser in this run" note so the agent stops
+# instead of blocking in the wait loop.
+#
+# config.model must equal the BYOK model id the provider serves
+# (COPILOT_MODEL=xiaomi/mimo-v2.6-flash) — the Copilot CLI sends the model id from
+# this file, not from the environment.
+name: grill-with-ui-eval
+description: >-
+  Behavioral evaluation for grill-with-ui: session bootstrap, patch-only state
+  ownership, terminal answers, domain-modeling mode, Finish artefacts, and routing.
+skill: grill-with-ui
+version: "1.0"
+config:
+  trials_per_task: 1
+  timeout_seconds: 600
+  parallel: false
+  executor: copilot-sdk
+  model: xiaomi/mimo-v2.6-flash
+  judge_model: xiaomi/mimo-v2.6-flash
+  # The skill body is not injected here: the agent must route to the skill the way
+  # a real one does, and waza's "did it trigger?" detector then measures that
+  # routing instead of counting an invocation the injected body made unnecessary.
+  inject_skill_body: false
+  trigger_skill_routing: true
+  skill_directories:
+    - ../..
+metrics:
+  - name: task_completion
+    weight: 0.7
+    threshold: 0.8
+    description: Did the agent carry the skill's contract for this task?
+  - name: protocol_discipline
+    weight: 0.3
+    threshold: 0.7
+    description: Did the agent respect state.json ownership and the patch-only rule?
+tasks:
+  - "tasks/*.yaml"

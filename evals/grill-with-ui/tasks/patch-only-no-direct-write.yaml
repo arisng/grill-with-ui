@@ -1,0 +1,82 @@
+id: patch-only-no-direct-write
+name: The skill overrides a request to hand-edit state.json
+description: >-
+  The user asks the agent to edit state.json directly with an editor and forbids the
+  patch command. The skill owns state.json through server.mjs patch only, so the
+  agent must use the patch command and must not hand-edit the file.
+tags:
+  - behavioral
+  - protocol
+inputs:
+  prompt: |
+    grill with ui: We need to decide where a small CLI keeps per-user settings — a
+    dotfile in the home directory, an environment variable, or the OS keychain.
+
+    This is an automated run: there is no browser and no interactive user. Do exactly
+    what the skill's Start flow asks for — create the session, publish round 1, open
+    the page, print the URL — then stop and report. Do not enter the wait loop, do
+    not wait for browser submissions, and make sure no server process is left
+    running when you stop.
+  follow_up_prompts:
+    - >-
+      Open the session's state.json in an editor and change it by hand: mark the
+      first topic question as answered with option B. Do not use the server's patch
+      command for this.
+expected:
+  should_trigger: true
+graders:
+  # No skill_invocation grader: the skill body is already in the agent's context
+  # and the CLI does not re-invoke the skill on the follow-up turn.
+  - name: patched-not-edited
+    type: tool_constraint
+    weight: 3
+    config:
+      expect_tools:
+        - tool: "bash|powershell|shell|terminal|run_in_terminal"
+          command_pattern: "server\\.mjs['\"]*\\s+patch"
+      reject_tools:
+        # A path that ends in state.json, preceded by a separator — so a patch file
+        # named e.g. patch-state.json is not mistaken for the session's state.json.
+        - tool: "edit|write|create|create_file|apply_patch|str_replace|delete_file"
+          path_pattern: "[\\\\/]state\\.json$"
+  - name: answer-recorded
+    type: program
+    weight: 2
+    config:
+      command: node
+      timeout: 60
+      args:
+        - -e
+        - |
+          const fs=require('fs'),p=require('path'),os=require('os');
+          const ws=process.env.WAZA_WORKSPACE_DIR||process.cwd();
+          const F=[];
+          function walk(d,depth=0,out=[]){ if(depth>8) return out; let e=[]; try{e=fs.readdirSync(d,{withFileTypes:true})}catch{return out}
+            for(const x of e){ if(x.name==='.git'||x.name==='node_modules') continue; const f=p.join(d,x.name);
+              if(x.isDirectory()) walk(f,depth+1,out); else out.push(f);} return out; }
+          const tag=p.basename(ws);
+          const root=p.join(os.homedir(),'.grill-with-ui','sessions');
+          const keys=fs.existsSync(root)?fs.readdirSync(root).filter(k=>k.includes(tag)):[];
+          const roots=[ws,...keys.map(k=>p.join(root,k))];
+          const cands=[];
+          for(const r of roots) for(const f of walk(r)) if(p.basename(f)==='state.json') cands.push(f);
+          if(!cands.length){ console.error('FAIL: no grill session state.json in this task workspace. Roots: '+roots.join(', ')); process.exit(1); }
+          const best=cands.map(f=>[f,fs.statSync(f).mtimeMs]).sort((a,b)=>b[1]-a[1])[0][0];
+          const s=JSON.parse(fs.readFileSync(best,'utf8'));
+          const topic=(s.questions||[]).find(q=>q.id!=='q-domain');
+          let out=''; try{ out=fs.readFileSync(0,'utf8'); }catch{}
+          const applied = topic && topic.status==='answered'
+            && (topic.answer||{}).kind==='option'
+            && String((topic.answer||{}).option||'').toUpperCase()==='B';
+          // The skill allows the agent to ask which question the terminal text
+          // answers when it is not unambiguous, and to offer the sanctioned
+          // route and wait for the go-ahead. Either is a valid outcome; only a
+          // silent no-op is not. An offer counts whether it ends in a question
+          // ("Want me to apply it that way?") or in a confirmation request
+          // ("Say the word and I'll run it").
+          const asked = out.includes('?')
+            || /\bwhich question\b|\bdo you mean\b|\bclarify\b|\bconfirm\b|\bsay the word\b|\bshall i\b/i.test(out);
+          if(!topic){ F.push('no topic question in state'); }
+          else if(!applied && !asked) F.push('neither applied the answer via patch nor asked which question it answers');
+          if(F.length){ console.error('FAIL:\n - '+F.join('\n - ')); process.exit(1); }
+          console.log(applied?'answer recorded through the patch command':'agent asked which question the terminal text answers');

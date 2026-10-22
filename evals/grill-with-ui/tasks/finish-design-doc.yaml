@@ -1,0 +1,87 @@
+id: finish-design-doc
+name: Finish writes the design doc
+description: >-
+  The user answers the open questions and asks for Finish with a chosen doc path.
+  The agent must write the self-contained design doc at that path with the sections
+  the skill prescribes, and record it in state.finished.doc.
+tags:
+  - behavioral
+  - finish
+inputs:
+  prompt: |
+    grill with ui: We need to decide where a small CLI keeps per-user settings — a
+    dotfile in the home directory, an environment variable, or the OS keychain.
+
+    This is an automated run: there is no browser and no interactive user. Do exactly
+    what the skill's Start flow asks for — create the session, publish round 1, open
+    the page, print the URL — then stop and report. Do not enter the wait loop, do
+    not wait for browser submissions, and make sure no server process is left
+    running when you stop.
+  follow_up_prompts:
+    - "Answer every open question with option A."
+    - "Write the design doc to design-notes.md and finish."
+expected:
+  should_trigger: true
+graders:
+  # No skill_invocation grader: the skill body is already in the agent's context and
+  # the CLI does not re-invoke the skill on later turns, so the check would be a
+  # harness artifact rather than a skill signal.
+  - name: design-doc
+    type: file
+    weight: 3
+    config:
+      must_exist:
+        - design-notes.md
+      content_patterns:
+        - path: design-notes.md
+          must_match:
+            - "(?i)settings"
+            - "(?mi)^\\s*#{0,4}\\s*\\**\\s*Terms\\b"
+            - "(?mi)^\\s*#{0,4}\\s*\\**\\s*Why\\b"
+            - "(?mi)^\\s*#{0,4}\\s*\\**\\s*Locked decisions\\b"
+            - "(?mi)^\\s*#{0,4}\\s*\\**\\s*Routine choices\\b"
+            - "(?mi)^\\s*#{0,4}\\s*\\**\\s*Risks\\b"
+          must_not_match:
+            - "Also keep a glossary and ADRs\\?"
+  - name: finished-recorded
+    type: program
+    weight: 2
+    config:
+      command: node
+      timeout: 60
+      args:
+        - -e
+        - |
+          const fs=require('fs'),p=require('path'),os=require('os');
+          const ws=process.env.WAZA_WORKSPACE_DIR||process.cwd();
+          const F=[];
+          function walk(d,depth=0,out=[]){ if(depth>8) return out; let e=[]; try{e=fs.readdirSync(d,{withFileTypes:true})}catch{return out}
+            for(const x of e){ if(x.name==='.git'||x.name==='node_modules') continue; const f=p.join(d,x.name);
+              if(x.isDirectory()) walk(f,depth+1,out); else out.push(f);} return out; }
+          const tag=p.basename(ws);
+          const root=p.join(os.homedir(),'.grill-with-ui','sessions');
+          const keys=fs.existsSync(root)?fs.readdirSync(root).filter(k=>k.includes(tag)):[];
+          const roots=[ws,...keys.map(k=>p.join(root,k))];
+          const cands=[];
+          for(const r of roots) for(const f of walk(r)) if(p.basename(f)==='state.json') cands.push(f);
+          if(!cands.length){ console.error('FAIL: no grill session state.json in this task workspace. Roots: '+roots.join(', ')); process.exit(1); }
+          const best=cands.map(f=>[f,fs.statSync(f).mtimeMs]).sort((a,b)=>b[1]-a[1])[0][0];
+          const s=JSON.parse(fs.readFileSync(best,'utf8'));
+          const fin=s.finished;
+          if(!fin) F.push('state.finished is missing');
+          else {
+            if(!(fin.doc||'').endsWith('design-notes.md')) F.push('finished.doc='+JSON.stringify(fin.doc));
+            if(!fin.at) F.push('finished.at missing');
+          }
+          const open=(s.questions||[]).filter(q=>q.status==='open');
+          if(open.length){
+            const docPath=p.join(ws,'design-notes.md');
+            const text=fs.existsSync(docPath)?fs.readFileSync(docPath,'utf8').toLowerCase():'';
+            for(const q of open){
+              const title=(q.title||'').trim().toLowerCase();
+              const named = text.includes(title) || text.includes(String(q.id).toLowerCase());
+              if(!named) F.push('open question '+q.id+' ("'+title+'") is not mentioned in the design doc');
+            }
+          }
+          if(F.length){ console.error('FAIL:\n - '+F.join('\n - ')); process.exit(1); }
+          console.log('finish recorded at '+fin.doc);

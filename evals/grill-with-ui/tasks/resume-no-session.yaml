@@ -1,0 +1,60 @@
+id: resume-no-session
+name: Resume with no open session
+description: >-
+  "/grill-with-ui resume" in a project with no unfinished session. The agent must
+  list the sessions, report that there is none, and stop — it must not start a new
+  grill.
+tags:
+  - behavioral
+  - resume
+inputs:
+  prompt: |
+    /grill-with-ui resume
+
+    This is an automated run: there is no browser and no interactive user. If there is
+    no session to resume, say so and stop. Do not start a new grill, do not enter the
+    wait loop, and make sure no server process is left running when you stop.
+expected:
+  should_trigger: true
+graders:
+  # No skill_invocation grader: the skill body is already in the agent's context and
+  # the CLI does not re-invoke the skill on later turns, so the check would be a
+  # harness artifact rather than a skill signal.
+  - name: sessions-listed
+    type: tool_constraint
+    weight: 2
+    config:
+      expect_tools:
+        - tool: "bash|powershell|shell|terminal|run_in_terminal"
+          command_pattern: "server\\.mjs['\"]*\\s+sessions"
+      reject_tools:
+        - tool: "bash|powershell|shell|terminal|run_in_terminal"
+          command_pattern: "server\\.mjs['\"]*\\s+new"
+  - name: reported-no-session
+    type: text
+    weight: 2
+    config:
+      regex_match:
+        - "(?i)no\\s+(open\\s+|unfinished\\s+|active\\s+)?sessions?"
+  - name: no-session-created
+    type: program
+    weight: 2
+    config:
+      command: node
+      timeout: 60
+      args:
+        - -e
+        - |
+          const fs=require('fs'),p=require('path'),os=require('os');
+          const ws=process.env.WAZA_WORKSPACE_DIR||process.cwd();
+          function walk(d,depth=0,out=[]){ if(depth>8) return out; let e=[]; try{e=fs.readdirSync(d,{withFileTypes:true})}catch{return out}
+            for(const x of e){ if(x.name==='.git'||x.name==='node_modules') continue; const f=p.join(d,x.name);
+              if(x.isDirectory()) walk(f,depth+1,out); else out.push(f);} return out; }
+          const tag=p.basename(ws);
+          const root=p.join(os.homedir(),'.grill-with-ui','sessions');
+          const keys=fs.existsSync(root)?fs.readdirSync(root).filter(k=>k.includes(tag)):[];
+          const roots=[ws,...keys.map(k=>p.join(root,k))];
+          const states=[];
+          for(const r of roots) for(const f of walk(r)) if(p.basename(f)==='state.json') states.push(f);
+          if(states.length){ console.error('FAIL: resume started a new grill: '+states.map(c=>c).join(', ')); process.exit(1); }
+          console.log('no session created');

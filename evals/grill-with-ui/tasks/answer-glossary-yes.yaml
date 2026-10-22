@@ -1,0 +1,74 @@
+id: answer-glossary-yes
+name: A terminal answer turns domain-modeling mode on
+description: >-
+  The agent starts the grill, then the user answers the glossary question with
+  "Yes" in the terminal. The skill requires a patch that records the answer and
+  sets the top-level domainModeling flag to true.
+tags:
+  - behavioral
+  - state
+inputs:
+  prompt: |
+    grill with ui: We need to decide where a small CLI keeps per-user settings — a
+    dotfile in the home directory, an environment variable, or the OS keychain.
+
+    This is an automated run: there is no browser and no interactive user. Do exactly
+    what the skill's Start flow asks for — create the session, publish round 1, open
+    the page, print the URL — then stop and report. Do not enter the wait loop, do
+    not wait for browser submissions, and make sure no server process is left
+    running when you stop.
+  follow_up_prompts:
+    - "Answer the glossary question with Yes — that is option A."
+expected:
+  should_trigger: true
+graders:
+  # No skill_invocation grader here: the skill is already in the agent's context
+  # from turn 1, and the CLI does not re-invoke it in the follow-up turn.
+  - name: domain-modeling-on
+    type: program
+    weight: 3
+    config:
+      command: node
+      timeout: 60
+      args:
+        - -e
+        - |
+          const fs=require('fs'),p=require('path'),os=require('os');
+          const ws=process.env.WAZA_WORKSPACE_DIR||process.cwd();
+          const F=[];
+          function walk(d,depth=0,out=[]){ if(depth>8) return out; let e=[]; try{e=fs.readdirSync(d,{withFileTypes:true})}catch{return out}
+            for(const x of e){ if(x.name==='.git'||x.name==='node_modules') continue; const f=p.join(d,x.name);
+              if(x.isDirectory()) walk(f,depth+1,out); else out.push(f);} return out; }
+          const tag=p.basename(ws);
+          const root=p.join(os.homedir(),'.grill-with-ui','sessions');
+          const keys=fs.existsSync(root)?fs.readdirSync(root).filter(k=>k.includes(tag)):[];
+          const roots=[ws,...keys.map(k=>p.join(root,k))];
+          const cands=[];
+          for(const r of roots) for(const f of walk(r)) if(p.basename(f)==='state.json') cands.push(f);
+          if(!cands.length){ console.error('FAIL: no grill session state.json in this task workspace. Roots: '+roots.join(', ')); process.exit(1); }
+          const best=cands.map(f=>[f,fs.statSync(f).mtimeMs]).sort((a,b)=>b[1]-a[1])[0][0];
+          const s=JSON.parse(fs.readFileSync(best,'utf8'));
+          const dom=(s.questions||[]).find(q=>q.id==='q-domain');
+          if(!dom) F.push('q-domain missing');
+          else {
+            if(dom.status!=='answered') F.push('q-domain status='+dom.status);
+            const a=dom.answer||{};
+            const yes = (a.kind==='option'&&String(a.option||'').toUpperCase()==='A')
+              || (a.kind==='accept')
+              || /^(yes|yep|yeah|true)\b/i.test(String(a.text||'').trim());
+            if(!yes) F.push('q-domain answer is not a yes: '+JSON.stringify(a));
+            if(dom.durable!==false) F.push('q-domain must stay durable:false');
+          }
+          if(s.domainModeling!==true) F.push('domainModeling is not true: '+JSON.stringify(s.domainModeling));
+          if(F.length){ console.error('FAIL:\n - '+F.join('\n - ')); process.exit(1); }
+          console.log('domain-modeling mode on, answer recorded');
+  - name: patch-only
+    type: tool_constraint
+    weight: 1
+    config:
+      expect_tools:
+        - tool: "bash|powershell|shell|terminal|run_in_terminal"
+          command_pattern: "server\\.mjs['\"]*\\s+patch"
+      reject_tools:
+        - tool: "edit|write|create|create_file|apply_patch|str_replace|delete_file"
+          path_pattern: "[\\\\/]state\\.json$"
