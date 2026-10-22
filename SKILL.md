@@ -401,8 +401,12 @@ On a `finish` action, or when the user says finish in the terminal:
    choices** (every other answered question, one bullet each); **Verified facts** (anything
    you established by exploring rather than asking, if any); **Risks**; **Deferred**
    (deferred questions, with what would reopen them); **Open threads** (discussion points
-   that ended without a decision). Exclude the domain-modeling-mode meta question (`q-domain`) from
-   every section: it is session meta, not a topic decision. Do not compress: a reader with
+   that ended without a decision, plus every question that was published and never answered —
+   a reader must see what is still open; name each one, never leave it out). The
+   domain-modeling-mode meta question (`q-domain`) is
+   session meta, not a topic decision: it appears in **no** section — not as a decision, not
+   as a routine choice, and not as a note explaining that the glossary and the ADRs were
+   written. Do not compress: a reader with
    no access to the session must be able to build from it.
 3. Patch `"finished": { "doc": … }` and `"agent": { "status": "waiting" }`
    (after a page Finish this is the send's one patch, with `handled`); the page shows the
