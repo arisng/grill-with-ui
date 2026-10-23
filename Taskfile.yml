@@ -43,8 +43,9 @@ tasks:
 
   test:e2e:
     desc: Page end-to-end checks against a real serve (needs Playwright)
-    summary: Drives page.html in Chromium — including the theme toggle checks. Set
-      PLAYWRIGHT_PKG to @playwright/test's index.mjs; a raw Windows path is normalised here.
+    summary: Drives page.html in Chromium — including the theme toggle and completion-sound
+      cue checks. Set PLAYWRIGHT_PKG to @playwright/test's index.mjs; a raw Windows path is
+      normalised here.
     preconditions:
       - sh: test -n "$PLAYWRIGHT_PKG"
         msg: 'Set PLAYWRIGHT_PKG to @playwright/test''s index.mjs, e.g. PLAYWRIGHT_PKG=file:///c:/path/node_modules/@playwright/test/index.mjs (or a plain path; this task normalises Windows paths).'
@@ -55,6 +56,7 @@ tasks:
         # this task's env map creates a resolution cycle).
         export PLAYWRIGHT_PKG="$(node -e "const p=process.env.PLAYWRIGHT_PKG||'';process.stdout.write(p&&p[1]===':'?'file:///'+p.split(String.fromCharCode(92)).join('/'):p)")"
         node test/page.e2e.mjs
+        node test/page-sound.e2e.mjs
 
   detect:
     desc: Run the Impeccable design detector over the page markup
@@ -85,6 +87,16 @@ tasks:
     deps: [test, test:e2e]
     cmds:
       - task detect
+
+  taste:
+    desc: Open the completion-sound sampler, drift-checked against page.html
+    cmds:
+      - node taste.mjs
+
+  taste:check:
+    desc: Exit 1 when the sampler SOUND_CUES table drifted from page.html
+    cmds:
+      - node taste.mjs --check
 
   # ---- server CLI (the commands SKILL.md drives at runtime) ----
 
