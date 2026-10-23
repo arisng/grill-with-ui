@@ -68,9 +68,9 @@
   header.working #progress { display: block; }
   #progress::after { content: ""; position: absolute; top: 0; bottom: 0; width: 30%; background: var(--stage); animation: slide 1.4s ease-in-out infinite; }
   @keyframes slide { from { left: -30%; } to { left: 100%; } }
-  #terms-toggle, #visualize, #theme-toggle { font-size: 12px; padding: 4px 10px; }
-  #theme-toggle { display: inline-flex; align-items: center; justify-content: center; padding: 5px 8px; }
-  #theme-toggle svg { width: 14px; height: 14px; display: block; }
+  #terms-toggle, #visualize, #theme-toggle, #sound-toggle { font-size: 12px; padding: 4px 10px; }
+  #theme-toggle, #sound-toggle { display: inline-flex; align-items: center; justify-content: center; padding: 5px 8px; }
+  #theme-toggle svg, #sound-toggle svg { width: 14px; height: 14px; display: block; }
   #visualize .spin { width: 9px; height: 9px; margin-right: 4px; }
   #visualize:disabled { background: var(--panel); border-color: var(--rule); color: var(--ink-3); }
   #terms { display: none; position: absolute; right: 24px; top: 100%; width: 420px; max-height: 60vh; overflow-y: auto; background: var(--panel); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 16px; box-shadow: var(--drop-shadow); z-index: 5; }
@@ -280,8 +280,8 @@
 
     /* the topic takes its own line; controls above it, status beside them */
     header { flex-wrap: wrap; gap: 5px 10px; padding: 9px 12px 8px; }
-    #terms-toggle, #visualize, #theme-toggle { order: 1; }
-    #terms-toggle, #visualize, #theme-toggle { min-height: 40px; padding: 6px 10px; }
+    #terms-toggle, #visualize, #theme-toggle, #sound-toggle { order: 1; }
+    #terms-toggle, #visualize, #theme-toggle, #sound-toggle { min-height: 40px; padding: 6px 10px; }
     header .status { order: 2; font-size: 12px; }
     header h1 { order: 3; flex-basis: 100%; font-size: 17px; }
     header .path { order: 4; flex-basis: 100%; font-size: 12px; }
@@ -373,6 +373,7 @@
   <button id="terms-toggle" type="button">Terms</button>
   <div id="terms"></div>
   <button id="theme-toggle" type="button"></button>
+  <button id="sound-toggle" type="button"></button>
   <button id="visualize" type="button" hidden>Visualize</button>
   <span class="status"><span class="dot" id="agent-dot"></span><span id="agent-status">connecting…</span></span>
   <div id="progress"></div>
@@ -516,16 +517,18 @@ async function poll() {
 }
 function onState() {
   const key = "grill:" + (S.project || "") + ":" + (S.created || "");
-  if (key !== storeKey) { storeKey = key; load(); }
+  if (key !== storeKey) { storeKey = key; load(); sndSeen = null; } // a different grill: re-baseline the sound triggers
   const handled = Number((S.agent || {}).handled) || 0;
   const still = local.pending.filter((p) => p.seq > handled);
-  if (still.length !== local.pending.length) {
+  const pendingShrunk = still.length !== local.pending.length;
+  if (pendingShrunk) {
     local.pending = still; save();
     if (!still.length) { const cur = byId(selected); if (!cur || !isOpen(cur)) selected = (firstOpen() || {}).id || selected; }
   }
   if (!selected || !byId(selected)) selected = (firstOpen() || {}).id || null;
   const fin = !!S.finished;
   if (finishedPrev === false && fin) fetchGlossary(); // Finish just wrote CONTEXT.md — refetch once
+  sndStep(pendingShrunk, finishedPrev === false && fin);
   finishedPrev = fin;
   render();
 }
@@ -955,6 +958,93 @@ function renderSend() {
   const { disabled, why } = sendState(); const n = stagedCount(); const b = $("send");
   b.disabled = disabled; b.textContent = n ? `Send ${n} to Agent` : "Send to Agent";
   $("send-why").textContent = why;
+}
+
+// ---- completion sounds: one short cue per state change, muted by a header toggle ----
+// The user away from the tab hears when a send is processed, a thread reply lands, the
+// grill finishes, or a redrawn visual lands. Cues are Web Audio oscillators — no assets.
+// One shared context, unlocked by the first gesture (browser autoplay policy); while it is
+// still suspended a cue is skipped quietly. At most one cue per state change: sndStep
+// picks the first event under the precedence finished > visual > thread > ack.
+const SOUND_KEY = "grill-sound-muted";
+const SOUND_ICON = { // authored inline, same stroke and weight as the theme icons — no glyph fonts
+  on: '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2v3.6h2.4L8.6 13V3L4.9 6.2H2.5z"/><path d="M11 5.6a3.4 3.4 0 0 1 0 4.8M13 3.9a5.8 5.8 0 0 1 0 8.2"/></svg>',
+  off: '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2v3.6h2.4L8.6 13V3L4.9 6.2H2.5z"/><path d="M11.2 6.2l3.6 3.6M14.8 6.2l-3.6 3.6"/></svg>',
+};
+const SOUND_CUES = { // [frequency Hz, start ms, duration ms] per note
+  "send-ack": [[880, 0, 120]],
+  "thread-reply": [[660, 0, 120], [880, 130, 160]],
+  "grill-finished": [[523, 0, 130], [659, 140, 130], [784, 280, 260]],
+  "visual-landed": [[587, 0, 300]],
+};
+let soundCtx = null;
+let soundMuted = (() => { try { return localStorage.getItem(SOUND_KEY) === "1"; } catch { return false; } })();
+const soundCueLog = [];
+function soundUnlock() {
+  if (!soundCtx) { try { soundCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return; } }
+  if (soundCtx.state === "suspended") soundCtx.resume().catch(() => {});
+}
+function playCue(name) { // true only when the cue was actually audible
+  if (soundMuted) return false;
+  soundUnlock();
+  const notes = SOUND_CUES[name];
+  if (!soundCtx || soundCtx.state !== "running" || !notes) return false;
+  const t0 = soundCtx.currentTime + 0.02;
+  for (const [freq, at, dur] of notes) {
+    const osc = soundCtx.createOscillator(), gain = soundCtx.createGain();
+    osc.type = "sine"; osc.frequency.value = freq;
+    const s = t0 + at / 1000, e = s + dur / 1000;
+    gain.gain.setValueAtTime(0.0001, s);
+    gain.gain.exponentialRampToValueAtTime(0.25, s + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, e);
+    osc.connect(gain).connect(soundCtx.destination);
+    osc.start(s); osc.stop(e + 0.02);
+  }
+  soundCueLog.push(name);
+  return true;
+}
+["pointerdown", "keydown"].forEach((ev) => document.addEventListener(ev, soundUnlock, { passive: true }));
+function applySoundToggle() {
+  const b = $("sound-toggle"), word = soundMuted ? "muted" : "on";
+  b.innerHTML = soundMuted ? SOUND_ICON.off : SOUND_ICON.on;
+  b.setAttribute("aria-label", `Completion sounds: ${word}`); b.title = `Completion sounds: ${word}`;
+  b.setAttribute("aria-pressed", soundMuted ? "true" : "false");
+}
+// Test hook: the trigger path resolves window.__grillSound.playCue at call time, so an
+// observer installed before any cue sees every play; state() reports mute + context + plays.
+window.__grillSound = { playCue, state: () => ({ muted: soundMuted, ctx: soundCtx ? soundCtx.state : "none", cues: soundCueLog.slice() }) };
+$("sound-toggle").onclick = () => {
+  soundMuted = !soundMuted;
+  try { localStorage.setItem(SOUND_KEY, soundMuted ? "1" : "0"); } catch {}
+  applySoundToggle();
+};
+applySoundToggle();
+
+// ---- sound triggers: baseline on a session's first observation, then one cue per change ----
+let sndSeen = null; // { threads: Map<qid, agent-reply count>, visualThread, visualVersion }; null = not baselined
+function sndBaselines() {
+  const threads = new Map();
+  for (const q of qs()) threads.set(q.id, Array.isArray(q.thread) ? q.thread.filter((m) => m && m.who === "agent").length : 0);
+  const v = visual();
+  return {
+    threads,
+    visualThread: v && Array.isArray(v.thread) ? v.thread.filter((m) => m && m.who === "agent").length : 0,
+    visualVersion: v ? Number(v.version) || 0 : 0,
+  };
+}
+function sndStep(pendingShrunk, finishedEdge) {
+  if (!sndSeen) { sndSeen = sndBaselines(); return; } // first observation: baseline only, never a cue
+  const base = sndSeen, now = sndBaselines();
+  let threadNew = now.visualThread > base.visualThread;
+  for (const [id, n] of now.threads) if (n > (base.threads.get(id) || 0)) threadNew = true;
+  // events collected in precedence order: the first one is the one that sounds
+  const events = [];
+  if (finishedEdge) events.push("grill-finished");
+  if (now.visualVersion > base.visualVersion) events.push("visual-landed");
+  if (threadNew) events.push("thread-reply");
+  if (pendingShrunk) events.push("send-ack");
+  sndSeen = now;
+  if (events.length) window.__grillSound.playCue(events[0]);
 }
 
 $("send").onclick = send;
