@@ -1,0 +1,70 @@
+<!doctype html>
+<!-- Completion-sound sampler — opened by `task taste` (node taste.mjs).
+     The SOUND_CUES table and the oscillator code below are copied verbatim from
+     page.html — the page that plays the real cues. Retuning a tone? Edit SOUND_CUES
+     in page.html first, copy the table here, then re-run the task: taste.mjs warns
+     when the two tables drift. -->
+<meta charset="utf-8">
+<title>grill sound sampler</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; background: #100e0c; color: #efe9e2; max-width: 40rem; margin: 3rem auto; padding: 0 1.5rem; }
+  h1 { font-size: 1.2rem; font-weight: 600; }
+  p { color: #b8b0a6; }
+  .row { display: flex; gap: .75rem; flex-wrap: wrap; margin: 1.5rem 0; }
+  button { font: inherit; padding: .6rem 1.1rem; border: 1px solid #4a423a; border-radius: .5rem; background: #191613; color: inherit; cursor: pointer; }
+  button:hover { border-color: #7a6f62; }
+  button.all { background: #2b241d; border-color: #7a6f62; }
+  small { color: #8a8177; }
+</style>
+<h1>grill completion cues</h1>
+<p>Click a button to hear that cue. The first click also unlocks audio for the tab
+(once one cue has played, the rest are audible even without clicking again).</p>
+<div class="row">
+  <button data-cue="send-ack">send processed</button>
+  <button data-cue="thread-reply">thread reply</button>
+  <button data-cue="visual-landed">visual landed</button>
+  <button data-cue="grill-finished">grill finished</button>
+  <button data-cue="all" class="all">play all in order</button>
+</div>
+<p><small>In the real grill page the same four tones fire automatically when the agent
+finishes a send, replies in a thread, lands a redrawn visual, or finishes the grill —
+at most one per update, mute in the header.</small></p>
+<script>
+"use strict";
+// ---- copied verbatim from page.html ----
+const SOUND_CUES = { // [frequency Hz, start ms, duration ms] per note
+  "send-ack": [[880, 0, 120]],
+  "thread-reply": [[660, 0, 120], [880, 130, 160]],
+  "grill-finished": [[523, 0, 130], [659, 140, 130], [784, 280, 260]],
+  "visual-landed": [[587, 0, 300]],
+};
+let soundCtx = null;
+function soundUnlock() {
+  if (!soundCtx) { try { soundCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch { return; } }
+  if (soundCtx.state === "suspended") soundCtx.resume().catch(() => {});
+}
+function playCue(name) {
+  soundUnlock();
+  const notes = SOUND_CUES[name];
+  if (!soundCtx || soundCtx.state !== "running" || !notes) return false;
+  const t0 = soundCtx.currentTime + 0.02;
+  for (const [freq, at, dur] of notes) {
+    const osc = soundCtx.createOscillator(), gain = soundCtx.createGain();
+    osc.type = "sine"; osc.frequency.value = freq;
+    const s = t0 + at / 1000, e = s + dur / 1000;
+    gain.gain.setValueAtTime(0.0001, s);
+    gain.gain.exponentialRampToValueAtTime(0.25, s + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, e);
+    osc.connect(gain).connect(soundCtx.destination);
+    osc.start(s); osc.stop(e + 0.02);
+  }
+  return true;
+}
+// ---- sampler wiring ----
+const ORDER = ["send-ack", "thread-reply", "visual-landed", "grill-finished"];
+document.querySelectorAll("button").forEach((b) => b.onclick = () => {
+  const cue = b.dataset.cue;
+  if (cue === "all") { ORDER.forEach((c, i) => setTimeout(() => playCue(c), i * 700)); }
+  else playCue(cue);
+});
+</script>
