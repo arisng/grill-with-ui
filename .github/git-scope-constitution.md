@@ -1,6 +1,6 @@
 # Commit Scope Constitution
 
-Last Updated: 2026-10-22
+Last Updated: 2026-10-23
 
 ## Purpose
 
@@ -28,6 +28,8 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 - `server`: `server.mjs` — the HTTP server and CLI (newserve, patch,
   wait, url behavior and validation).
 - `page`: `page.html` — the browser page's rendering and interaction.
+- `sampler`: `sound-sampler.html` — the standalone completion-sound
+  taste page.
 
 ### `fix`
 
@@ -75,6 +77,8 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
   (token budgets per file).
 - `taskfile`: `Taskfile.yml` — the taskfile.dev wrappers over the
   repository's own commands.
+- `taste`: `taste.mjs` — the sampler launcher and the SOUND_CUES
+  drift check against `page.html`.
 
 ### `codex` (Tier 2 — reserved)
 
@@ -115,6 +119,16 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 3. Record the change under Amendment History and bump Last Updated.
 
 ## Amendment History
+
+### 2026-10-23 - Amendment #5
+
+**Changes:**
+- Added the `sampler` scope under the `feat` type, for the standalone
+  completion-sound taste page (`sound-sampler.html`).
+- Added the `taste` scope under the `devtool` type, for the sampler
+  launcher and cue-table drift check (`taste.mjs`).
+
+No history rewriting; both files are new.
 
 ### 2026-10-22 - Amendment #4
 
