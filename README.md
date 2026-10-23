@@ -138,6 +138,19 @@ default, your choice is remembered in this browser (never in the session's state
 is the same design in warm ink on cool paper. It applies before first paint, so reloading in
 dark never flashes white.
 
+Next to it, a **sound** button toggles the completion cues: while you are away from the tab,
+a short tone announces that the agent finished processing your Send, replied in a
+discussion, landed a redrawn visual, or finished the grill — each with its own distinct
+cue, at most one per update. The choice is remembered in this browser like the theme, and
+the first click anywhere unlocks audio for the tab (browser autoplay policy); if a cue
+cannot play yet it is skipped quietly, never blocked.
+
+To taste the cues without a running grill, `task taste` opens `sound-sampler.html` —
+every tone on buttons — after checking the sampler's cue table still matches
+`page.html`. `task taste:check` runs only that drift check (exit 1 when the tables
+disagree), so retuning a tone stays: edit `SOUND_CUES` in `page.html`, copy the
+table into the sampler, taste again.
+
 **Visualize** in the header asks the agent for one picture of the design so far: an
 interactive HTML prototype when the topic is a UI, an architecture or flow diagram
 otherwise. When the topic is a change to an existing app, the prototype is drawn inside the
@@ -249,7 +262,9 @@ task             # list every task
 The page check needs Playwright with Chromium; point `PLAYWRIGHT_PKG` at an existing install
 or run it with `@playwright/test` installed next to the repo. It starts a real server on a
 throwaway session and drives the page end to end (staging, reload, send, working state,
-server restart, finished state).
+server restart, finished state). `test/page-sound.e2e.mjs` runs the same harness against
+the completion-sound contract: every trigger plays exactly its cue, history stays silent on
+load, precedence holds for combined updates, and mute survives a reload.
 
 `Taskfile.yml` also wraps the server CLI for local use — `task new TOPIC=… DOC=…`,
 `task sessions`, `task serve` (newest session, or `SESSION=<dir>`), `task pending` — and
