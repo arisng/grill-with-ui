@@ -3,7 +3,7 @@ name: grill-with-ui
 description: >
    Run a grilling interview on a local browser page instead of the terminal: each question shows its recommendation, takes any order, has a discussion thread and one Send button. An opt-in first question also lands terms in a CONTEXT.md glossary and durable decisions as ADRs. USE FOR: "grill with ui", /grill-with-ui with a topic, "/grill-with-ui resume", "grill me on a topic". DO NOT USE FOR: plain design questions, reviews, tasks, repo questions — answer directly."
 metadata:
-   version: 0.6.0
+   version: 0.7.0
 ---
 
 # grill-with-ui
@@ -33,12 +33,21 @@ Choose the mode from the tools actually available, not the agent's model name:
   process with the harness's polling tool. Do not send a final response merely because a
   question round or visual is ready. A timeout means wait again, not end the interview.
 
+- **Extension monitor (Copilot with the grill-monitor extension):** if `grill_attach` exists,
+  attach once the page server is verified — `grill_attach {session, server}` (the session
+  folder and the skill's `server.mjs` path) — publish each round, then end the turn: the
+  extension runs `wait` itself and delivers every Send as one turn carrying the raw event.
+  Never run `wait` while attached; the extension's `monitor.json` lock keeps one waiter per
+  session. On resume, drain `pending` first, then re-attach; at Finish `grill_detach` before
+  stopping the server.
+
 Throughout this skill, **return to listening** means the appropriate action above. In wait
-mode stop only after Finish and any final visual export are complete, the user explicitly
-pauses/stops the interview, or a tool failure prevents continuing. If you must stop, say that
-the listener is inactive and that browser submissions will be queued until resume; never
-claim you are still listening. On resume, drain `pending` as Resume step 3 describes before
-waiting for new events.
+mode or Extension monitor mode, stop only after Finish and any final visual export are
+complete, the user explicitly pauses/stops the interview, or a tool failure prevents
+continuing. If you must stop early, `grill_detach` first when attached, then say the
+listener is inactive and that browser submissions will be queued until resume; never
+claim you are still listening. On resume, drain `pending` as Resume step 3 describes
+before waiting for new events.
 
 **You change `state.json` only through `patch`** (next section), never with a file-write or
 edit tool. A whole-file write puts the entire state into this conversation on every turn, and
@@ -144,8 +153,11 @@ GRILL_PATCH
    plus any `terms` and `"agent": { "status": "waiting" }`.
 3. Open a **persistent Monitor** (`persistent: true`) whose command is
    `node $SKILL/server.mjs serve --session <session>`, description `grill page: <topic>`.
-   No Monitor tool in your harness (Codex, Gemini CLI, Cursor, Copilot, others)? Use
-   "Wait mode" at the end of this file for this step and for every wait after it.
+   No Monitor tool in your harness (Codex, Gemini CLI, Cursor, others)? With
+   `grill_attach` available (Copilot + the grill-monitor extension) skip the Monitor:
+   start `serve` detached as Wait mode's first paragraph says — step 4 verifies it —
+   then follow "Extension monitor" in Listening mode for every wait after it.
+   Otherwise use "Wait mode" at the end of this file.
 4. Run `node $SKILL/server.mjs url --session <session>`; it prints the URL.
 5. Print ONE line: the URL, how many questions wait, and the doc path (say the user can change
    the path by typing in the terminal). Return to listening.
@@ -434,13 +446,19 @@ On a `finish` action, or when the user says finish in the terminal:
    `doc` again — and `context`/`adrs` when domain-modeling mode wrote them; the server
    stamps `at`).
 5. Once there is no draw in flight and the exports are complete, stop the persistent
-   Monitor with TaskStop, or stop the server as described in Wait mode.
+   Monitor with TaskStop; with `grill_attach`, call `grill_detach` first; in every case
+   stop the server with the verified `pid` in `<session>/server.json`.
 6. Print one line with the doc path (and the visual's, plus the glossary's path and the ADRs when
    domain-modeling mode wrote them). When durable decisions produced no ADR, say how many
    ("…, 2 ADRs to docs/adr/, 3 durable decisions had no ADR") — the page banner only
    counts the files that exist. End.
 
-## Wait mode (agents without a Monitor tool)
+## Wait mode (no Monitor tool, no grill-monitor)
+
+With `grill_attach` available only the foreground `wait` loop below does not apply —
+Extension monitor replaces it. This section's paragraphs about starting `serve`
+detached and stopping it by the verified `pid` still govern Extension monitor; the
+pending drain applies on resume as Listening mode says.
 
 Start the server detached with its output going to a log:
 `nohup node $SKILL/server.mjs serve --session <session> > <session>/serve.log 2>&1 &`.
