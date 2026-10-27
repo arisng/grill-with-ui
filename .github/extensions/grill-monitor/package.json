@@ -1,0 +1,10 @@
+{
+  "name": "grill-monitor",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Copilot extension that replaces grill-with-ui's agent-side wait loop: runs `server.mjs wait` itself and delivers each browser Send to the chat via session.send.",
+  "scripts": {
+    "test": "node --import ./test/register-sdk-stub.mjs --test test/extension.test.mjs"
+  }
+}
