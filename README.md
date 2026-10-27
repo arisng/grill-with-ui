@@ -41,6 +41,17 @@ ln -s ~/Projects/grill-with-ui ~/.claude/skills/grill-with-ui   # Claude Code (C
 ln -s ~/Projects/grill-with-ui ~/.agents/skills/grill-with-ui   # Codex, Gemini CLI, Cursor, Copilot
 ```
 
+**Copilot only — Extension monitor (optional):** install the companion extension so Copilot
+stops polling and is woken once per Send instead (it needs no build step either):
+
+```sh
+task ext-install    # or: mkdir -p ~/.copilot/extensions &&
+                    #     cp -R .github/extensions/grill-monitor ~/.copilot/extensions/
+```
+
+Restart Copilot (or reload its extensions) and `grill_attach` appears among the tools;
+without the extension the skill falls back to wait mode as described below.
+
 This repository is a fork of [jasonku09/grill-with-ui](https://github.com/jasonku09/grill-with-ui),
 which remains the upstream code source. The fork adds domain-modeling mode (a `CONTEXT.md`
 glossary and ADRs), a responsive layout for phone and tablet, a writing-clarity profile, a
@@ -66,7 +77,9 @@ description names the phrase "grill with ui", so plain language works on every a
 What the agent needs at run time:
 
 - **A shell tool and Node 20+.** Claude Code is woken per Send by its persistent Monitor
-  tool. Every other agent uses **wait mode**, spelled out in `SKILL.md`: it starts the
+  tool; GitHub Copilot with the grill-monitor extension uses **Extension monitor** (the
+  extension polls for you and wakes the agent once per Send). Every other agent uses
+  **wait mode**, spelled out in `SKILL.md`: it starts the
   server detached (or in a harness-managed shell session) and keeps `node server.mjs wait`
   active in the foreground. It returns on the next Send or after a bounded timeout, then
   loops. The agent keeps listening after replies and completed visuals, until the user
@@ -192,6 +205,7 @@ Session state lives outside your repo, so there is nothing to gitignore:
   state.json     written only by the agent, through `patch` (questions, recommendations, threads, status)
   events.jsonl   appended only by the page, one line per Send
   server.json    url, port and pid of the running server
+  monitor.json   written only by the grill-monitor extension — its single-waiter lock (Extension monitor mode)
   visual.html    the prototype or diagram, drawn by the agent's subagent, served at /visual
 ```
 
@@ -218,7 +232,8 @@ keeps its place in the design doc alone.
 In this repo: `server.mjs` (the server and CLI), `page.html` (the page), `SKILL.md` (the
 prompt the agent follows), `writing-clarity.md` (its writing rules), `visual-brief.md` (the
 visual subagent's contract), `domain-brief.md` and `adr-template.md` (the standing docs it
-writes and their shape), `test/`, and `design/` + `docs/design.md` (how it was designed).
+writes and their shape), `test/`, `.github/extensions/grill-monitor/` (the optional Copilot
+extension and its tests), and `design/` + `docs/design.md` (how it was designed).
 `design/record-demo.mjs` re-records the GIF above by driving the real page; it needs
 Playwright and `ffmpeg`.
 
@@ -254,8 +269,9 @@ PLAYWRIGHT_PKG=/path/to/node_modules/@playwright/test/index.mjs node test/page.e
 
 # or, with Task (taskfile.dev) installed — thin aliases over the same commands:
 task test        # unit tests, skipping the three documented as broken on Windows
+task test:ext    # grill-monitor extension tests (SDK stubbed, real wait CLI)
 task test:e2e    # the page check (normalises a raw Windows PLAYWRIGHT_PKG path)
-task check       # both, plus the design detector
+task check       # all three suites, plus the design detector
 task             # list every task
 ```
 
