@@ -1,0 +1,76 @@
+id: extension-attach
+name: Start a grill through the grill-monitor extension
+description: >-
+  When the grill-monitor extension's tools are present, SKILL.md v0.7.0 routes
+  Copilot to Extension monitor: attach with grill_attach after the page server is
+  verified, publish round 1 without ever running server.mjs wait, then detach at
+  stop. Precondition: the grill-monitor extension must be installed
+  (~/.copilot/extensions/grill-monitor/extension.mjs) so grill_attach exists in
+  the eval session; without it this task cannot pass by design.
+tags:
+  - behavioral
+  - start
+  - extension
+inputs:
+  prompt: |
+    grill with ui: We need to pick a retry strategy for a flaky webhook delivery
+    endpoint — exponential backoff, fixed interval, or no retries at all.
+
+    This is an automated run: there is no browser and no interactive user. The
+    grill-monitor extension's tools (grill_attach / grill_detach / grill_status)
+    are available in this session. Do exactly what the skill's Start flow asks
+    for when Extension monitor applies: create the session, publish round 1,
+    open the page, print the URL, and attach the monitor with grill_attach once
+    the server is verified. Then detach with grill_detach, stop everything you
+    started, and report. Never run `server.mjs wait`.
+expected:
+  should_trigger: true
+graders:
+  - name: skill-invoked
+    type: skill_invocation
+    weight: 1
+    config:
+      required_skills:
+        - grill-with-ui
+      mode: any_order
+  - name: attach-not-wait
+    type: tool_constraint
+    weight: 3
+    config:
+      expect_tools:
+        - tool: "grill_attach"
+      reject_tools:
+        - tool: "bash|powershell|shell|terminal|run_in_terminal"
+          command_pattern: "server\\.mjs['\"]*\\s+wait"
+  - name: round-one-and-detached
+    type: program
+    weight: 2
+    config:
+      command: node
+      timeout: 60
+      args:
+        - -e
+        - |
+          const fs=require('fs'),p=require('path'),os=require('os');
+          const ws=process.env.WAZA_WORKSPACE_DIR||process.cwd();
+          const F=[];
+          function walk(d,depth=0,out=[]){ if(depth>8) return out; let e=[]; try{e=fs.readdirSync(d,{withFileTypes:true})}catch{return out}
+            for(const x of e){ if(x.name==='.git'||x.name==='node_modules') continue; const f=p.join(d,x.name);
+              if(x.isDirectory()) walk(f,depth+1,out); else out.push(f);} return out; }
+          const tag=p.basename(ws);
+          const root=p.join(os.homedir(),'.grill-with-ui','sessions');
+          const keys=fs.existsSync(root)?fs.readdirSync(root).filter(k=>k.includes(tag)):[];
+          const roots=[ws,...keys.map(k=>p.join(root,k))];
+          const cands=[];
+          for(const r of roots) for(const f of walk(r)) if(p.basename(f)==='state.json') cands.push(f);
+          if(!cands.length){ console.error('FAIL: no grill session state.json in this task workspace. Roots: '+roots.join(',')); process.exit(1); }
+          const best=cands.map(f=>[f,fs.statSync(f).mtimeMs]).sort((a,b)=>b[1]-a[1])[0][0];
+          const s=JSON.parse(fs.readFileSync(best,'utf8'));
+          const qs=s.questions||[];
+          if(qs.length<2) F.push('expected >=2 round-1 questions, got '+qs.length);
+          if((s.agent||{}).status!=='waiting') F.push('agent.status='+JSON.stringify((s.agent||{}).status));
+          if(!/^\.grill-with-ui\//.test(s.doc||'')) F.push('doc path unexpected: '+JSON.stringify(s.doc));
+          const lock=p.join(p.dirname(best),'monitor.json');
+          if(fs.existsSync(lock)) F.push('monitor.json still present — grill_detach was not called at stop');
+          if(F.length){ console.error('FAIL:\n - '+F.join('\n - ')); process.exit(1); }
+          console.log('extension-attach OK ('+qs.length+' questions, detached) at '+best);
