@@ -3,7 +3,9 @@
 This repo is an [Agent Skill](https://agentskills.io): a grilling design interview rendered
 on a local browser page instead of the terminal. It is deliberately tiny — one dependency-free
 Node script (`server.mjs`), one HTML file (`page.html`), and `SKILL.md` (the prompt the host
-agent follows). There is no package.json, no build step, and no linter; Node 20+ is the only
+agent follows), plus the optional Copilot extension in `.github/extensions/grill-monitor/`
+(whose `package.json` is metadata only — no dependencies and no build step). The skill
+itself has no package.json, no build step, and no linter; Node 20+ is the only
 requirement.
 
 ## Commands
@@ -14,6 +16,9 @@ node --test test/server.test.mjs
 
 # A single test, by name pattern
 node --test --test-name-pattern "<substring of the test name>" test/server.test.mjs
+
+# grill-monitor extension tests (run from .github/extensions/grill-monitor; SDK stubbed, real wait CLI)
+node --import ./test/register-sdk-stub.mjs --test test/extension.test.mjs
 
 # End-to-end page check (Playwright + Chromium against a real serve on a throwaway session)
 PLAYWRIGHT_PKG=/path/to/node_modules/@playwright/test/index.mjs node test/page.e2e.mjs
@@ -32,10 +37,12 @@ waza quality .
 Commands are POSIX shell; in PowerShell set `PLAYWRIGHT_PKG` with
 `$env:PLAYWRIGHT_PKG = 'C:\path\to\node_modules\@playwright\test\index.mjs'` first.
 
-`Taskfile.yml` (taskfile.dev) wraps these same commands: `task test`, `task test:e2e`,
-`task check`, plus the server CLI (`new`/`sessions`/`serve`/`pending`) and `task demo` for a
-seeded throwaway walkthrough. `task test` already skips the three Windows-broken tests below,
-and `task test:e2e` normalises a raw Windows `PLAYWRIGHT_PKG` path to a file URL.
+`Taskfile.yml` (taskfile.dev) wraps these same commands: `task test`, `task test:ext`,
+`task test:e2e`, `task check`, `task ext-install` (copies the extension to
+`~/.copilot/extensions/`), plus the server CLI (`new`/`sessions`/`serve`/`pending`) and
+`task demo` for a seeded throwaway walkthrough. `task test` already skips the three
+Windows-broken tests below, and `task test:e2e` normalises a raw Windows `PLAYWRIGHT_PKG`
+path to a file URL.
 
 Windows note (verified on this machine): the unit suite has three pre-existing failures —
 `new: outside git the key comes from the cwd` asserts a POSIX-only path expectation, and the
@@ -83,7 +90,9 @@ Monitor command.
 Because most harnesses have no persistent Monitor, SKILL.md defines **wait mode**: the agent
 keeps `node server.mjs wait --session DIR --after <handled>` in the foreground and loops on
 exit 0 (a Send) / exit 3 (timeout → wait again). A running server does not wake a finished
-agent turn; never treat "page is up" as "agent is listening".
+agent turn; never treat "page is up" as "agent is listening". With the grill-monitor
+extension installed (Copilot), the extension runs that `wait` loop itself and delivers each
+Send to the chat with one `session.send` — **Extension monitor** mode, zero polling turns.
 
 `page.html` is a single self-contained file (inline CSS/JS, no framework, no network) that
 polls `state.json`; staged answers live in the browser until Send and must survive reload.
