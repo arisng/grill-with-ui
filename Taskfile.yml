@@ -41,6 +41,23 @@ tasks:
     cmds:
       - node --test {{.UNIT_FLAGS}} test/server.test.mjs
 
+  test:ext:
+    desc: grill-monitor extension tests (stubbed SDK, real server.mjs wait loop)
+    summary: node --test with the Copilot SDK redirected to test/stubs; exercises the
+      monitor loop end to end against a temp GRILL_HOME (wake, ack re-arm, lock,
+      detach, failure wake).
+    dir: .github/extensions/grill-monitor
+    cmds:
+      - node --import ./test/register-sdk-stub.mjs --test test/extension.test.mjs
+
+  ext-install:
+    desc: Install the grill-monitor extension for Copilot (personal scope)
+    summary: Copies .github/extensions/grill-monitor to ~/.copilot/extensions/ so every
+      session gets grill_attach / grill_detach / grill_status. Restart Copilot or reload
+      its extensions afterwards.
+    cmds:
+      - node -e "const fs=require('fs'),os=require('os'),path=require('path');const src=path.join(process.cwd(),'.github','extensions','grill-monitor');const dst=path.join(os.homedir(),'.copilot','extensions','grill-monitor');fs.rmSync(dst,{recursive:true,force:true});fs.cpSync(src,dst,{recursive:true});console.log('installed -> '+dst)"
+
   test:e2e:
     desc: Page end-to-end checks against a real serve (needs Playwright)
     summary: Drives page.html in Chromium — including the theme toggle and completion-sound
@@ -83,8 +100,8 @@ tasks:
       - node .github/skills/fork-sync/scripts/sync-report.mjs {{.CLI_ARGS}}
 
   check:
-    desc: Everything local — unit tests, page e2e, design detector
-    deps: [test, test:e2e]
+    desc: Everything local — unit tests, extension tests, page e2e, design detector
+    deps: [test, test:ext, test:e2e]
     cmds:
       - task detect
 
