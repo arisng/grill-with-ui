@@ -1,6 +1,6 @@
 # Commit Scope Constitution
 
-Last Updated: 2026-10-23
+Last Updated: 2026-10-27
 
 ## Purpose
 
@@ -61,6 +61,9 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 
 ### `copilot` (Tier 2 — GitHub Copilot assets)
 
+- `extension`: Copilot extension sources that ship with the repository
+  (`.github/extensions/<name>/**` — the entry `extension.mjs`, its manifest,
+  and its tests).
 - `instruction`: repository Copilot instructions
   (`.github/copilot-instructions.md`).
 - `mcp`: MCP server configuration (`.vscode/mcp.json`).
@@ -119,6 +122,23 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 3. Record the change under Amendment History and bump Last Updated.
 
 ## Amendment History
+
+### 2026-10-27 - Amendment #6
+
+**Changes:**
+- Added the `extension` scope under the `copilot` type, for Copilot extension
+  sources that ship with the repository (`.github/extensions/<name>/**` — the
+  entry `extension.mjs`, its manifest, and its tests).
+
+**Rationale:**
+The grill-monitor extension (`.github/extensions/grill-monitor/`) is a Copilot
+asset that ships beside the skill but is neither a repository instruction, an
+MCP configuration, a memory file, nor a project skill, so no existing `copilot`
+scope fit. Tier-2 scopes name the artifact category, so the scope is
+`extension` and the subject names the instance.
+
+**Migration Notes:**
+No history rewriting; the scope is new, so no earlier commit is affected.
 
 ### 2026-10-23 - Amendment #5
 
