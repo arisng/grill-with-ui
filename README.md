@@ -63,6 +63,24 @@ ln -s ~/Projects/grill-with-ui/skills/grill-with-ui ~/.claude/skills/grill-with-
 `skills/grill-with-ui` into `~/.agents/skills/`. Node 20 or newer is the only
 requirement.
 
+### Upgrading an older install
+
+Older installs carry manual copies that can shadow the plugin's — clean before (or the
+skill's Installation gate cleans for you):
+
+1. Remove the pre-plugin extension: `rm -rf ~/.copilot/extensions/grill-monitor`
+   (Windows: `Remove-Item -Recurse -Force`). If `~/.agents/skills/grill-with-ui` is a
+   flat copy — `SKILL.md` next to `server.mjs` — remove that folder too; keep
+   `~/.claude/skills/` (Claude Code) untouched. Skills-CLI trackers: delete the
+   `grill-with-ui` lock entry, or set its `skillPath` to
+   `skills/grill-with-ui/SKILL.md`.
+2. `copilot plugin marketplace update grill-with-ui && copilot plugin update grill-with-ui`
+   (or install fresh with `copilot plugin install grill-with-ui@grill-with-ui`).
+3. Restart the session — extensions and skills snapshot at start.
+4. Verify: `copilot plugin list` shows `grill-with-ui@grill-with-ui (v0.9.0)` enabled,
+   and `grill_status` answers in chat. Existing grills under `~/.grill-with-ui/` need no
+   migration.
+
 This repository is a fork of [jasonku09/grill-with-ui](https://github.com/jasonku09/grill-with-ui),
 which remains the upstream code source. The fork adds domain-modeling mode (a `CONTEXT.md`
 glossary and ADRs), a responsive layout for phone and tablet, a writing-clarity profile, a
