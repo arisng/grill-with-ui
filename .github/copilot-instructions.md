@@ -5,7 +5,8 @@ on a local browser page instead of the terminal. The installable skill lives in
 `skills/grill-with-ui/` — one dependency-free Node script (`server.mjs`), one HTML file
 (`page.html`), and `SKILL.md` (the prompt the host agent follows); root `plugin.json`
 bundles it with the Copilot extension in `.github/extensions/grill-monitor/` (whose
-`package.json` is metadata only) for `copilot plugin install arisng/grill-with-ui`. No
+`package.json` is metadata only) for `copilot plugin install arisng/grill-with-ui`, and
+`.github/plugin/marketplace.json` registers the repo as its own marketplace. No
 build step, no linter; Node 20+ is the only requirement.
 
 ## Commands
@@ -58,9 +59,10 @@ when diagnosing, run targeted tests with `--test-name-pattern` rather than trust
 suite run.
 
 Server CLI (used by tests and by the skill at runtime): see the comment block at the top of
-`server.mjs` or the "Server commands" section of the README — `new`, `serve`, `sessions`,
-`pending`, `wait`, `url`, `patch`. `GRILL_HOME` overrides `~/.grill-with-ui` (tests set it
-to a temp dir; never touch the real one when experimenting).
+`skills/grill-with-ui/server.mjs` or the "Server commands" section of the README — `new`,
+`serve`, `sessions`, `pending`, `wait`, `url`, `patch`. `GRILL_HOME` overrides
+`~/.grill-with-ui` (tests set it to a temp dir; never touch the real one when
+experimenting).
 
 Re-record the demo GIF with `node design/record-demo.mjs` (needs Playwright and `ffmpeg`).
 
@@ -93,9 +95,9 @@ Monitor command. Without a persistent Monitor, SKILL.md runs **Extension monitor
 grill-monitor extension keeps `node server.mjs wait --session DIR --after <handled>`
 alive itself (exit 0 = a Send) and delivers each one to the chat with one `session.send`
 — zero polling turns. A running server does not wake a finished agent turn; never treat
-"page is up" as "agent is listening". If `grill_attach` is missing, SKILL.md v0.8.0 stops
-at an installation gate (`copilot plugin install arisng/grill-with-ui`) instead of
-improvising the old wait loop.
+"page is up" as "agent is listening". If `grill_attach` is missing, SKILL.md v0.9.0 stops
+at an installation gate — cleaning stale pre-plugin copies first, then running
+`copilot plugin install arisng/grill-with-ui` — instead of improvising the old wait loop.
 
 `page.html` is a single self-contained file (inline CSS/JS, no framework, no network) that
 polls `state.json`; staged answers live in the browser until Send and must survive reload.
@@ -191,7 +193,7 @@ independent of the session's domain-modeling mode.
 - **The skill's behaviour is evaluated, not just described**: `evals/grill-with-ui/` holds a
   [waza](https://github.com/microsoft/waza) suite — one task per contract in `SKILL.md`
   (start, patch-only ownership, terminal answers, domain-modeling mode, Finish artefacts,
-  routing) plus `trigger_tests.yaml`. `waza check skills/grill-with-ui` validates the spec offline; `waza run`
+  the extension-attach monitor contract, routing) plus `trigger_tests.yaml`. `waza check skills/grill-with-ui` validates the spec offline; `waza run`
   drives a real agent and needs a model whose id matches `config.model`. Change a rule in
   `SKILL.md` and the matching task changes with it — the suite is the regression net for
   the prompt, next to the unit tests for the server.
@@ -201,7 +203,8 @@ independent of the session's domain-modeling mode.
   the method lineage is `mattpocock/skills` (not a git ancestor — the interview method and
   the `durable`/glossary/ADR rules were ported from it). Keep the fork's own shape:
   domain-modeling mode, responsive tiers, the writing-clarity profile, the Taskfile, the
-  waza eval suite, and the client-side three-state dark theme are *not* upstream's, and
+  waza eval suite, the client-side three-state dark theme, and the Copilot plugin bundle
+  (`plugin.json` + marketplace + the Extension-monitor contract) are *not* upstream's, and
   upstream's server-backed theme and different `state.json` fields must not be taken
   wholesale. To sync, use the `fork-sync` skill in `.github/skills/fork-sync/` — it
   classifies every incoming commit as REWORK (a contract file the fork also changed),
