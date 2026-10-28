@@ -12,8 +12,8 @@ inputs:
     /grill-with-ui resume
 
     This is an automated run: there is no browser and no interactive user. If there is
-    no session to resume, say so and stop. Do not start a new grill, do not enter the
-    wait loop, and make sure no server process is left running when you stop.
+    no session to resume, say so and stop. Do not start a new grill, do not wait for
+    browser events, and make sure no server process is left running when you stop.
 expected:
   should_trigger: true
 graders:

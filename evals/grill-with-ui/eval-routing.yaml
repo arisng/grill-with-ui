@@ -24,7 +24,7 @@ config:
   inject_skill_body: false
   trigger_skill_routing: true
   skill_directories:
-    - ../..
+    - ../../skills/grill-with-ui
 metrics:
   - name: routing_accuracy
     weight: 1.0

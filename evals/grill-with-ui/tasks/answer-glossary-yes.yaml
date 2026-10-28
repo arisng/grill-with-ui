@@ -14,8 +14,7 @@ inputs:
 
     This is an automated run: there is no browser and no interactive user. Do exactly
     what the skill's Start flow asks for — create the session, publish round 1, open
-    the page, print the URL — then stop and report. Do not enter the wait loop, do
-    not wait for browser submissions, and make sure no server process is left
+    the page, print the URL — then stop and report. Do not wait for browser submissions, and make sure no server process is left
     running when you stop.
   follow_up_prompts:
     - "Answer the glossary question with Yes — that is option A."

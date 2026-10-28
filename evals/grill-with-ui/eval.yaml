@@ -3,7 +3,11 @@
 # The skill drives a long-lived, browser-driven interview, so every task here is
 # scoped to a step that terminates inside one agent turn (setup, a terminal answer,
 # Finish) and carries an explicit "no browser in this run" note so the agent stops
-# instead of blocking in the wait loop.
+# instead of waiting for browser events.
+#
+# Precondition: the grill-monitor extension must be installed in the eval
+# environment (`copilot plugin install arisng/grill-with-ui`, or task ext-install
+# from a clone) — SKILL.md v0.8.0 stops and asks for it when grill_attach is absent.
 #
 # config.model must equal the BYOK model id the provider serves
 # (COPILOT_MODEL=xiaomi/mimo-v2.6-flash) — the Copilot CLI sends the model id from
@@ -27,7 +31,7 @@ config:
   inject_skill_body: false
   trigger_skill_routing: true
   skill_directories:
-    - ../..
+    - ../../skills/grill-with-ui
 metrics:
   - name: task_completion
     weight: 0.7
