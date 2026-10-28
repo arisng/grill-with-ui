@@ -1,12 +1,12 @@
 # Copilot instructions for grill-with-ui
 
 This repo is an [Agent Skill](https://agentskills.io): a grilling design interview rendered
-on a local browser page instead of the terminal. It is deliberately tiny — one dependency-free
-Node script (`server.mjs`), one HTML file (`page.html`), and `SKILL.md` (the prompt the host
-agent follows), plus the optional Copilot extension in `.github/extensions/grill-monitor/`
-(whose `package.json` is metadata only — no dependencies and no build step). The skill
-itself has no package.json, no build step, and no linter; Node 20+ is the only
-requirement.
+on a local browser page instead of the terminal. The installable skill lives in
+`skills/grill-with-ui/` — one dependency-free Node script (`server.mjs`), one HTML file
+(`page.html`), and `SKILL.md` (the prompt the host agent follows); root `plugin.json`
+bundles it with the Copilot extension in `.github/extensions/grill-monitor/` (whose
+`package.json` is metadata only) for `copilot plugin install arisng/grill-with-ui`. No
+build step, no linter; Node 20+ is the only requirement.
 
 ## Commands
 
@@ -29,9 +29,12 @@ node test/page.e2e.mjs
 PLAYWRIGHT_PKG=/path/to/node_modules/@playwright/test/index.mjs node test/manual-visual.e2e.mjs
 
 # Skill evaluation (waza) — readiness/schema check is offline, the benchmark needs an LLM
-waza check .
+waza check skills/grill-with-ui
 waza run evals/grill-with-ui/eval.yaml
-waza quality .
+waza quality skills/grill-with-ui
+
+# Plugin manifest validation (offline): lists the plugin with its components
+copilot --plugin-dir . plugin list
 ```
 
 Commands are POSIX shell; in PowerShell set `PLAYWRIGHT_PKG` with
@@ -86,13 +89,13 @@ by the git common root so worktrees share sessions — nothing to gitignore.
 
 `server.mjs` is both the HTTP server and the CLI. `serve` handles the page (poll of
 `state.json`, `POST /send`, `/visual`, `/context`), appends the event, and acts as the
-Monitor command.
-Because most harnesses have no persistent Monitor, SKILL.md defines **wait mode**: the agent
-keeps `node server.mjs wait --session DIR --after <handled>` in the foreground and loops on
-exit 0 (a Send) / exit 3 (timeout → wait again). A running server does not wake a finished
-agent turn; never treat "page is up" as "agent is listening". With the grill-monitor
-extension installed (Copilot), the extension runs that `wait` loop itself and delivers each
-Send to the chat with one `session.send` — **Extension monitor** mode, zero polling turns.
+Monitor command. Without a persistent Monitor, SKILL.md runs **Extension monitor**: the
+grill-monitor extension keeps `node server.mjs wait --session DIR --after <handled>`
+alive itself (exit 0 = a Send) and delivers each one to the chat with one `session.send`
+— zero polling turns. A running server does not wake a finished agent turn; never treat
+"page is up" as "agent is listening". If `grill_attach` is missing, SKILL.md v0.8.0 stops
+at an installation gate (`copilot plugin install arisng/grill-with-ui`) instead of
+improvising the old wait loop.
 
 `page.html` is a single self-contained file (inline CSS/JS, no framework, no network) that
 polls `state.json`; staged answers live in the browser until Send and must survive reload.
@@ -188,7 +191,7 @@ independent of the session's domain-modeling mode.
 - **The skill's behaviour is evaluated, not just described**: `evals/grill-with-ui/` holds a
   [waza](https://github.com/microsoft/waza) suite — one task per contract in `SKILL.md`
   (start, patch-only ownership, terminal answers, domain-modeling mode, Finish artefacts,
-  routing) plus `trigger_tests.yaml`. `waza check .` validates the spec offline; `waza run`
+  routing) plus `trigger_tests.yaml`. `waza check skills/grill-with-ui` validates the spec offline; `waza run`
   drives a real agent and needs a model whose id matches `config.model`. Change a rule in
   `SKILL.md` and the matching task changes with it — the suite is the regression net for
   the prompt, next to the unit tests for the server.
