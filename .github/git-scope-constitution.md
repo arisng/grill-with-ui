@@ -1,6 +1,6 @@
 # Commit Scope Constitution
 
-Last Updated: 2026-10-27
+Last Updated: 2026-10-28
 
 ## Purpose
 
@@ -122,6 +122,23 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 3. Record the change under Amendment History and bump Last Updated.
 
 ## Amendment History
+
+### 2026-10-28 - Amendment #7
+
+**Changes:**
+- Added the `plugin` scope under the `copilot` type, for the Copilot plugin
+  manifest that bundles the skill and its extensions for one-command install
+  (`plugin.json` at the repository root, plus any plugin packaging metadata).
+
+**Rationale:**
+The fork ships a root `plugin.json` so `copilot plugin install
+arisng/grill-with-ui` installs the skill and the grill-monitor extension
+together. The manifest is Copilot distribution metadata — not an extension
+source, an instruction, an MCP config, a memory file, or a project skill — so
+no existing scope fit.
+
+**Migration Notes:**
+No history rewriting; the scope is new, so no earlier commit is affected.
 
 ### 2026-10-27 - Amendment #6
 
