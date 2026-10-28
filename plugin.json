@@ -1,0 +1,22 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "grill-with-ui",
+  "version": "0.8.0",
+  "description": "Grilling design interview rendered on a local browser page: staged answers, discussion threads, optional domain-modeling mode (CONTEXT.md glossary + ADRs), and the grill-monitor extension that wakes the agent once per Send instead of polling. Install with `copilot plugin install arisng/grill-with-ui`.",
+  "author": {
+    "name": "Aris Nguyen"
+  },
+  "homepage": "https://github.com/arisng/grill-with-ui",
+  "repository": "https://github.com/arisng/grill-with-ui",
+  "license": "MIT",
+  "keywords": [
+    "design",
+    "interview",
+    "grill",
+    "architecture",
+    "adr",
+    "glossary"
+  ],
+  "skills": "./skills/",
+  "extensions": "./.github/extensions/"
+}
