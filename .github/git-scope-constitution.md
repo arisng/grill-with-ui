@@ -66,7 +66,8 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
   and its tests).
 - `instruction`: repository Copilot instructions
   (`.github/copilot-instructions.md`).
-- `mcp`: MCP server configuration (`.vscode/mcp.json`).
+- `mcp`: MCP server configuration (`.mcp.json` at the repository root; formerly
+  `.vscode/mcp.json`).
 - `memory`: `.github/copilot-memories.jsonl` — the durable repository
   facts the agent store keeps, one JSON record per line.
 - `skill`: project-scoped agent skills that ship with the repository —
@@ -122,6 +123,20 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 3. Record the change under Amendment History and bump Last Updated.
 
 ## Amendment History
+
+### 2026-10-28 - Amendment #8
+
+**Changes:**
+- Repointed the `copilot`/`mcp` scope from `.vscode/mcp.json` to the root
+  `.mcp.json` (cross-client workspace MCP format).
+
+**Rationale:**
+The workspace's MCP configuration moved to the root `.mcp.json` so non-VS Code
+clients discover the same Playwright server; the scope's meaning (MCP server
+configuration) is unchanged, only its path.
+
+**Migration Notes:**
+No history rewriting; the covering commit moves the file in the same series.
 
 ### 2026-10-28 - Amendment #7
 
