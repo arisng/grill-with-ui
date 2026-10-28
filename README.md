@@ -36,6 +36,15 @@ Submissions made while the agent is not listening remain queued for resume.
 copilot plugin install arisng/grill-with-ui
 ```
 
+(or, once this repo is registered as a marketplace — the future-proof route:
+
+```sh
+copilot plugin marketplace add arisng/grill-with-ui   # one-time
+copilot plugin install grill-with-ui@grill-with-ui
+```
+
+)
+
 The plugin bundles the skill and the **grill-monitor extension** — the waker that
 delivers each browser Send to the agent as one turn. Restart the session (CLI) or
 reload extensions (VS Code, the app) so the host loads it. Since v0.8.0 the skill
