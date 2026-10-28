@@ -66,11 +66,11 @@ experimenting).
 
 Re-record the demo GIF with `node design/record-demo.mjs` (needs Playwright and `ffmpeg`).
 
-A project-level Playwright MCP server is configured in `.vscode/mcp.json` (stdio via
-`npx @playwright/mcp@latest`) for driving the grill page in a browser during development.
-The `cmd /c npx …` wrapper there is Windows-shaped — VS Code's mcp.json has no
-per-platform override keys, so on POSIX systems use `command: "npx"` directly with
-`args: ["-y", "@playwright/mcp@latest"]`.
+A project-level Playwright MCP server is configured in the root `.mcp.json`
+(`mcpServers` entry, stdio via `cmd /c npx @playwright/mcp@latest`) for driving the grill
+page in a browser during development. The `cmd /c npx …` wrapper there is Windows-shaped —
+`.mcp.json` has no per-platform override keys, so on POSIX systems use `command: "npx"`
+directly with `args: ["-y", "@playwright/mcp@latest"]`.
 
 ## Architecture
 
