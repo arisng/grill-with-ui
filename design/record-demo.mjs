@@ -186,7 +186,7 @@ const prototype = (copyInList) => `<!doctype html>
 const home = mkdtempSync(join(tmpdir(), "grill-demo-home-"));
 const proj = mkdtempSync(join(tmpdir(), "grill-demo-proj-"));
 const env = { ...process.env, GRILL_HOME: home };
-const SERVER = join(repo, "server.mjs");
+const SERVER = join(repo, "skills", "grill-with-ui", "server.mjs");
 const { session } = JSON.parse(execFileSync(process.execPath, [SERVER, "new", "--topic", "demo", "--doc", "docs/demo.md"],
   { encoding: "utf8", env, cwd: proj }));
 const stateFile = join(session, "state.json");

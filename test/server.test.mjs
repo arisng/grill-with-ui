@@ -9,7 +9,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const SERVER = join(here, "..", "server.mjs");
+const SERVER = join(here, "..", "skills", "grill-with-ui", "server.mjs");
 const home = mkdtempSync(join(tmpdir(), "grill-home-"));
 const env = { ...process.env, GRILL_HOME: home };
 const tmp = (p) => mkdtempSync(join(tmpdir(), p));
@@ -371,10 +371,10 @@ test("adr: a bad status is refused, and a Proposed record is written when it is 
 });
 
 test("the ADR template carries every section, and domain-brief.md names the file", () => {
-  const tpl = readFileSync(join(here, "..", "adr-template.md"), "utf8");
+  const tpl = readFileSync(join(here, "..", "skills", "grill-with-ui", "adr-template.md"), "utf8");
   for (const h of [...ADR_SECTIONS, "* **Status:**", "* **Date:**", "* **Authors:**", "* **Good:**", "* **Bad:**", "* **Risks:**"])
     assert.ok(tpl.includes(h), `adr-template.md must carry ${h}`);
-  assert.ok(readFileSync(join(here, "..", "domain-brief.md"), "utf8").includes("adr-template.md"),
+  assert.ok(readFileSync(join(here, "..", "skills", "grill-with-ui", "domain-brief.md"), "utf8").includes("adr-template.md"),
     "domain-brief.md must name the template the agent copies");
 });
 

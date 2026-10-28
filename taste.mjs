@@ -9,7 +9,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const files = ["page.html", "sound-sampler.html"].map((f) => join(here, f));
+const files = ["page.html", "sound-sampler.html"].map((f) => join(here, "skills", "grill-with-ui", f));
 const cues = (path) => {
   const m = readFileSync(path, "utf8").match(/const\s+SOUND_CUES\s*=\s*\{[\s\S]*?\};/);
   return m ? m[0].replace(/\s+/g, " ").trim() : null;

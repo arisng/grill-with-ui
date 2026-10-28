@@ -17,7 +17,7 @@ import { execFileSync, spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
-const SERVER = path.resolve(HERE, "..", "..", "..", "..", "server.mjs");
+const SERVER = path.resolve(HERE, "..", "..", "..", "..", "skills", "grill-with-ui", "server.mjs");
 const REPO = path.resolve(HERE, "..", "..", "..", "..");
 
 const HOME = path.join(os.tmpdir(), `grill monitor ${Date.now()}`);

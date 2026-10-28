@@ -8,7 +8,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const { chromium } = await import(process.env.PLAYWRIGHT_PKG || "@playwright/test");
-const server = join(dirname(fileURLToPath(import.meta.url)), "..", "server.mjs");
+const server = join(dirname(fileURLToPath(import.meta.url)), "..", "skills", "grill-with-ui", "server.mjs");
 const env = { ...process.env, GRILL_HOME: mkdtempSync(join(tmpdir(), "grill-manual-visual-")) };
 const { session } = JSON.parse(execFileSync(process.execPath, [server, "new", "--topic", "Manual visuals"], { env, encoding: "utf8" }));
 const stateFile = join(session, "state.json");

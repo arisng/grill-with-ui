@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 
 const { chromium } = await import(process.env.PLAYWRIGHT_PKG || "@playwright/test");
 const here = dirname(fileURLToPath(import.meta.url));
-const SERVER = join(here, "..", "server.mjs");
+const SERVER = join(here, "..", "skills", "grill-with-ui", "server.mjs");
 const home = mkdtempSync(join(tmpdir(), "grill-sound-home-"));
 const env = { ...process.env, GRILL_HOME: home };
 
