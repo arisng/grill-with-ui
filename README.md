@@ -30,27 +30,29 @@ Submissions made while the agent is not listening remain queued for resume.
 
 ## Install
 
-The skill is a plain [Agent Skills](https://agentskills.io) folder (`SKILL.md` plus one
-script and one page), so it installs the same way everywhere: put this folder where your
-agent looks for skills, under the name `grill-with-ui`. A symlink keeps `git pull` as the
-update path; copying the folder works too. Node 20 or newer is the only requirement.
+**GitHub Copilot (CLI, VS Code, JetBrains) — one command:**
+
+```sh
+copilot plugin install arisng/grill-with-ui
+```
+
+The plugin bundles the skill and the **grill-monitor extension** — the waker that
+delivers each browser Send to the agent as one turn. Restart the session (CLI) or
+reload extensions (VS Code, the app) so the host loads it. Since v0.8.0 the skill
+*requires* this extension on Copilot: when `grill_attach` is missing the agent stops
+at an installation gate and offers this command instead of interviewing.
+
+**Claude Code — skill folder only** (its persistent Monitor needs no extension):
 
 ```sh
 git clone https://github.com/arisng/grill-with-ui ~/Projects/grill-with-ui
-ln -s ~/Projects/grill-with-ui ~/.claude/skills/grill-with-ui   # Claude Code (Cursor reads it too)
-ln -s ~/Projects/grill-with-ui ~/.agents/skills/grill-with-ui   # Codex, Gemini CLI, Cursor, Copilot
+ln -s ~/Projects/grill-with-ui/skills/grill-with-ui ~/.claude/skills/grill-with-ui
 ```
 
-**Copilot only — Extension monitor (optional):** install the companion extension so Copilot
-stops polling and is woken once per Send instead (it needs no build step either):
-
-```sh
-task ext-install    # or: mkdir -p ~/.copilot/extensions &&
-                    #     cp -R .github/extensions/grill-monitor ~/.copilot/extensions/
-```
-
-Restart Copilot (or reload its extensions) and `grill_attach` appears among the tools;
-without the extension the skill falls back to wait mode as described below.
+**Manual Copilot route** (no plugin CLI handy): clone as above, then from the clone
+`task ext-install` (copies the extension into `~/.copilot/extensions/`) and symlink
+`skills/grill-with-ui` into `~/.agents/skills/`. Node 20 or newer is the only
+requirement.
 
 This repository is a fork of [jasonku09/grill-with-ui](https://github.com/jasonku09/grill-with-ui),
 which remains the upstream code source. The fork adds domain-modeling mode (a `CONTEXT.md`
@@ -73,17 +75,18 @@ Where each agent looks, and how to start a grill once it is there:
 Paths are from each product's documentation as of September 2026; `/skills` (Codex,
 Gemini CLI) or the agent's skill picker will show whether the install landed. The skill's
 description names the phrase "grill with ui", so plain language works on every agent.
+One caveat since v0.8.0: the fork's contract requires the grill-monitor extension on any
+harness without a persistent Monitor, so Codex/Gemini/Cursor can only grill through the
+upstream's wait mode — use [upstream](https://github.com/jasonku09/grill-with-ui) there.
 
 What the agent needs at run time:
 
 - **A shell tool and Node 20+.** Claude Code is woken per Send by its persistent Monitor
-  tool; GitHub Copilot with the grill-monitor extension uses **Extension monitor** (the
-  extension polls for you and wakes the agent once per Send). Every other agent uses
-  **wait mode**, spelled out in `SKILL.md`: it starts the
-  server detached (or in a harness-managed shell session) and keeps `node server.mjs wait`
-  active in the foreground. It returns on the next Send or after a bounded timeout, then
-  loops. The agent keeps listening after replies and completed visuals, until the user
-  finishes or explicitly pauses; a running server is not a substitute for that listener.
+  tool; GitHub Copilot uses **Extension monitor** — the grill-monitor extension polls and
+  wakes the agent once per Send. With neither listener the skill stops and runs its
+  installation gate rather than polling. The agent keeps listening after replies and
+  completed visuals, until the user finishes or explicitly pauses; a running server is
+  not a substitute for that listener.
 - **Optionally a subagent tool**, for Visualize. With one, the visual is drawn in the
   background while you keep answering. Without one, the agent draws it inline and that
   turn takes longer.
@@ -229,26 +232,28 @@ consequences — and records **one decision**, not one question: durable questio
 settle the same choice share a file, and a durable choice too small to be worth a record
 keeps its place in the design doc alone.
 
-In this repo: `server.mjs` (the server and CLI), `page.html` (the page), `SKILL.md` (the
-prompt the agent follows), `writing-clarity.md` (its writing rules), `visual-brief.md` (the
-visual subagent's contract), `domain-brief.md` and `adr-template.md` (the standing docs it
-writes and their shape), `test/`, `.github/extensions/grill-monitor/` (the optional Copilot
-extension and its tests), and `design/` + `docs/design.md` (how it was designed).
-`design/record-demo.mjs` re-records the GIF above by driving the real page; it needs
-Playwright and `ffmpeg`.
+In this repo, `skills/grill-with-ui/` holds the installable skill — `SKILL.md` (the
+prompt the agent follows), `server.mjs` (the server and CLI), `page.html` (the page),
+`writing-clarity.md` (its writing rules), `visual-brief.md` (the visual subagent's
+contract), and `domain-brief.md` + `adr-template.md` (the standing docs it writes and
+their shape) — while `plugin.json` at the root bundles it with the extension for
+`copilot plugin install`. Also at the root: `test/`, `.github/extensions/grill-monitor/`
+(the Copilot extension and its tests), and `design/` + `docs/design.md` (how it was
+designed). `design/record-demo.mjs` re-records the GIF above by driving the real page;
+it needs Playwright and `ffmpeg`.
 
 ## Server commands
 
 ```
-node server.mjs new      --topic T [--intent I] [--doc P]     create a session, print its folder
-node server.mjs serve    --session DIR [--port N]             serve the page; print one line per Send
-node server.mjs sessions [--all]                               list this project's sessions
-node server.mjs pending  --session DIR                         print sends past agent.handled
-node server.mjs wait     --session DIR [--after N] [--timeout S]  block until the next send (exit 3 on timeout)
-node server.mjs url      --session DIR [--timeout S]           print the running server's url
-node server.mjs context  --session DIR                          print the glossary and ADR locations for this repo
-node server.mjs adr      --session DIR --folder F --title T     scaffold one ADR file from adr-template.md
-node server.mjs patch    --session DIR [--file P]              apply a JSON patch (stdin or P) to state.json
+node skills/grill-with-ui/server.mjs new      --topic T [--intent I] [--doc P]     create a session, print its folder
+node skills/grill-with-ui/server.mjs serve    --session DIR [--port N]             serve the page; print one line per Send
+node skills/grill-with-ui/server.mjs sessions [--all]                               list this project's sessions
+node skills/grill-with-ui/server.mjs pending  --session DIR                         print sends past agent.handled
+node skills/grill-with-ui/server.mjs wait     --session DIR [--after N] [--timeout S]  block until the next send (exit 3 on timeout)
+node skills/grill-with-ui/server.mjs url      --session DIR [--timeout S]           print the running server's url
+node skills/grill-with-ui/server.mjs context  --session DIR                          print the glossary and ADR locations for this repo
+node skills/grill-with-ui/server.mjs adr      --session DIR --folder F --title T     scaffold one ADR file from adr-template.md
+node skills/grill-with-ui/server.mjs patch    --session DIR [--file P]              apply a JSON patch (stdin or P) to state.json
 ```
 
 `adr` claims the next free `NNNN` in the folder (never overwriting an existing file),
@@ -307,10 +312,10 @@ routing prompts the main spec also picks up.
 | `resume-no-session` | `/grill-with-ui resume` with nothing to resume reports that and stops |
 
 ```sh
-waza check .                                   # readiness: compliance, tokens, schema
+waza check skills/grill-with-ui            # readiness: compliance, tokens, schema
 waza run evals/grill-with-ui/eval.yaml         # behavioural benchmark (needs an LLM)
 waza run evals/grill-with-ui/eval-routing.yaml # routing only: does the description send the right prompts here?
-waza quality .                                 # LLM-judge score of SKILL.md itself
+waza quality skills/grill-with-ui         # LLM-judge score of SKILL.md itself
 waza gate --baseline <before.json> --current <after.json>   # CI gate: fail on a regression
 ```
 
