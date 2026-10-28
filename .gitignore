@@ -1,5 +1,8 @@
 .DS_Store
 .playwright-mcp/
 
+# grill session output (per-topic design docs) — regenerate, do not commit
+.grill-with-ui/
+
 # waza run artifacts (eval results, junit reports) — regenerate, do not commit
 results/
