@@ -24,9 +24,10 @@ no build step. The agent owns `state.json` and changes it only through
 merges, validates, and writes atomically; a whole-file rewrite would put the entire state
 (60 KB by the end of a long grill) into the agent's context on every turn. The page appends
 one line per Send to `events.jsonl`; the server that serves the page is also the process
-whose output a persistent Monitor delivers to the agent. In wait mode the agent must keep
-its foreground listener active; a page server alone cannot wake an ended agent turn.
-Submissions made while the agent is not listening remain queued for resume.
+whose output a persistent Monitor delivers to the agent, and on Copilot the grill-monitor
+extension plays that listener so the agent wakes exactly once per Send. Whatever the
+listener, a page server alone cannot wake an ended agent turn. Submissions made while the
+agent is not listening remain queued for resume.
 
 ## Install
 
@@ -264,7 +265,8 @@ prompt the agent follows), `server.mjs` (the server and CLI), `page.html` (the p
 `writing-clarity.md` (its writing rules), `visual-brief.md` (the visual subagent's
 contract), and `domain-brief.md` + `adr-template.md` (the standing docs it writes and
 their shape) — while `plugin.json` at the root bundles it with the extension for
-`copilot plugin install`. Also at the root: `test/`, `.github/extensions/grill-monitor/`
+`copilot plugin install`, and `.github/plugin/marketplace.json` registers the repo as
+its own marketplace. Also at the root: `test/`, `.github/extensions/grill-monitor/`
 (the Copilot extension and its tests), and `design/` + `docs/design.md` (how it was
 designed). `design/record-demo.mjs` re-records the GIF above by driving the real page;
 it needs Playwright and `ffmpeg`.
@@ -335,6 +337,7 @@ routing prompts the main spec also picks up.
 | `finish-design-doc` | Finish writes the self-contained design doc with its prescribed sections and records it in `finished` |
 | `finish-domain-docs` | domain-modeling mode also writes `CONTEXT.md` and one ADR per significant decision |
 | `patch-only-no-direct-write` | the skill overrides a request to hand-edit `state.json` — the change goes through `patch` |
+| `extension-attach` | `grill_attach` is called, `server.mjs wait` never is, round 1 lands, and the monitor is detached at stop |
 | `negative-trigger` | a design-adjacent request does not start a grill |
 | `resume-no-session` | `/grill-with-ui resume` with nothing to resume reports that and stops |
 
