@@ -3,7 +3,7 @@
   "owner": {
     "name": "Aris Nguyen"
   },
-  "description": "Marketplace for grill-with-ui: the design-interview skill and its grill-monitor Copilot extension, installed together with one command.",
+  "description": "Marketplace for grill-with-ui: the design-interview skill (one `copilot plugin install`) and its grill-monitor Copilot extension (installed from the bundle with `task ext-install`).",
   "homepage": "https://github.com/arisng/grill-with-ui",
   "repository": "https://github.com/arisng/grill-with-ui",
   "license": "MIT",
@@ -12,7 +12,7 @@
       "name": "grill-with-ui",
       "source": "./",
       "description": "Grilling design interview rendered on a local browser page: staged answers, discussion threads, optional domain-modeling mode (CONTEXT.md glossary + ADRs), and the grill-monitor extension that wakes the agent once per Send instead of polling.",
-      "version": "0.9.0",
+      "version": "0.9.1",
       "author": {
         "name": "Aris Nguyen"
       },

@@ -46,11 +46,14 @@ copilot plugin install grill-with-ui@grill-with-ui
 
 )
 
-The plugin bundles the skill and the **grill-monitor extension** — the waker that
-delivers each browser Send to the agent as one turn. Restart the session (CLI) or
-reload extensions (VS Code, the app) so the host loads it. Since v0.8.0 the skill
-*requires* this extension on Copilot: when `grill_attach` is missing the agent stops
-at an installation gate and offers this command instead of interviewing.
+The plugin delivers the skill. A Copilot plugin cannot install SDK extensions, so the
+**grill-monitor extension** — the waker that delivers each browser Send to the agent as
+one turn — is installed from the bundle with `task ext-install` (see the manual route
+below), or by copying `.github/extensions/grill-monitor` into `~/.copilot/extensions/`.
+Restart the session (CLI) or reload extensions (VS Code, the app) so the host loads it.
+Since v0.8.0 the skill *requires* this extension on Copilot: when `grill_attach` is
+missing the agent stops at an installation gate and offers these commands instead of
+interviewing.
 
 **Claude Code — skill folder only** (its persistent Monitor needs no extension):
 
@@ -77,8 +80,11 @@ skill's Installation gate cleans for you):
    `skills/grill-with-ui/SKILL.md`.
 2. `copilot plugin marketplace update grill-with-ui && copilot plugin update grill-with-ui`
    (or install fresh with `copilot plugin install grill-with-ui@grill-with-ui`).
-3. Restart the session — extensions and skills snapshot at start.
-4. Verify: `copilot plugin list` shows `grill-with-ui@grill-with-ui (v0.9.0)` enabled,
+3. (Re)install the extension the plugin cannot deliver: `task ext-install` from a clone,
+   or copy the bundle's `.github/extensions/grill-monitor` into
+   `~/.copilot/extensions/grill-monitor`.
+4. Restart the session — extensions and skills snapshot at start.
+5. Verify: `copilot plugin list` shows `grill-with-ui@grill-with-ui (v0.9.1)` enabled,
    and `grill_status` answers in chat. Existing grills under `~/.grill-with-ui/` need no
    migration.
 
@@ -264,8 +270,9 @@ In this repo, `skills/grill-with-ui/` holds the installable skill — `SKILL.md`
 prompt the agent follows), `server.mjs` (the server and CLI), `page.html` (the page),
 `writing-clarity.md` (its writing rules), `visual-brief.md` (the visual subagent's
 contract), and `domain-brief.md` + `adr-template.md` (the standing docs it writes and
-their shape) — while `plugin.json` at the root bundles it with the extension for
-`copilot plugin install`, and `.github/plugin/marketplace.json` registers the repo as
+their shape) — while `plugin.json` at the root makes it installable with
+`copilot plugin install` (an Agent Plugins 1.0.0 manifest; the `skills/` directory is
+discovered by convention), and `.github/plugin/marketplace.json` registers the repo as
 its own marketplace. Also at the root: `test/`, `.github/extensions/grill-monitor/`
 (the Copilot extension and its tests), and `design/` + `docs/design.md` (how it was
 designed). `design/record-demo.mjs` re-records the GIF above by driving the real page;

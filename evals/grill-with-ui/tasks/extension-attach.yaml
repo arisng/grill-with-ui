@@ -5,9 +5,10 @@ description: >-
   Persistent Monitor: attach with grill_attach after the page server is
   verified, publish round 1 without ever running server.mjs wait, then detach
   at stop. Precondition: the grill-monitor extension must be installed
-  (`copilot plugin install arisng/grill-with-ui`, or task ext-install from a
-  clone) so grill_attach exists in the eval session; without it the skill
-  stops at its installation gate and this task cannot pass by design.
+  (`task ext-install` from a clone, or a copy of the bundle's
+  .github/extensions/grill-monitor into ~/.copilot/extensions/) so grill_attach
+  exists in the eval session; without it the skill stops at its installation
+  gate and this task cannot pass by design.
 tags:
   - behavioral
   - start

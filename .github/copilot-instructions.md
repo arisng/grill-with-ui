@@ -95,7 +95,7 @@ Monitor command. Without a persistent Monitor, SKILL.md runs **Extension monitor
 grill-monitor extension keeps `node server.mjs wait --session DIR --after <handled>`
 alive itself (exit 0 = a Send) and delivers each one to the chat with one `session.send`
 — zero polling turns. A running server does not wake a finished agent turn; never treat
-"page is up" as "agent is listening". If `grill_attach` is missing, SKILL.md v0.9.0 stops
+"page is up" as "agent is listening". If `grill_attach` is missing, SKILL.md v0.9.1 stops
 at an installation gate — cleaning stale pre-plugin copies first, then running
 `copilot plugin install arisng/grill-with-ui` — instead of improvising the old wait loop.
 

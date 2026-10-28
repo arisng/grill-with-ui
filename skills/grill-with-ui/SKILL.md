@@ -3,7 +3,7 @@ name: grill-with-ui
 description: >
    Run a grilling interview on a local browser page instead of the terminal: each question shows its recommendation, takes any order, has a discussion thread and one Send button. An opt-in first question also lands terms in a CONTEXT.md glossary and durable decisions as ADRs. USE FOR: "grill with ui", /grill-with-ui with a topic, "/grill-with-ui resume", "grill me on a topic". DO NOT USE FOR: plain design questions, reviews, tasks, repo questions — answer directly."
 metadata:
-   version: 0.9.0
+   version: 0.9.1
 ---
 
 # grill-with-ui
@@ -37,15 +37,17 @@ Choose the mode from the tools actually available, not the agent's model name:
 **Installation gate.** A grill needs one of the two listeners above. If there is no
 Persistent Monitor and no `grill_attach` tool, do not improvise a wait loop and do not
 start a grill. First clean any pre-plugin leftovers, so a stale copy cannot win the
-tool-name race: `rm -rf ~/.copilot/extensions/grill-monitor` (manual installs) and an
-old flat skill folder in `~/.agents/skills/` (SKILL.md with `server.mjs` beside it) —
-never touch `~/.claude/skills/` for Claude Code, and keep `~/.agents/skills` itself for
-other agents. Then run `copilot plugin install arisng/grill-with-ui` (the plugin ships
-this skill and the grill-monitor extension together). Succeeds → tell the user to
-restart the session (CLI) or reload extensions (Copilot app, VS Code) so the host loads
-it, then stop — the grill starts next time, when `grill_attach` exists. Fails or no
-Copilot CLI → print the manual routes (the same command, or `task ext-install` from a
-clone) and stop. Either way the listener is inactive; never claim otherwise.
+tool-name race: an old flat skill folder in `~/.agents/skills/` (SKILL.md with
+`server.mjs` beside it) — never touch `~/.claude/skills/` for Claude Code, and keep
+`~/.agents/skills` itself for other agents. Then run `copilot plugin install
+arisng/grill-with-ui` (the plugin delivers this skill). A plugin cannot install SDK
+extensions: (re)install the listener next with `task ext-install` from a clone, or copy
+the bundle's `.github/extensions/grill-monitor` into `~/.copilot/extensions/`,
+overwriting any stale copy. Succeeds → tell the user to restart the session (CLI) or
+reload extensions (Copilot app, VS Code) so the host loads it, then stop — the grill
+starts next time, when `grill_attach` exists. Fails or no Copilot CLI → print the
+manual routes (those same commands) and stop. Either way the listener is inactive;
+never claim otherwise.
 
 Throughout this skill, **return to listening** means the appropriate action above. In
 Extension monitor mode, stop only after Finish and any final visual export are
