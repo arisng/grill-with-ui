@@ -25,7 +25,8 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const KNOWN_FLAGS = new Set(["--json", "--no-fetch", "--upstream", "--branch", "--help"]);
 const argv = process.argv.slice(2);
@@ -71,11 +72,18 @@ const DO_FETCH = !hasFlag("--no-fetch");
 // every other file in the list, so it is never a blind cherry-pick. Test files
 // are deliberately NOT here: a test change follows its subject change, it does
 // not define the contract.
+//
+// Paths are in upstream's root-space. The fork keeps the skill under
+// skills/grill-with-ui/, so fork paths are normalized before comparison (see
+// SKILL_PREFIX below). sound-sampler.html, .mcp.json, and plugin.json are
+// fork-only today: they cannot match an upstream commit yet, and they are
+// listed so a future one ripples correctly.
 const CONTRACT_FILES = [
   "SKILL.md",
   "server.mjs",
   "page.html",
   "visual-brief.md",
+  "sound-sampler.html",
   "domain-brief.md",
   "writing-clarity.md",
   "adr-template.md",
@@ -83,7 +91,16 @@ const CONTRACT_FILES = [
   "docs/design.md",
   "docs/visualize-design.md",
   ".github/copilot-instructions.md",
+  ".mcp.json",
+  "plugin.json",
 ];
+
+// Since the plugin restructure the fork's copies of these files live under
+// skills/grill-with-ui/, while upstream is still flat. Classification and
+// overlap run in root-space: strip the prefix so the fork's
+// skills/grill-with-ui/SKILL.md and upstream's SKILL.md compare as one file.
+const SKILL_PREFIX = "skills/grill-with-ui/";
+const normalize = (f) => (f.startsWith(SKILL_PREFIX) ? f.slice(SKILL_PREFIX.length) : f);
 
 // A commit is security-relevant when it adds a security CONTROL to the server,
 // or when it adds a test that asserts a protected endpoint is REFUSED.
@@ -249,9 +266,13 @@ const behind = Number(git(["rev-list", "--count", `HEAD..${upstreamTip}`], { sof
 const ahead = Number(git(["rev-list", "--count", `${upstreamTip}..HEAD`], { soft: true }) || 0);
 
 // Files each side touched since the merge base.
-const forkFiles = new Set(lines(git(["diff", "--name-only", `${base}..HEAD`], { soft: true })));
+// Both sides are normalized to root-space (see SKILL_PREFIX): the fork's
+// copies of the skill files live under skills/grill-with-ui/, upstream's do not.
+const forkFiles = new Set(
+  lines(git(["diff", "--name-only", `${base}..HEAD`], { soft: true })).map(normalize),
+);
 const upstreamFiles = new Set(
-  lines(git(["diff", "--name-only", `${base}..${upstreamTip}`], { soft: true })),
+  lines(git(["diff", "--name-only", `${base}..${upstreamTip}`], { soft: true })).map(normalize),
 );
 const contested = [...upstreamFiles].filter((f) => forkFiles.has(f)).sort();
 
@@ -300,15 +321,17 @@ for (const chunk of raw.split("\x1e")) {
 // REWORK needs both on the same file. A commit that touches a contract file the
 // fork did not change is ADAPT, even if some other file in it collides.
 const tierOf = (files) => {
-  const contract = files.filter((f) => CONTRACT_FILES.includes(f));
-  const contractOverlap = contract.filter((f) => forkFiles.has(f));
-  const otherOverlap = files.filter((f) => !CONTRACT_FILES.includes(f) && forkFiles.has(f));
+  const contract = files.filter((f) => CONTRACT_FILES.includes(normalize(f)));
+  const contractOverlap = contract.filter((f) => forkFiles.has(normalize(f)));
+  const otherOverlap = files.filter(
+    (f) => !CONTRACT_FILES.includes(normalize(f)) && forkFiles.has(normalize(f)),
+  );
 
   // Every contract file the commit touches is named, and the ones the fork
   // also changed are marked — a contract file the fork did NOT change still
   // needs porting, so hiding it behind the overlap would lose it.
   const contractList = contract
-    .map((f) => (forkFiles.has(f) ? `${f} (also changed here)` : f))
+    .map((f) => (forkFiles.has(normalize(f)) ? `${f} (also changed here)` : f))
     .join(", ");
 
   if (contractOverlap.length)
@@ -358,7 +381,10 @@ const tierOf = (files) => {
 // mentions a Content-Security-Policy.
 const isSecurityChange = (c) => {
   const code = c.files.filter(
-    (f) => f === "server.mjs" || f === "page.html" || /^test\/.*\.mjs$/.test(f),
+    (f) =>
+      normalize(f) === "server.mjs" ||
+      normalize(f) === "page.html" ||
+      /^test\/.*\.mjs$/.test(f),
   );
   if (!code.length) return false;
 
@@ -372,7 +398,7 @@ const isSecurityChange = (c) => {
   };
 
   // A control in the server (or the page) is a security change.
-  const serverCode = code.filter((f) => f !== "server.mjs" ? false : true);
+  const serverCode = code.filter((f) => normalize(f) === "server.mjs");
   const controlAdded = addedFor(serverCode.length ? serverCode : code);
   if (SECURITY_CONTROLS.some((re) => re.test(controlAdded))) return true;
 
@@ -395,66 +421,80 @@ for (const c of commits) {
   }
 }
 
-// Installed copy freshness. The lock records the commit that was installed, so
-// the comparison is against the SOURCE's tip — not local HEAD. An install that
-// is behind local HEAD but current with its source is not stale.
-const lockPath = join(homedir(), ".agents", ".skill-lock.json");
-let install = null;
-if (existsSync(lockPath)) {
-  try {
-    const lock = JSON.parse(readFileSync(lockPath, "utf8"));
-    const entry = lock?.skills?.["grill-with-ui"];
-    if (entry) {
-      const installedCommit = entry.skillFolderHash || "";
-      // The hash is a commit sha only for a git-sourced install. For a local or
-      // content-addressed install it is a tree hash, and comparing it with a
-      // commit would report a false "behind".
-      const gitSourced = !entry.sourceType || entry.sourceType === "github" || entry.sourceType === "git";
-      let sourceTip = null;
-      if (gitSourced && entry.sourceUrl && entry.ref) {
-        const res = tryRun("git", [
-          "ls-remote",
-          entry.sourceUrl,
-          `refs/heads/${entry.ref}`,
-        ]);
-        if (res.ok) {
-          const first = lines(res.stdout)[0];
-          sourceTip = first ? first.split(/\s+/)[0] : null;
-        }
-      }
-      // The relationship between the local checkout and the source tip decides
-      // the advice. An inequality only says "they differ"; ancestry says which
-      // side is ahead. `merge-base --is-ancestor` exits 1 for "not an
-      // ancestor", which is an answer, not an error.
-      const isAncestor = (ancestor, descendant) => {
-        if (!ancestor || !descendant) return null;
-        const res = tryRun("git", ["merge-base", "--is-ancestor", ancestor, descendant]);
-        if (res.status === 0) return true;
-        if (res.status === 1) return false;
-        return null;
-      };
-      let localRelation = "differs";
-      if (sourceTip && installedCommit) {
-        if (isAncestor(head, sourceTip)) localRelation = "local-ahead";
-        else if (isAncestor(sourceTip, head)) localRelation = "local-behind";
-      }
-      install = {
-        source: entry.source,
-        ref: entry.ref,
-        sourceUrl: entry.sourceUrl,
-        installedAt: entry.installedAt,
-        updatedAt: entry.updatedAt,
-        installedCommit,
-        sourceTip,
-        state: !sourceTip ? "unknown" : installedCommit === sourceTip ? "current" : "behind",
-        localRelation,
-        sourceType: entry.sourceType,
-      };
-    }
-  } catch {
-    install = { error: "could not parse .skill-lock.json" };
+// Install freshness. There are two running copies since the plugin restructure,
+// and neither is commit-tracked:
+//   - the grill-with-ui PLUGIN at
+//     ~/.copilot/installed-plugins/grill-with-ui/grill-with-ui — a plain copy
+//     with no git metadata, so freshness is its plugin.json version against
+//     the repo's.
+//   - the fork-sync SKILL at ~/.agents/skills/fork-sync — a manual copy,
+//     compared through SKILL.md's metadata.version the same way.
+// grill-with-ui left ~/.agents/.skill-lock.json when it became a plugin, so
+// the lock is not consulted: equal versions are the signal that the agent runs
+// what the repo ships. A hash would move on README-only commits, which need no
+// reinstall; the version tracks the contract, which is what a stale install
+// would be missing.
+const parseSkillVersion = (text) => {
+  const m = (text || "").match(/^\s*version:\s*["']?([0-9][0-9.]*)/m);
+  return m ? m[1] : null;
+};
+
+const compareVersions = (a, b) => {
+  const pa = String(a).split(".").map(Number);
+  const pb = String(b).split(".").map(Number);
+  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d) return d < 0 ? -1 : 1;
   }
-}
+  return 0;
+};
+
+const here = dirname(fileURLToPath(import.meta.url));
+const installTargets = [
+  {
+    name: "plugin grill-with-ui",
+    kind: "json",
+    repoFile: join(root, "plugin.json"),
+    instFile: join(
+      homedir(),
+      ".copilot",
+      "installed-plugins",
+      "grill-with-ui",
+      "grill-with-ui",
+      "plugin.json",
+    ),
+    remedy:
+      "copilot plugin marketplace update grill-with-ui && copilot plugin update grill-with-ui",
+  },
+  {
+    name: "skill fork-sync",
+    kind: "skill",
+    repoFile: join(here, "..", "SKILL.md"),
+    instFile: join(homedir(), ".agents", "skills", "fork-sync", "SKILL.md"),
+    remedy: "copy .github/skills/fork-sync/ over ~/.agents/skills/fork-sync/",
+  },
+];
+
+const installs = installTargets.map((t) => {
+  const readV = (file) => {
+    try {
+      const text = readFileSync(file, "utf8");
+      return t.kind === "json" ? (JSON.parse(text).version ?? null) : parseSkillVersion(text);
+    } catch {
+      return null;
+    }
+  };
+  const repoVersion = readV(t.repoFile);
+  const installedExists = existsSync(t.instFile);
+  const installedVersion = installedExists ? readV(t.instFile) : null;
+  let state;
+  if (!repoVersion) state = "unknown";
+  else if (!installedExists) state = "missing";
+  else if (installedVersion === null) state = "unknown";
+  else if (installedVersion === repoVersion) state = "current";
+  else state = compareVersions(installedVersion, repoVersion) < 0 ? "behind" : "ahead";
+  return { name: t.name, state, installedVersion, repoVersion, remedy: t.remedy };
+});
 
 // Open upstream pull requests, when gh is available.
 let prs = null;
@@ -503,7 +543,7 @@ if (AS_JSON) {
         behind,
         contestedFiles: contested,
         commits,
-        install,
+        installs,
         openPRs: prs,
       },
       null,
@@ -553,30 +593,18 @@ if (contested.length) {
   console.log("");
 }
 
-if (install) {
-  if (install.error) {
-    console.log(`Installed copy: ${install.error}`);
-  } else {
-    const stateText = {
-      current: "current with its source",
-      behind: "BEHIND its source",
-      unknown: "unknown (could not reach the source)",
-    }[install.state];
-    console.log(
-      `Installed copy (${install.source}@${install.ref}): ${stateText} — ` +
-        `installed ${String(install.installedCommit).slice(0, 7)}` +
-        (install.sourceTip ? `, source tip ${install.sourceTip.slice(0, 7)}` : ""),
-    );
-    if (install.state === "behind") console.log("  refresh with: npx skills update -g -y");
-    if (install.state === "current" && install.localRelation === "local-ahead")
-      console.log(
-        "  note: local HEAD is ahead of the source tip — push the fork, then update again",
-      );
-    if (install.state === "current" && install.localRelation === "local-behind")
-      console.log("  note: the source tip is ahead of local HEAD — pull the fork");
-  }
-  console.log("");
+for (const i of installs) {
+  const label = {
+    current: `current — v${i.repoVersion}`,
+    behind: `BEHIND — installed v${i.installedVersion}, repo v${i.repoVersion}`,
+    ahead: `AHEAD — installed v${i.installedVersion}, repo v${i.repoVersion} (a different branch?)`,
+    missing: `NOT INSTALLED — repo is v${i.repoVersion}`,
+    unknown: "unknown (could not read a version)",
+  }[i.state];
+  console.log(`Install (${i.name}): ${label}`);
+  if (i.state === "behind" || i.state === "missing") console.log(`  refresh: ${i.remedy}`);
 }
+console.log("");
 
 if (prs && prs.length) {
   console.log(
