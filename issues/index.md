@@ -46,7 +46,7 @@ with `plugin.json` `version`.
 |-------|----------|------------------|
 | [261119_decision-inline-markdown.md](261119_decision-inline-markdown.md) | High | `40a5e6f`, `6166a49`, `6123fde`, `23415c8` |
 | [261119_decision-dark-theme-upstream.md](261119_decision-dark-theme-upstream.md) | N/A | `3903c55` (defer), `5240431` (contrast) |
-| [261119_decision-glossary-naming.md](261119_decision-glossary-naming.md) | Medium | lineage rename, 2026-09-17 |
+| [261119_decision-glossary-naming.md](261119_decision-glossary-naming.md) | Medium | **adopted 2026-11-19** — shipped in v0.10.0 |
 
 ## Phase 4 — CI, docs, housekeeping
 

@@ -2,7 +2,7 @@
 date: 2026-11-19
 type: RFC
 severity: Medium
-status: Open for Comment
+status: Accepted
 tags: [fork-sync, decision, lineage, domain-modeling]
 ---
 
@@ -37,9 +37,24 @@ Decide once, then stop re-litigating.
 
 ## Decision
 
-- [ ] User decides: keep / rename / accept-both — then record it as a durable
-      decision in `docs/design.md` and update the skill accordingly (if it
-      ripples, that is a contract change: bump versions together)
+- [x] User decided (2026-11-19): **adopt `GLOSSARY.md` / `GLOSSARY-MAP.md`** — option 2,
+  with option 3's acceptance as the compatibility story.
+
+## Resolution (implemented 2026-11-19, released v0.10.0)
+
+- Everything new is written under the GLOSSARY names: Finish output, `fallback` targets,
+  the `finished.glossary` field, `GET /glossary`, the `server.mjs glossary` command, and
+  the repo's own root glossary (renamed `CONTEXT.md` → `GLOSSARY.md`).
+- The server **reads the legacy names everywhere** — root file, `CONTEXT-MAP.md`, map
+  links to `CONTEXT.md`, the recorded `finished.context` field, the `/context` endpoint
+  alias, and the `context` command alias — so pre-rename sessions and unmigrated repos
+  keep working with no migration pass.
+- `domain-brief.md` renames a legacy file on first contact at Finish — one file, never
+  both. `docs/design.md` carries the dated decision entry; its older dated entries keep
+  their original names as recorded.
+- Ripple shipped together: `server.mjs`, `page.html`, the tests (44/44, incl. three
+  legacy-acceptance tests), `SKILL.md` + briefs + `writing-clarity.md`, the
+  `finish-domain-docs` eval, README, repo instructions, plugin/marketplace manifests.
 
 ## References
 
