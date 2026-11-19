@@ -434,7 +434,7 @@ const activeView = () => (local.view === "visualize" && hasVisual() ? "visualize
 const timeOf = (iso) => { const d = new Date(iso); return isNaN(d) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }); };
 const fmtMs = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${s % 60}s`; };
 
-// ---- glossary: the standing CONTEXT.md vocabulary, read live via /context ----
+// ---- glossary: the standing GLOSSARY.md vocabulary, read live via /glossary ----
 let glossary = null;          // null until a fetch resolves (or after a failure); array of {term,def,avoid} once parsed
 let glossaryMissing = false;  // last completed fetch was non-200/failure: no glossary right now
 let finishedPrev = null;      // S.finished as of the previous state, to catch the false→true transition
@@ -490,7 +490,7 @@ function mergedTerms(terms) {
 }
 async function fetchGlossary() {
   try {
-    const r = await fetch("/context", { cache: "no-store" });
+    const r = await fetch("/glossary", { cache: "no-store" });
     if (!r.ok) throw new Error(String(r.status));
     glossary = parseGlossary(await r.text());
     glossaryMissing = false;
@@ -527,7 +527,7 @@ function onState() {
   }
   if (!selected || !byId(selected)) selected = (firstOpen() || {}).id || null;
   const fin = !!S.finished;
-  if (finishedPrev === false && fin) fetchGlossary(); // Finish just wrote CONTEXT.md — refetch once
+  if (finishedPrev === false && fin) fetchGlossary(); // Finish just wrote GLOSSARY.md — refetch once
   sndStep(pendingShrunk, finishedPrev === false && fin);
   finishedPrev = fin;
   render();
