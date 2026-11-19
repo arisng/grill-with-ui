@@ -84,12 +84,12 @@ skill's Installation gate cleans for you):
    or copy the bundle's `.github/extensions/grill-monitor` into
    `~/.copilot/extensions/grill-monitor`.
 4. Restart the session — extensions and skills snapshot at start.
-5. Verify: `copilot plugin list` shows `grill-with-ui@grill-with-ui (v0.9.1)` enabled,
+5. Verify: `copilot plugin list` shows `grill-with-ui@grill-with-ui (v0.10.0)` enabled,
    and `grill_status` answers in chat. Existing grills under `~/.grill-with-ui/` need no
    migration.
 
 This repository is a fork of [jasonku09/grill-with-ui](https://github.com/jasonku09/grill-with-ui),
-which remains the upstream code source. The fork adds domain-modeling mode (a `CONTEXT.md`
+which remains the upstream code source. The fork adds domain-modeling mode (a `GLOSSARY.md`
 glossary and ADRs), a responsive layout for phone and tablet, a writing-clarity profile, a
 Taskfile, and an evaluation suite. Install from the fork to get those; the upstream
 repository stays the place to watch for new upstream work. See
@@ -168,17 +168,17 @@ Everything staged survives opening and closing those panels. The visual is view-
 phone — send feedback on it from a wider window.
 
 The first question of every grill asks whether settled terms and durable decisions should
-also be kept as standing files — a `CONTEXT.md` glossary and one ADR per architecturally
+also be kept as standing files — a `GLOSSARY.md` glossary and one ADR per architecturally
 significant decision, the big hard-to-reverse choices, grouped where several questions
 settle the same one — alongside the design doc, which is written
 either way; no (the default) changes nothing else. The glossary goes to the project root,
-except in a repo that keeps a `CONTEXT-MAP.md` at its root: there the root belongs to the
+except in a repo that keeps a `GLOSSARY-MAP.md` at its root: there the root belongs to the
 context map, so Finish reads it, lands the glossary in the bounded context this topic
 belongs to — asking you to confirm when the match is unclear — and writes the ADRs into
 that context's own `docs/adr/` or `.docs/adr/`.
 
 The header **Terms** panel also shows the project's standing glossary once it exists —
-from the root `CONTEXT.md`, or from wherever Finish recorded a scoped one —
+from the root `GLOSSARY.md` (a legacy `CONTEXT.md` still works), or from wherever Finish recorded a scoped one —
 session terms and standing terms in one list, each marked where it came
 from. Declining the mode changes nothing: you still see a glossary a previous grill left
 behind.
@@ -250,17 +250,18 @@ Session state lives outside your repo, so there is nothing to gitignore:
 every worktree of a repo sees the same sessions; outside git it is the working directory.
 
 Repo-side outputs are few and grouped per topic under `.grill-with-ui/<yymmdd>-<topic-slug>/` —
-`design.md` plus the optional `visual.html` — while standing files stay at `CONTEXT.md`
+`design.md` plus the optional `visual.html` — while standing files stay at `GLOSSARY.md`
 and `docs/adr/`. `<yymmdd>` is the grill's start date (e.g. `261002-auth`), so the folders
 sort chronologically without opening them. These are committed deliverables: commit
 `.grill-with-ui/` (it is the
 product), or gitignore it deliberately if you don't want them in the repo.
 
-Only in domain-modeling mode does Finish also write these standing files: `CONTEXT.md`
+Only in domain-modeling mode does Finish also write these standing files: `GLOSSARY.md`
 (merged into, never overwritten; the project root, or the matched bounded context's file
-when a `CONTEXT-MAP.md` scopes it) and `NNNN-slug.md` in `docs/adr/` or that context's
+when a `GLOSSARY-MAP.md` scopes it; a legacy `CONTEXT.md` is renamed on first contact)
+and `NNNN-slug.md` in `docs/adr/` or that context's
 ADR folder, recorded in
-`finished.context`/`finished.adrs`. Each ADR follows one template — status, date,
+`finished.glossary`/`finished.adrs`. Each ADR follows one template — status, date,
 authors, context, drivers, the options that were weighed, the outcome, and the
 consequences — and records **one decision**, not one question: durable questions that
 settle the same choice share a file, and a durable choice too small to be worth a record
@@ -342,7 +343,7 @@ routing prompts the main spec also picks up.
 | `start-grill` | `server.mjs new` → patch round 1 (`q-domain` first, then topic questions with options, a recommendation and a why) → open the page → print the URL |
 | `answer-glossary-yes` | a terminal answer on `q-domain` sets `domainModeling: true` |
 | `finish-design-doc` | Finish writes the self-contained design doc with its prescribed sections and records it in `finished` |
-| `finish-domain-docs` | domain-modeling mode also writes `CONTEXT.md` and one ADR per significant decision |
+| `finish-domain-docs` | domain-modeling mode also writes `GLOSSARY.md` and one ADR per significant decision |
 | `patch-only-no-direct-write` | the skill overrides a request to hand-edit `state.json` — the change goes through `patch` |
 | `extension-attach` | `grill_attach` is called, `server.mjs wait` never is, round 1 lands, and the monitor is detached at stop |
 | `negative-trigger` | a design-adjacent request does not start a grill |
