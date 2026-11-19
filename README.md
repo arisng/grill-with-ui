@@ -384,7 +384,7 @@ attention:
 |--------|------|-----------|
 | [`jasonku09/grill-with-ui`](https://github.com/jasonku09/grill-with-ui) | The code this was forked from | Adopt its changes, adapted to the fork's contract |
 | [`mattpocock/skills`](https://github.com/mattpocock/skills) | The method this grew out of (the interview method, the `durable` flag, the glossary and ADR rules) | Watch for method drift; there is no git ancestry to merge |
-| The installed copy in `~/.agents/skills/grill-with-ui` | What the agent actually runs | Refresh after a sync, or the change nobody has |
+| The installed plugin in `~/.copilot/installed-plugins/grill-with-ui` | What the agent actually runs | Refresh after a sync, or the change nobody has |
 
 The `fork-sync` skill in [`.github/skills/fork-sync/SKILL.md`](.github/skills/fork-sync/SKILL.md)
 runs the whole routine. Start with its read-only report:
@@ -417,8 +417,9 @@ diff is evidence of intent, not a patch to apply.
 Two things make a sync land safely. First, `SKILL.md` is the product: its schema is
 implemented by `server.mjs`, `page.html`, the briefs, and the tests, so a schema change
 must move through all of them — see the skill's `references/contract-ripple.md`. Second,
-bump `metadata.version` in `SKILL.md` and reinstall:
+bump `metadata.version` in `skills/grill-with-ui/SKILL.md` together with `version` in
+`plugin.json` (they are kept equal), then refresh what runs:
 
 ```sh
-npx skills update -g -y
+copilot plugin marketplace update grill-with-ui && copilot plugin update grill-with-ui
 ```
