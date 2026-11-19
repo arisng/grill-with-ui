@@ -2,7 +2,7 @@
 name: fork-sync
 description: Keep the grill-with-ui fork in sync with its upstreams — the jasonku09/grill-with-ui code repo, the mattpocock/skills method lineage, and the installed skill copy. Use when asked to sync, refresh, update, catch up, or rebase the fork; when checking for new upstream commits, branches, or PRs; when deciding whether to adopt, adapt, or skip an incoming change; or when a schema or contract change needs the full ripple update. Do not use for ordinary feature work inside the repo.
 metadata:
-  version: 0.3.0
+  version: 0.4.0
 ---
 
 # fork-sync
@@ -23,6 +23,9 @@ or skipped on purpose. Blind application is the failure mode this skill exists t
 | 1 | Code upstream | `upstream` remote → `jasonku09/grill-with-ui` | Commits, branches, PRs: features, fixes, CI, docs | [upstream-repo.md](references/upstream-repo.md) |
 | 2 | Method lineage | `mattpocock/skills` | The interview method, glossary/ADR discipline. Not a git ancestor — watch, don't merge | [mattpocock-lineage.md](references/mattpocock-lineage.md) |
 | 3 | Installed copies | the plugin at `~/.copilot/installed-plugins/grill-with-ui/`, this skill at `~/.agents/skills/fork-sync/` | What the agent actually runs | [install-target.md](references/install-target.md) |
+
+The full dependency inventory — toolchain, plugin surface, and how each class
+is kept current — is [references/dependencies.md](references/dependencies.md).
 
 Set up source 1 once if missing:
 
@@ -54,8 +57,18 @@ node $REPO/.github/skills/fork-sync/scripts/sync-report.mjs
 
 Read-only with respect to the working tree. It fetches upstream, finds the merge base,
 and prints every incoming commit tiered, the contested files, both installs' freshness,
-and the open upstream PRs. Add `--json` to consume it programmatically,
-`--no-fetch` to stay offline, `--upstream owner/repo` to point at a different repo.
+the lineage pins' drift (plus any new skills in `mattpocock/skills` since the last
+audit), and the open upstream PRs. Add `--json` to consume it programmatically,
+`--no-fetch` to stay offline (which also skips the lineage check),
+`--upstream owner/repo` to point at a different repo.
+
+When the user asks whether the fork is up to date, answer with the **coverage
+table** in [references/dependencies.md](references/dependencies.md) filled with the
+report's live values — upstream gap, lineage gap, install freshness, toolchain
+exceptions — not just the tier counts. The lineage section is deterministic (pins in
+`lineage.json`, a `knownSkills` snapshot, a keyword screen); deciding whether a
+drifted commit or a newly discovered skill actually matters stays a human call, made
+with the user.
 
 The script classifies by two independent questions: does the commit touch a **contract
 file** (the schema and its docs), and did the fork **also change that file**?

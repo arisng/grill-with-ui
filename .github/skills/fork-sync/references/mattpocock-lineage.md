@@ -31,7 +31,10 @@ gh api repos/mattpocock/skills/contents/skills/engineering/domain-modeling/GLOSS
 The API returns base64; pipe through `base64 -d` (or `Buffer.from(x, 'base64')` in
 Node) to read it.
 
-Check for drift with a timestamp rather than by re-reading everything:
+Drift is checked deterministically — the report's **Lineage section** compares these
+same endpoints against the pins in `lineage.json` and set-diffs the live skill tree
+against its `knownSkills` snapshot (so new skills are caught too). The commands below
+remain as the manual fallback:
 
 ```sh
 gh api "repos/mattpocock/skills/commits?path=skills/productivity/grilling&per_page=1" \
@@ -44,14 +47,19 @@ gh api "repos/mattpocock/skills/commits?path=skills/engineering/domain-modeling&
 
 | Date | Upstream change | Status in the fork |
 |------|-----------------|---------------------|
-| 2026-10-07 | `grilling`: word questions so "yes" accepts the recommendation | **not ported** — see below |
-| 2026-09-17 | `domain-modeling`: renamed `CONTEXT.md`/`CONTEXT-MAP.md` to `GLOSSARY.md`/`GLOSSARY-MAP.md` | **not adopted** — a live decision, see below |
+| 2026-10-29 | `grilling`: dispatch a sub-agent "with a fresh context window" | **not ported** — `issues/261119_reconcile-lineage-grilling.md` |
+| 2026-10-07 | `grilling`: word questions so "yes" accepts the recommendation | **not ported** — same issue |
+| 2026-09-17 | `domain-modeling`: renamed `CONTEXT.md`/`CONTEXT-MAP.md` to `GLOSSARY.md`/`GLOSSARY-MAP.md` | **not adopted** — a live decision, `issues/261119_decision-glossary-naming.md` |
 | 2026-08-20 | `grilling`: separate questions in a round with an HR | ported in spirit — the fork already numbers and separates its questions |
 | 2026-08-15 | removed em-dashes from the `grilling` skill | not ported — the fork's own prose style is its own decision |
 
-This lineage moves slowly but not never. `grilling` last changed in October 2026 and
-`domain-modeling` in September 2026, so **check quarterly** and read the commit
-message before reading the file.
+This lineage moves slowly but not never. `grilling` last changed 2026-10-29 and
+`domain-modeling` 2026-09-17 (committer dates — the rename was authored in August and
+landed in September). The report re-checks the pins on **every run**; when a pin
+drifts, read the commit message before reading the file, reconcile through an
+`issues/` record, and only then update the pin. The 2026-11-19 new-skill screen
+(grill-me, to-questionnaire, wait-what, the writing trio) is recorded in
+[dependencies.md](dependencies.md) — nothing new qualified as a dependency.
 
 ### The unported rule: "yes" should accept the recommendation
 
