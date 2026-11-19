@@ -90,7 +90,7 @@ under `GRILL_HOME` (default `~/.grill-with-ui/sessions/<project-key>/<timestamp>
 by the git common root so worktrees share sessions — nothing to gitignore.
 
 `server.mjs` is both the HTTP server and the CLI. `serve` handles the page (poll of
-`state.json`, `POST /send`, `/visual`, `/context`), appends the event, and acts as the
+`state.json`, `POST /send`, `/visual`, `/glossary`), appends the event, and acts as the
 Monitor command. Without a persistent Monitor, SKILL.md runs **Extension monitor**: the
 grill-monitor extension keeps `node server.mjs wait --session DIR --after <handled>`
 alive itself (exit 0 = a Send) and delivers each one to the chat with one `session.send`
@@ -132,13 +132,14 @@ iframe with no same-origin access: one file, inline everything, no CDN/fetch/ext
 questions are drawn from their recommendation and marked "assumed".
 
 Per-topic outputs group under `.grill-with-ui/<yymmdd>-<slug>/` (`design.md` + exported
-`visual.html`); standing artifacts stay at the conventional locations (`CONTEXT.md`,
+`visual.html`); standing artifacts stay at the conventional locations (`GLOSSARY.md`,
 `docs/adr/`).
 
 The opt-in **domain-modeling mode** opens round 1 with a `q-domain` question ("Also keep
 a glossary and ADRs?"); a yes stores a top-level `domainModeling: true` in state (absent
 = off, reopen clears it). At Finish, when on, the agent also writes
-`CONTEXT.md` (merged, never clobbered) and one ADR per architecturally significant
+`GLOSSARY.md` (merged, never clobbered; a legacy `CONTEXT.md` is renamed on first
+contact) and one ADR per architecturally significant
 decision in the ADR folder the brief picks — `docs/adr/`, or the matched bounded
 context's own folder — per the sibling brief `domain-brief.md`. An ADR records a
 decision, not a question: durable questions that settle the same choice share one file,
@@ -146,14 +147,14 @@ and a durable choice the screen rules out gets none and stays a Locked decision 
 design doc alone. The design doc is written after the ADRs, so it can cite their
 numbers. The design doc is written either way, unchanged. The glossary's location
 resolves by rule: repo root normally; in a repo
-with a `CONTEXT-MAP.md` at its root, Finish parses the map (`server.mjs context
---session <session>` lists each bounded context's name, `CONTEXT.md` path, folder and ADR
+with a `GLOSSARY-MAP.md` at its root, Finish parses the map (`server.mjs glossary
+--session <session>` lists each bounded context's name, `GLOSSARY.md` path, folder and ADR
 folder), matches the grill's topic to one context — asking the user when the match is
 unclear — and writes the glossary and its ADRs inside that context.
 
-The header **Terms** panel merges live `state.terms` with the glossary `GET /context`
+The header **Terms** panel merges live `state.terms` with the glossary `GET /glossary`
 resolves to —
-fetched via read-only `GET /context` (no-store markdown; 404 `no context`/
+fetched via read-only `GET /glossary` (no-store markdown; 404 `no glossary`/
 `no project`/`no state`), parsed for the `## Language` section in page.html, session
 wins collisions, provenance pills shown once ≥1 glossary entry parses; viewing is
 independent of the session's domain-modeling mode.
@@ -182,7 +183,7 @@ independent of the session's domain-modeling mode.
 - **`SKILL.md` is the product**: its YAML frontmatter `description` (the trigger phrase
   "grill with ui"), the listening-mode rules, and the state/send schemas at the bottom are
   the contract the page, server, and tests all implement — now including top-level
-  `domainModeling` and `finished.context`/`adrs`, with `domain-brief.md` (the Finish-time
+  `domainModeling` and `finished.glossary`/`adrs`, with `domain-brief.md` (the Finish-time
   docs formats) and `adr-template.md` (the ADR shape `server.mjs adr` scaffolds) part of
   the same contract. Schema changes ripple through `validateState`
   in `server.mjs`, the page render code, `visual-brief.md`, and the tests — update all of
