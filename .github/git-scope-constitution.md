@@ -1,6 +1,6 @@
 # Commit Scope Constitution
 
-Last Updated: 2026-10-28
+Last Updated: 2026-11-19
 
 ## Purpose
 
@@ -43,6 +43,8 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 - `design`: dated decision records under `docs/` (`design.md`,
   `visualize-design.md`).
 - `readme`: the root `README.md`.
+- `issues`: `issues/**` — the local markdown issue documents at the
+  repository root (triage records, task and RFC files worked incrementally).
 - `constitution`: `.github/git-scope-constitution.md` and
   `.github/git-scope-inventory.md`.
 
@@ -123,6 +125,22 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 3. Record the change under Amendment History and bump Last Updated.
 
 ## Amendment History
+
+### 2026-11-19 - Amendment #9
+
+**Changes:**
+- Added the `issues` scope under the `docs` type, for the local markdown
+  issue documents under `issues/**` at the repository root.
+
+**Rationale:**
+The fork files its upstream-sync triage as one-page task and RFC documents in
+`issues/` so each port and decision can be walked through and worked
+incrementally. These are repository documents — not skill prose, design
+records, the README, or the constitution itself — so no existing `docs`
+scope fit.
+
+**Migration Notes:**
+No history rewriting; the scope is new, so no earlier commit is affected.
 
 ### 2026-10-28 - Amendment #8
 
