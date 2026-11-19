@@ -229,6 +229,18 @@ keeps one Claude session behind it so nothing is ever out of context.
   the 2026-09-23 "Domain-modeling mode is an opt-in round-1 question" entry, which stays
   as recorded, and inverts the "sparse `docs/adr/` files" half of locked decision 5.
 
+- **GLOSSARY.md naming adopted from the lineage** (2026-11-19). The lineage renamed
+  `CONTEXT.md`/`CONTEXT-MAP.md` to `GLOSSARY.md`/`GLOSSARY-MAP.md` on 2026-09-17; the
+  fork now follows — with a compatibility story, not a flag day: the server reads both
+  names everywhere (root file, map, map links, the recorded `finished.glossary` field
+  with legacy `finished.context`, `GET /glossary` with the `/context` alias, and the
+  `glossary` command with the `context` alias), `fallback` always names the new file so
+  anything created is `GLOSSARY.md`, and Finish renames a legacy file on first contact —
+  one file, never both. The earlier keep-`CONTEXT.md` position (the fork's domain-modeling
+  mode predates the rename) is superseded: vocabulary coherence with the lineage wins now
+  that the rename is settled upstream. Dated entries above keep their names as recorded.
+  Resolved from `issues/261119_decision-glossary-naming.md`.
+
 ## Verified facts (2026-09-06)
 
 - Monitor events reach the model while it is idle waiting for the user (live test).
