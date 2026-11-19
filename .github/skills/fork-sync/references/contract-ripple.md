@@ -16,19 +16,26 @@ git show <sha> --stat
 The upstream commit's own file list is the shortest route to the affected set, but check
 it against the fork's structure — the fork has files upstream does not:
 
+Upstream names these files at the repo root (`SKILL.md`); in the fork the skill's
+copies live under `skills/grill-with-ui/`. One file, two names — read the diff at
+upstream's path, write the change at the fork's.
+
 | Layer | File | What must match |
 |-------|------|-----------------|
-| Prompt contract | `SKILL.md` | The schema block at the end, the `Patching state.json` rules, the round/question shape, the frontmatter `description` and `metadata.version` |
-| Server | `server.mjs` | `validateState` (the accepted fields and their shapes), the CLI's output contract, any new file under `state.json` |
-| Page | `page.html` | The renderer for the new field, the staged-action model, the Terms/Explore/Visualize panels that read it |
-| Briefs | `visual-brief.md`, `domain-brief.md`, `writing-clarity.md`, `adr-template.md` | The shape of the artifacts the change feeds |
+| Prompt contract | `skills/grill-with-ui/SKILL.md` | The schema block at the end, the `Patching state.json` rules, the round/question shape, the frontmatter `description` and `metadata.version` |
+| Server | `skills/grill-with-ui/server.mjs` | `validateState` (the accepted fields and their shapes), the CLI's output contract, any new file under `state.json` |
+| Page | `skills/grill-with-ui/page.html` | The renderer for the new field, the staged-action model, the Terms/Explore/Visualize panels that read it |
+| Sound cues | `skills/grill-with-ui/sound-sampler.html` | The `SOUND_CUES` table matches `page.html`; gate drift with `task taste:check` |
+| Briefs | `skills/grill-with-ui/visual-brief.md`, `domain-brief.md`, `writing-clarity.md`, `adr-template.md` | The shape of the artifacts the change feeds |
 | Tests | `test/server.test.mjs`, `test/page.e2e.mjs`, `test/manual-visual.e2e.mjs` | The new behaviour, and the *old* behaviour that must still hold |
 | Evals | `evals/grill-with-ui/**` | The task that exercises the behaviour, if the behaviour is prompt-visible |
 | Docs | `README.md` | The user-facing description |
 | Repo rules | `.github/copilot-instructions.md` | The architecture note, if the invariant changed |
 | Repo memory | `.github/copilot-memories.jsonl` | A durable fact the change establishes (a new invariant, a renamed concept) |
+| MCP config | `.mcp.json` | The Playwright server config the repo instructions point at |
+| Manifest | `plugin.json` | The plugin's `version`, kept equal to the skill's `metadata.version` |
 | Decisions | `docs/design.md`, `docs/visualize-design.md` | Only when a **decision** was made — not for every change |
-| Version | `SKILL.md` frontmatter | `metadata.version`, bumped once per contract change |
+| Version | `skills/grill-with-ui/SKILL.md` frontmatter + `plugin.json` | Both bumped together, once per contract change |
 
 ## The four invariants that break most often
 
@@ -95,7 +102,10 @@ docs(design):                 only when a decision was made
 ```
 
 Within one feature, the same order applies across layers: `server.mjs` before
-`page.html` before `SKILL.md`, because each layer describes the one below it.
+`page.html` before `SKILL.md`, because each layer describes the one below it. The
+version bump rides the same commit — `skills/grill-with-ui/SKILL.md`'s
+`metadata.version` and `plugin.json`'s `version` move together, and a change that
+touches only the manifest is `copilot(plugin)`.
 
 ## Vocabulary
 
@@ -119,5 +129,6 @@ touches the contract.
 task test && task test:e2e && waza check .
 ```
 
-Then bump `metadata.version`, commit, and land. If the page changed visibly, re-record
-the GIF with `task gif` (which wraps `node design/record-demo.mjs`).
+Then bump `metadata.version` — together with `plugin.json`'s `version`, which is kept
+equal — commit, and land. If the page changed visibly, re-record the GIF with `task gif`
+(which wraps `node design/record-demo.mjs`).

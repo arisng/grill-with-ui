@@ -1,85 +1,39 @@
-# Source 3 — the installed copy: `~/.agents/skills/grill-with-ui`
+# Source 3 — the installed copies
 
-## Why it is a source
+The fork's code is not what runs. Two **installed copies** are, plus a listener:
 
-The fork's code is not what runs. The **installed copy** is: a snapshot of this repo
-installed into the agent's skills directory, and it is the one the agent loads when a
-grill starts. A fork change that is never reinstalled is a change nobody has.
+| What | Where | Version marker | Refresh |
+|------|-------|----------------|---------|
+| The grill-with-ui plugin — the skill the agent loads | `~/.copilot/installed-plugins/grill-with-ui/grill-with-ui/` | `plugin.json` `version` | `copilot plugin marketplace update grill-with-ui && copilot plugin update grill-with-ui` |
+| This skill (fork-sync) | `~/.agents/skills/fork-sync/` | `SKILL.md` `metadata.version` | Re-copy `.github/skills/fork-sync/` over it |
+| The grill-monitor listener | `~/.copilot/extensions/grill-monitor/` | (files, not a version) | `task ext-install` from a clone |
 
-The install is tracked in `~/.agents/.skill-lock.json`:
+A plugin cannot install SDK extensions, so the listener is always a separate install —
+the README's upgrade section carries the full story. A fork change that is never
+refreshed into these copies is a change nobody has.
 
-```json
-"grill-with-ui": {
-  "source": "arisng/grill-with-ui",
-  "sourceType": "github",
-  "sourceUrl": "https://github.com/arisng/grill-with-ui.git",
-  "ref": "develop",
-  "skillPath": "SKILL.md",
-  "skillFolderHash": "2b5b6b56749eeee40264c61bcfe4233a28bdc20a",
-  "installedAt": "...",
-  "updatedAt": "..."
-}
-```
+## Why version equality is the freshness signal
 
-`ref` is the branch the install tracks, and `skillFolderHash` is the commit that was
-installed. Together they say exactly what is installed.
+Neither copy is a git checkout and neither is commit-tracked: the plugin is a plain
+copy of the repo, and fork-sync was copied by hand. The report therefore compares the
+installed version against the repo's and prints `current`, `BEHIND` (with the remedy
+printed next to it), or `NOT INSTALLED`.
 
-## Refreshing
+A commit-hash comparison would be the wrong signal here: any commit, even a README-only
+change, moves a hash, and a README-only change needs no reinstall. The version tracks
+the *contract* — exactly what a stale install would be missing.
 
-```sh
-npx skills update -g -y
-```
+**Push before you refresh.** The plugin installs from the remote, so after merging a
+sync you must push `develop` first: an unpushed merge is not installable, and the
+update command would fetch the old tip.
 
-`npx skills update` re-reads the recorded `source` and `ref` from the lock file, so it
-pulls the fork's `develop` — the same branch the sync work lands on. That is why the
-lock's `ref` must stay `develop`: pointing it at `main` would install a month-old copy.
+## Version markers
 
-## Two different questions about freshness
-
-**Is the install current with its source?** That is what the lock answers: compare
-`skillFolderHash` with the tip of `sourceUrl` at `ref`.
-
-```sh
-git ls-remote https://github.com/arisng/grill-with-ui.git refs/heads/develop
-```
-
-The report does this and prints `current with its source` or `BEHIND its source`. Only
-`BEHIND` needs a refresh.
-
-**Is the fork itself published?** The lock's `ref` is a *remote* branch, so after
-merging a sync you must **push** before updating. Until then the report says
-`the source tip is behind local HEAD — push the fork, then update again`.
-
-Do not confuse these two. An install that is behind local HEAD but matches the source
-tip is **not** stale — the local commits simply are not published yet.
-
-**Is the installed skill the version you think?** That is the `metadata.version` check,
-and it is a separate signal from the commit hash:
-
-```sh
-grep -n "version:" ~/.agents/skills/grill-with-ui/SKILL.md
-```
-
-The `metadata.version` in the installed `SKILL.md` must match the repo's. If it does
-not, the update did not run, or it ran before the sync was merged.
-
-| Signal | Meaning | Fix |
-|--------|---------|-----|
-| Installed commit ≠ source tip | The install is behind its source | `npx skills update -g -y` |
-| Installed commit = source tip, but ≠ local HEAD | The fork's commits are not pushed | Push the fork, then update |
-| Installed `metadata.version` < repo's | The install predates a shipped change | `npx skills update -g -y` |
-| Installed `metadata.version` > repo's | The install came from a different branch | Check the lock's `ref` |
-
-A commit-hash difference does **not** imply a missing version bump: any commit, even a
-README-only change, moves the hash. The version tracks the *contract*; the hash tracks
-the *content*.
-
-## The `metadata.version` marker
-
-`SKILL.md`'s frontmatter carries `metadata.version` (currently `0.5.0` in the fork). It is
-the only version marker in the project — there is no CHANGELOG, and upstream publishes no
-releases or tags. Bump it when the **shipped package** changes, and read it to confirm an
-install is current.
+| Marker | Where | Rule |
+|--------|-------|------|
+| `plugin.json` `version` | repo root and the installed plugin | Kept equal to the skill's `metadata.version` (0.9.1 today). Bump both with the contract change they describe; `copilot(plugin)` when only the manifest changes |
+| `skills/grill-with-ui/SKILL.md` `metadata.version` | repo and the installed plugin | The shipped skill's contract version |
+| fork-sync's `metadata.version` | `.github/skills/fork-sync/SKILL.md` and `~/.agents/skills/fork-sync/SKILL.md` (0.3.0) | Bump with any change to this skill |
 
 What counts as a change to the shipped package:
 
@@ -93,47 +47,28 @@ What counts as a change to the shipped package:
 A version bump without a shipped change is noise; a shipped change without a version
 bump is a silent stale install. Keep them paired.
 
+| Signal | Meaning | Fix |
+|--------|---------|-----|
+| Installed < repo | The copy predates a shipped change | plugin: the update command above; fork-sync: re-copy |
+| Installed = repo | Current — the agent runs what the repo ships | — |
+| Installed > repo | The copy came from a different branch | Check which checkout it was copied from |
+
+## Legacy: the skills lock
+
+`~/.agents/.skill-lock.json` used to track `grill-with-ui` as a skills-CLI install
+(`skillPath: SKILL.md`, a commit sha in `skillFolderHash`). The plugin era ended that:
+the entry is obsolete, the README's upgrade section covers deleting it, and the report
+no longer reads the lock. Other skills in the lock are unaffected —
+`npx skills update -g -y` still refreshes those.
+
 ## Other agents' copies
 
-The skills ecosystem installs the same folder into several agents' directories
-(`~/.claude/skills/`, `~/.agents/skills/`, `~/.cursor/skills/`, and project-level
-`.github/skills/`, `.claude/skills/`, `.agents/skills/`). The lock file tracks one
-install; a second agent directory may hold a separate copy.
+Claude Code and other agents that do not run the plugin keep their own route: a
+symlink, junction, or copy of `skills/grill-with-ui` (the README documents the
+symlink route). Those copies do not update themselves — after a sync, re-point or
+re-pull them.
 
-Check what is installed where:
-
-```sh
-npx skills list
-```
-
-Refresh them all in one go, or per agent:
-
-```sh
-npx skills update -g -y
-```
-
-## Other install routes
-
-Agents that do not use the skills CLI install the folder by hand — a symlink, a copy, or
-a git clone. The README documents the symlink route for Claude Code, Codex, Gemini CLI,
-Cursor, and Copilot. For those, the update path is `git pull` in the clone, plus a manual
-copy if the install is a copy rather than a symlink.
-
-Check which you have:
-
-```sh
-ls -l ~/.agents/skills/grill-with-ui    # '->' means symlink
-```
-
-On Windows, a directory junction shows the same way. A symlinked install is simpler but
-ties the running skill to whatever branch the clone is on — including an in-progress sync
-branch, which would put a half-merged skill into a live grill. Prefer a copy for the
-installed path, and keep the clone's working branch clean while a sync is in flight.
-
-## A note on `skillFolderHash` and other source types
-
-The lock's `skillFolderHash` is a **commit sha** for a GitHub install, because the
-install came from a branch. For other `sourceType` values it can be a tree hash of the
-folder's content instead. The report compares the hash with a commit, so it only draws
-a conclusion for GitHub-sourced installs; for anything else it reports the state as
-`unknown` rather than guessing.
+A symlink ties the running skill to whatever branch its clone is on, including an
+in-progress sync branch, which would put a half-merged skill into a live grill.
+Prefer a copy for anything that runs during a sync, and keep the clone's working
+branch clean while a sync is in flight.

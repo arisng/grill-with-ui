@@ -2,7 +2,7 @@
 name: fork-sync
 description: Keep the grill-with-ui fork in sync with its upstreams — the jasonku09/grill-with-ui code repo, the mattpocock/skills method lineage, and the installed skill copy. Use when asked to sync, refresh, update, catch up, or rebase the fork; when checking for new upstream commits, branches, or PRs; when deciding whether to adopt, adapt, or skip an incoming change; or when a schema or contract change needs the full ripple update. Do not use for ordinary feature work inside the repo.
 metadata:
-  version: 0.2.0
+  version: 0.3.0
 ---
 
 # fork-sync
@@ -22,7 +22,7 @@ or skipped on purpose. Blind application is the failure mode this skill exists t
 |---|--------|-------|-----------------|-----------|
 | 1 | Code upstream | `upstream` remote → `jasonku09/grill-with-ui` | Commits, branches, PRs: features, fixes, CI, docs | [upstream-repo.md](references/upstream-repo.md) |
 | 2 | Method lineage | `mattpocock/skills` | The interview method, glossary/ADR discipline. Not a git ancestor — watch, don't merge | [mattpocock-lineage.md](references/mattpocock-lineage.md) |
-| 3 | Installed copy | `~/.agents/skills/grill-with-ui` + `~/.agents/.skill-lock.json` | What the agent actually runs. Tracks this fork's `develop` | [install-target.md](references/install-target.md) |
+| 3 | Installed copies | the plugin at `~/.copilot/installed-plugins/grill-with-ui/`, this skill at `~/.agents/skills/fork-sync/` | What the agent actually runs | [install-target.md](references/install-target.md) |
 
 Set up source 1 once if missing:
 
@@ -53,18 +53,23 @@ node $REPO/.github/skills/fork-sync/scripts/sync-report.mjs
 ```
 
 Read-only with respect to the working tree. It fetches upstream, finds the merge base,
-and prints every incoming commit tiered, the contested files, the installed copy's
-freshness, and the open upstream PRs. Add `--json` to consume it programmatically,
+and prints every incoming commit tiered, the contested files, both installs' freshness,
+and the open upstream PRs. Add `--json` to consume it programmatically,
 `--no-fetch` to stay offline, `--upstream owner/repo` to point at a different repo.
 
 The script classifies by two independent questions: does the commit touch a **contract
 file** (the schema and its docs), and did the fork **also change that file**?
 
 **The contract files** are: `SKILL.md`, `server.mjs`, `page.html`, `visual-brief.md`,
-`domain-brief.md`, `writing-clarity.md`, `adr-template.md`, `README.md`,
-`docs/design.md`, `docs/visualize-design.md`, `.github/copilot-instructions.md`. Test
-files are deliberately not among them: a test change follows its subject change, it
-does not define the contract.
+`sound-sampler.html`, `domain-brief.md`, `writing-clarity.md`, `adr-template.md`,
+`README.md`, `docs/design.md`, `docs/visualize-design.md`,
+`.github/copilot-instructions.md`, `.mcp.json`, `plugin.json`. They are named in
+upstream's root-space: in the fork the skill's copies live under
+`skills/grill-with-ui/`, and the report strips that prefix before comparing the two
+sides. `sound-sampler.html`, `.mcp.json`, and `plugin.json` are fork-only today — they
+cannot match an upstream commit yet, and they are listed so a future one ripples.
+Test files are deliberately not among them: a test change follows its subject change,
+it does not define the contract.
 
 ### 3. Classify
 
@@ -103,8 +108,9 @@ copilot(instruction):         the repo instructions
 docs(design):                 only when a decision was made
 ```
 
-Bump `metadata.version` in `SKILL.md` **in the same commit** as the contract change it
-describes — not at the end of the sync, and not after each cherry-pick.
+Bump `metadata.version` in `skills/grill-with-ui/SKILL.md` — and `version` in
+`plugin.json`, the two are kept equal — **in the same commit** as the contract change
+it describes, not at the end of the sync, and not after each cherry-pick.
 
 Never use a bare `feat:`/`fix:` subject; the constitution bans it, and upstream's own
 commits (which use `feat:`, `fix(page):`, `no-mistakes(document):`) are the exception, not
@@ -128,15 +134,19 @@ ffmpeg).
 
 ### 6. Land and refresh the install
 
-Push the branch, open a PR against `develop`, merge, then push `develop` — the installed
-copy tracks the **remote** branch, so an unpushed merge is not yet installable. Then:
+Push the branch, open a PR against `develop`, merge, then push `develop` — the plugin
+installs from the remote, so an unpushed merge is not yet installable. Then refresh
+what the agent actually runs:
 
 ```sh
-npx skills update -g -y
+copilot plugin marketplace update grill-with-ui && copilot plugin update grill-with-ui
 ```
 
-The installed copy is what the agent runs. A fork change that is never reinstalled is a
-change nobody has.
+Two copies sit outside that command: if the sync changed
+`.github/extensions/grill-monitor/`, run `task ext-install`; if it changed fork-sync
+itself, re-copy `.github/skills/fork-sync/` over `~/.agents/skills/fork-sync/`. The
+report prints a `BEHIND` line with the right remedy for each install. An installed copy
+that is never refreshed is a change nobody has.
 
 ## Edge cases the report cannot decide for you
 
@@ -150,6 +160,12 @@ git diff --diff-filter=R --name-status <base>..upstream/main   # renames
 git diff --diff-filter=D --name-status <base>..upstream/main   # deletions
 ```
 
+**Files the fork does not ship.** Upstream carries files the fork never took —
+`markdown.mjs` is the current one. An ADOPT cherry-pick would create a file the fork
+does not want, so when a commit's files are all ones the fork lacks, read the diff and
+decide whether the fork needs the capability at all. A deliberate skip is a DEFER;
+record it.
+
 **Schema compatibility.** The fork's `validateState` accepts fields upstream's does not
 (`domainModeling`, `writingProfile`), and upstream accepts fields the fork's does not
 (`multi`, `rec.options`, `answer.options`). After a sync that touches `server.mjs` or
@@ -157,7 +173,7 @@ git diff --diff-filter=D --name-status <base>..upstream/main   # deletions
 have not silently drifted apart:
 
 ```sh
-git diff <base>..HEAD -- server.mjs | grep -E '^\+.*(domainModeling|writingProfile)'
+git diff <base>..HEAD -- skills/grill-with-ui/server.mjs | grep -E '^\+.*(domainModeling|writingProfile)'
 ```
 
 **Long divergence.** Per-commit cherry-picking is right while the gap is a few dozen
