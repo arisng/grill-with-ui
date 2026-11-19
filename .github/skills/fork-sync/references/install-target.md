@@ -31,9 +31,9 @@ update command would fetch the old tip.
 
 | Marker | Where | Rule |
 |--------|-------|------|
-| `plugin.json` `version` | repo root and the installed plugin | Kept equal to the skill's `metadata.version` (0.9.1 today). Bump both with the contract change they describe; `copilot(plugin)` when only the manifest changes |
+| `plugin.json` `version` | repo root and the installed plugin | Kept equal to the skill's `metadata.version` (0.10.0 today). Bump both with the contract change they describe; `copilot(plugin)` when only the manifest changes |
 | `skills/grill-with-ui/SKILL.md` `metadata.version` | repo and the installed plugin | The shipped skill's contract version |
-| fork-sync's `metadata.version` | `.github/skills/fork-sync/SKILL.md` and `~/.agents/skills/fork-sync/SKILL.md` (0.3.0) | Bump with any change to this skill |
+| fork-sync's `metadata.version` | `.github/skills/fork-sync/SKILL.md` and `~/.agents/skills/fork-sync/SKILL.md` (0.4.2) | Bump with any change to this skill |
 
 What counts as a change to the shipped package:
 

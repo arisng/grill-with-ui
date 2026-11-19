@@ -125,7 +125,7 @@ Upstream's own theme commit `3903c55` also added the `originOk` cross-origin che
 `SKILL.md` and `server.mjs` are the same schema seen from two sides. Both sides'
 `validateState` reject malformed state, but the *fields* differ: the fork adds
 `domainModeling`, `writingProfile`, the `q-domain` and `q-writing-profile` questions,
-the `finished.context` / `finished.adrs` outputs, and the `CONTEXT-MAP.md` routing.
+the `finished.glossary` / `finished.adrs` outputs (legacy `finished.context` still read), and the `GLOSSARY-MAP.md` routing.
 Upstream adds `multi`, `rec.options`, and `answer.options`, which the fork has none of.
 
 So an upstream `SKILL.md` diff is a **specification of a different product**, not a

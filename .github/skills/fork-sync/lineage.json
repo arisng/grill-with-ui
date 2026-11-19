@@ -16,7 +16,7 @@
     },
     {
       "path": "skills/engineering/domain-modeling",
-      "role": "glossary and ADR discipline: durable gates, glossary format, CONTEXT/GLOSSARY routing",
+      "role": "glossary and ADR discipline: durable gates, glossary format, GLOSSARY/GLOSSARY-MAP routing",
       "forkReceives": [
         "skills/grill-with-ui/domain-brief.md",
         "skills/grill-with-ui/adr-template.md",

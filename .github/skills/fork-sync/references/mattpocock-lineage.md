@@ -49,7 +49,7 @@ gh api "repos/mattpocock/skills/commits?path=skills/engineering/domain-modeling&
 |------|-----------------|---------------------|
 | 2026-10-29 | `grilling`: dispatch a sub-agent "with a fresh context window" | **not ported** — `issues/261119_reconcile-lineage-grilling.md` |
 | 2026-10-07 | `grilling`: word questions so "yes" accepts the recommendation | **not ported** — same issue |
-| 2026-09-17 | `domain-modeling`: renamed `CONTEXT.md`/`CONTEXT-MAP.md` to `GLOSSARY.md`/`GLOSSARY-MAP.md` | **not adopted** — a live decision, `issues/261119_decision-glossary-naming.md` |
+| 2026-09-17 | `domain-modeling`: renamed `CONTEXT.md`/`CONTEXT-MAP.md` to `GLOSSARY.md`/`GLOSSARY-MAP.md` | **adopted 2026-11-19** — legacy files still read, renamed on first Finish contact; `issues/261119_decision-glossary-naming.md` |
 | 2026-08-20 | `grilling`: separate questions in a round with an HR | ported in spirit — the fork already numbers and separates its questions |
 | 2026-08-15 | removed em-dashes from the `grilling` skill | not ported — the fork's own prose style is its own decision |
 
@@ -72,26 +72,15 @@ This is a small but real gap in the fork's question cards, and it is upstream's 
 recent method change. Porting it means one line in `writing-clarity.md`'s "Question
 cards" section, plus a look at whether the page's free-text answers can express it.
 
-### The rename: upstream moved away from the fork's convention
+### The rename: adopted 2026-11-19
 
 Upstream **renamed from** `CONTEXT.md`/`CONTEXT-MAP.md` **to** `GLOSSARY.md`/
-`GLOSSARY-MAP.md` on 2026-09-17. The fork kept the *older* naming — `CONTEXT.md` and
-`CONTEXT-MAP.md`.
-
-So the fork's naming is not a fork-specific invention; it is upstream's original
-convention, which upstream has since changed. Whether to follow is a decision for the
-fork's users, not a default either way:
-
-- **Follow upstream** — the glossary is a `GLOSSARY.md`, matching every other repo that
-  uses the convention. Costs: a rename across `SKILL.md`, `server.mjs`, `domain-brief.md`,
-  the page's Terms panel, and every existing user's file.
-- **Keep `CONTEXT.md`** — the fork is not upstream, and its domain-modeling mode is
-  opt-in. Costs: the two lineages drift further apart in vocabulary, which the
-  glossary's own _Avoid_ lists exist to prevent.
-
-Whichever way it goes, it is a **durable decision**: record it in `docs/design.md` so
-the next person does not re-litigate it. The skill's job is to surface the choice, not
-to make it silently.
+`GLOSSARY-MAP.md` on 2026-09-17. The fork followed on 2026-11-19 — see
+`issues/261119_decision-glossary-naming.md`, now resolved: everything new is written
+under the GLOSSARY names, while the server still **reads** the legacy names everywhere
+(root file, map, map links, `finished.context`, the `/context` endpoint alias, the
+`context` command alias), and Finish renames a legacy file on first contact — one file,
+never both. Dated historical records in `docs/design.md` keep their original names.
 
 ## What the fork already ported, and how it diverges
 
@@ -127,13 +116,14 @@ definition in `SKILL.md`. It also borrowed the **Terms** section with `_Avoid_` 
 
 | Upstream | Fork | Why |
 |----------|------|-----|
-| `GLOSSARY.md` (renamed 2026-09-17) | `CONTEXT.md` | The fork kept the original naming; see the rename decision above |
 | `docs/adr/`, ADR file is one paragraph | `docs/adr/`, `adr-template.md` with Status/Context/Drivers/Options/Outcome/Consequences | The fork's ADR format is richer; the ADR brief sets the exact shape |
 | Glossary lives at the repo root, or a `GLOSSARY-MAP.md` | Same, plus the fork parses the map and asks the user when the match is unclear | The fork routes by bounded context |
 | Glossary updates happen *inline* during the session | The fork collects `terms` in state and writes the glossary at Finish | The fork's page owns staged answers; writing the glossary mid-session would fight the Send model |
 | The ADR file may be a single paragraph | The fork's template has fixed sections | The fork's ADRs are reviewed by pull request, so they carry more structure |
 
-The first row is the live decision, not a settled one. The rest are settled: the ADR
+The glossary naming is no longer a divergence — the fork adopted upstream's GLOSSARY
+names on 2026-11-19 with legacy acceptance (see "The rename" above). The rest are
+settled: the ADR
 shape and the write-timing are locked decisions in `docs/design.md`.
 
 ## What to watch for
@@ -141,7 +131,7 @@ shape and the write-timing are locked decisions in `docs/design.md`.
 - A change to the three ADR gates → the fork's `durable` definition in `SKILL.md` and
   `domain-brief.md` must move with it.
 - A change to the glossary format (the `## Language` section, `_Avoid_` lists) → the
-  fork's `CONTEXT.md` writer in `domain-brief.md`, and the Terms panel in `page.html`.
+  fork's `GLOSSARY.md` writer in `domain-brief.md`, and the Terms panel in `page.html`.
 - A change to the frontier/round rules → the fork's "Interview method" section.
 - A change to how questions are worded → the fork's `writing-clarity.md`.
 - A further rename, or a new skill that supersedes `grill-with-docs` → re-check whether

@@ -2,7 +2,7 @@
 name: fork-sync
 description: Keep the grill-with-ui fork in sync with its upstreams — the jasonku09/grill-with-ui code repo, the mattpocock/skills method lineage, and the installed skill copy. Use when asked to sync, refresh, update, catch up, or rebase the fork; when checking for new upstream commits, branches, or PRs; when deciding whether to adopt, adapt, or skip an incoming change; when asked whether the fork, its installs, or its dependencies are up to date (answer with the coverage table — upstream gaps, lineage pins, installs, toolchain); or when a schema or contract change needs the full ripple update. Do not use for ordinary feature work inside the repo.
 metadata:
-  version: 0.4.1
+  version: 0.4.2
 ---
 
 # fork-sync
