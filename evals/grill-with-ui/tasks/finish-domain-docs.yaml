@@ -1,5 +1,5 @@
 id: finish-domain-docs
-name: Finish in domain-modeling mode writes CONTEXT.md and ADRs
+name: Finish in domain-modeling mode writes GLOSSARY.md and ADRs
 description: >-
   The user opts into domain-modeling mode, answers the questions and finishes.
   The agent must write the repo-level glossary and one ADR per significant
@@ -48,7 +48,7 @@ graders:
           const roots=[ws,...keys.map(k=>p.join(root,k))];
           const files=[];
           for(const r of roots) for(const f of walk(r)) files.push(f);
-          const ctx=files.filter(f=>p.basename(f)==='CONTEXT.md');
+          const ctx=files.filter(f=>p.basename(f)==='GLOSSARY.md');
           const adrDir=p.join(ws,'docs','adr');
           const adrs=fs.existsSync(adrDir)?fs.readdirSync(adrDir).filter(n=>n.endsWith('.md')):[];
           const cands=files.filter(f=>p.basename(f)==='state.json')
@@ -61,14 +61,14 @@ graders:
           // The glossary is created lazily: only when the grill settled terms.
           const terms=(s.terms||[]).length;
           if(terms){
-            if(!ctx.length) F.push('the grill settled terms but no CONTEXT.md glossary was written');
+            if(!ctx.length) F.push('the grill settled terms but no GLOSSARY.md glossary was written');
             else {
               const text=fs.readFileSync(ctx[0],'utf8');
-              if(!/##\s*Language/i.test(text)) F.push('CONTEXT.md has no "## Language" section');
-              if(!/\*\*.+\*\*/.test(text)) F.push('CONTEXT.md has no bold-term entry');
+              if(!/##\s*Language/i.test(text)) F.push('GLOSSARY.md has no "## Language" section');
+              if(!/\*\*.+\*\*/.test(text)) F.push('GLOSSARY.md has no bold-term entry');
             }
-            if(!fin.context) F.push('finished.context missing (glossary path)');
-          } else if(fin.context) F.push('finished.context points at a glossary that was never written');
+            if(!fin.glossary) F.push('finished.glossary missing (glossary path)');
+          } else if(fin.glossary) F.push('finished.glossary points at a glossary that was never written');
           // An ADR exists per significant durable decision that was actually
           // settled. Zero ADRs is the correct outcome when every durable
           // question is still open, so the check is conditional.
