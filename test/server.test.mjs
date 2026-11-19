@@ -204,90 +204,139 @@ test("serve: /visual serves the session's visual.html (no-store), 404 JSON when 
   assert.equal(await hit.text(), html);
 });
 
-test("serve: /context serves the project's CONTEXT.md (no-store), 404 JSON when absent", async (t) => {
-  const { session, project } = newSession(tmp("grill-ctx-"));
+test("serve: /glossary serves the project's GLOSSARY.md (no-store), 404 JSON when absent", async (t) => {
+  const { session, project } = newSession(tmp("grill-glo-"));
   const md = "# Glossary\n\n## Language\n\n**Grill**: ask one thing.\n";
-  writeFileSync(join(project, "CONTEXT.md"), md);
+  writeFileSync(join(project, "GLOSSARY.md"), md);
   const s = await startServe(session); t.after(s.stop);
-  const hit = await fetch(s.ready.url + "context");
+  const hit = await fetch(s.ready.url + "glossary");
   assert.equal(hit.status, 200);
   assert.ok(hit.headers.get("content-type").startsWith("text/markdown"));
   assert.ok(hit.headers.get("cache-control").includes("no-store"));
   assert.equal(await hit.text(), md);
-  unlinkSync(join(project, "CONTEXT.md"));
-  const miss = await fetch(s.ready.url + "context?v=1");
+  unlinkSync(join(project, "GLOSSARY.md"));
+  const miss = await fetch(s.ready.url + "glossary?v=1");
   assert.equal(miss.status, 404);
-  assert.deepEqual(await miss.json(), { error: "no context" });
+  assert.deepEqual(await miss.json(), { error: "no glossary" });
 });
 
-test("serve: /context serves finished.context when Finish recorded a path inside the project", async (t) => {
-  const { session, project } = newSession(tmp("grill-ctxmap-"));
+test("serve: a legacy CONTEXT.md and the /context alias still serve (pre-rename repo)", async (t) => {
+  const { session, project } = newSession(tmp("grill-ctxlegacy-"));
+  const md = "# Legacy glossary\n";
+  writeFileSync(join(project, "CONTEXT.md"), md);
+  const s = await startServe(session); t.after(s.stop);
+  const alias = await fetch(s.ready.url + "context");
+  assert.equal(alias.status, 200, "/context is the pre-rename alias");
+  assert.equal(await alias.text(), md, "a repo with only a legacy CONTEXT.md still serves it");
+  const viaNew = await fetch(s.ready.url + "glossary?v=1");
+  assert.equal(viaNew.status, 200, "/glossary falls back to the legacy file when GLOSSARY.md is absent");
+  assert.equal(await viaNew.text(), md);
+  unlinkSync(join(project, "CONTEXT.md"));
+  const miss = await fetch(s.ready.url + "glossary?v=2");
+  assert.equal(miss.status, 404, "neither file is no glossary");
+});
+
+test("serve: /glossary serves finished.glossary when Finish recorded a path inside the project", async (t) => {
+  const { session, project } = newSession(tmp("grill-gloshard-"));
   const folder = join(project, "src", "Modules", "Billing");
   mkdirSync(folder, { recursive: true });
   const scoped = "# Billing glossary\n";
-  writeFileSync(join(folder, "CONTEXT.md"), scoped);
+  writeFileSync(join(folder, "GLOSSARY.md"), scoped);
   const st = stateOf(session);
-  st.finished = { doc: ".grill-with-ui/261002-billing/design.md", context: "src/Modules/Billing/CONTEXT.md", at: new Date().toISOString() };
+  st.finished = { doc: ".grill-with-ui/261002-billing/design.md", glossary: "src/Modules/Billing/GLOSSARY.md", at: new Date().toISOString() };
   writeFileSync(join(session, "state.json"), JSON.stringify(st));
   const s = await startServe(session); t.after(s.stop);
-  const hit = await fetch(s.ready.url + "context");
+  const hit = await fetch(s.ready.url + "glossary");
   assert.equal(hit.status, 200);
   assert.equal(await hit.text(), scoped, "the glossary Finish wrote in a bounded context is what the panel reads");
-  unlinkSync(join(folder, "CONTEXT.md"));
-  const miss = await fetch(s.ready.url + "context?v=1");
+  unlinkSync(join(folder, "GLOSSARY.md"));
+  const miss = await fetch(s.ready.url + "glossary?v=1");
   assert.equal(miss.status, 404, "no recorded file is no glossary, never a silent fallthrough");
-  assert.deepEqual(await miss.json(), { error: "no context" });
+  assert.deepEqual(await miss.json(), { error: "no glossary" });
 });
 
-test("serve: /context ignores a finished.context that escapes the project and serves the root file", async (t) => {
-  const { session, project } = newSession(tmp("grill-ctxout-"));
-  const root = "# Root glossary\n";
-  writeFileSync(join(project, "CONTEXT.md"), root);
+test("serve: a pre-rename finished.context record still serves its file", async (t) => {
+  const { session, project } = newSession(tmp("grill-ctxfield-"));
+  const folder = join(project, "src", "Modules", "Billing");
+  mkdirSync(folder, { recursive: true });
+  const scoped = "# Billing glossary (legacy record)\n";
+  writeFileSync(join(folder, "CONTEXT.md"), scoped);
   const st = stateOf(session);
-  st.finished = { doc: "design.md", context: join(tmp("grill-elsewhere-"), "CONTEXT.md"), at: new Date().toISOString() };
+  st.finished = { doc: "design.md", context: "src/Modules/Billing/CONTEXT.md", at: new Date().toISOString() };
   writeFileSync(join(session, "state.json"), JSON.stringify(st));
   const s = await startServe(session); t.after(s.stop);
-  const hit = await fetch(s.ready.url + "context");
+  const hit = await fetch(s.ready.url + "glossary");
+  assert.equal(hit.status, 200, "finished.context written before the rename is still honoured");
+  assert.equal(await hit.text(), scoped);
+});
+
+test("serve: /glossary ignores a finished.glossary that escapes the project and serves the root file", async (t) => {
+  const { session, project } = newSession(tmp("grill-gloout-"));
+  const root = "# Root glossary\n";
+  writeFileSync(join(project, "GLOSSARY.md"), root);
+  const st = stateOf(session);
+  st.finished = { doc: "design.md", glossary: join(tmp("grill-elsewhere-"), "GLOSSARY.md"), at: new Date().toISOString() };
+  writeFileSync(join(session, "state.json"), JSON.stringify(st));
+  const s = await startServe(session); t.after(s.stop);
+  const hit = await fetch(s.ready.url + "glossary");
   assert.equal(hit.status, 200);
   assert.equal(await hit.text(), root, "an out-of-project path never wins over the root file");
 });
 
-test("context: parses CONTEXT-MAP.md into bounded-context locations; no map means no contexts", () => {
-  const cwd = tmp("grill-ctxcli-");
+test("glossary: parses GLOSSARY-MAP.md into bounded-context locations; no map means no contexts", () => {
+  const cwd = tmp("grill-glocli-");
   const bare = newSession(cwd, "No map");
-  assert.deepEqual(JSON.parse(run(["context", "--session", bare.session])), {
+  assert.deepEqual(JSON.parse(run(["glossary", "--session", bare.session])), {
     map: false, rootGlossary: false,
-    fallback: `.grill-with-ui/${stampOf()}-no-map/CONTEXT.md`,
+    fallback: `.grill-with-ui/${stampOf()}-no-map/GLOSSARY.md`,
     fallbackAdr: "docs/adr", contexts: [],
   }, "no map: the standing conventions and nothing to match against");
 
   // A map shaped like the real one: an entry whose file does not exist yet, a duplicate,
-  // a relationship line linking a non-CONTEXT.md, and one context already on .docs/adr.
-  writeFileSync(join(bare.project, "CONTEXT-MAP.md"), [
+  // a relationship line linking a non-glossary file, and one context already on .docs/adr.
+  writeFileSync(join(bare.project, "GLOSSARY-MAP.md"), [
     "# Context Map", "", "## Contexts", "",
-    "- [Billing](./src/Modules/Billing/CONTEXT.md) — money things",
-    "- [Billing](./src/Modules/Billing/CONTEXT.md) — listed twice",
-    "- [Planning](./.docs/reference/planning/CONTEXT.md) — milestone terms",
+    "- [Billing](./src/Modules/Billing/GLOSSARY.md) — money things",
+    "- [Billing](./src/Modules/Billing/GLOSSARY.md) — listed twice",
+    "- [Planning](./.docs/reference/planning/GLOSSARY.md) — milestone terms",
     "", "## Relationships", "",
     "- **Billing → Planning**: owns ([notes](./README.md))", "",
   ].join("\n"));
   mkdirSync(join(bare.project, "src", "Modules", "Billing", ".docs", "adr"), { recursive: true });
-  writeFileSync(join(bare.project, "CONTEXT.md"), "# Root\n");
-  const mapped = JSON.parse(run(["context", "--session", bare.session]));
+  writeFileSync(join(bare.project, "GLOSSARY.md"), "# Root\n");
+  const mapped = JSON.parse(run(["glossary", "--session", bare.session]));
   assert.equal(mapped.map, true, "the map is detected");
   assert.equal(mapped.rootGlossary, true);
   assert.deepEqual(mapped.contexts, [
-    { name: "Billing", path: "src/Modules/Billing/CONTEXT.md", folder: "src/Modules/Billing", adr: "src/Modules/Billing/.docs/adr" },
-    { name: "Planning", path: ".docs/reference/planning/CONTEXT.md", folder: ".docs/reference/planning", adr: ".docs/reference/planning/docs/adr" },
+    { name: "Billing", path: "src/Modules/Billing/GLOSSARY.md", folder: "src/Modules/Billing", adr: "src/Modules/Billing/.docs/adr" },
+    { name: "Planning", path: ".docs/reference/planning/GLOSSARY.md", folder: ".docs/reference/planning", adr: ".docs/reference/planning/docs/adr" },
   ], "each map entry becomes a location: the existing .docs/adr wins, no adr folder means docs/adr, and neither a duplicate nor the README link becomes a context");
   assert.equal(mapped.fallbackAdr, "docs/adr", "root has neither → docs/adr");
 
   mkdirSync(join(bare.project, "src", "Modules", "Billing", "docs", "adr"), { recursive: true });
-  const both = JSON.parse(run(["context", "--session", bare.session]));
+  const both = JSON.parse(run(["glossary", "--session", bare.session]));
   assert.equal(both.contexts[0].adr, "src/Modules/Billing/docs/adr", "docs/adr wins the tie when both exist");
   mkdirSync(join(bare.project, ".docs", "adr"), { recursive: true });
-  assert.equal(JSON.parse(run(["context", "--session", bare.session])).fallbackAdr, ".docs/adr",
+  assert.equal(JSON.parse(run(["glossary", "--session", bare.session])).fallbackAdr, ".docs/adr",
     "a root with only .docs/adr points the no-context case there");
+});
+
+test("glossary: a pre-rename CONTEXT-MAP.md still parses, through the legacy context alias", () => {
+  const cwd = tmp("grill-ctxmaplegacy-");
+  const legacy = newSession(cwd, "Legacy map");
+  writeFileSync(join(legacy.project, "CONTEXT-MAP.md"), [
+    "# Context Map", "", "## Contexts", "",
+    "- [Billing](./src/Modules/Billing/CONTEXT.md) — money things",
+    "",
+  ].join("\n"));
+  writeFileSync(join(legacy.project, "CONTEXT.md"), "# Root legacy\n");
+  const out = JSON.parse(run(["context", "--session", legacy.session])); // legacy alias command
+  assert.equal(out.map, true, "a legacy CONTEXT-MAP.md still parses");
+  assert.equal(out.rootGlossary, true, "a root CONTEXT.md still counts as a root glossary");
+  assert.deepEqual(out.contexts, [
+    { name: "Billing", path: "src/Modules/Billing/CONTEXT.md", folder: "src/Modules/Billing", adr: "src/Modules/Billing/docs/adr" },
+  ], "legacy CONTEXT.md links still become locations, for repos that have not migrated yet");
+  assert.ok(out.fallback.endsWith("GLOSSARY.md"), "but every new file the fallback points at uses the new name");
 });
 
 // ---- adr: the server scaffolds the file, the agent fills it ----
@@ -378,22 +427,22 @@ test("the ADR template carries every section, and domain-brief.md names the file
     "domain-brief.md must name the template the agent copies");
 });
 
-test('serve: /context with state.json corrupted before any read → 404 {"error":"no state"}', async (t) => {
+test('serve: /glossary with state.json corrupted before any read → 404 {"error":"no state"}', async (t) => {
   const { session } = newSession(tmp("grill-cs-"));
   // Corrupt BEFORE this serve process's first GET: one good read would keep lastGoodState
   // and serve it stale. Never GET /state first here — that would populate it.
   writeFileSync(join(session, "state.json"), "{ not json");
   const s = await startServe(session); t.after(s.stop);
-  const r = await fetch(s.ready.url + "context");
+  const r = await fetch(s.ready.url + "glossary");
   assert.equal(r.status, 404);
   assert.deepEqual(await r.json(), { error: "no state" });
 });
 
-test('serve: /context with project missing from state → 404 {"error":"no project"}', async (t) => {
+test('serve: /glossary with project missing from state → 404 {"error":"no project"}', async (t) => {
   const { session } = newSession(tmp("grill-cp-"));
   applied(session, { project: null }); // sanctioned: null deletes the key; validateState only checks if-present
   const s = await startServe(session); t.after(s.stop);
-  const r = await fetch(s.ready.url + "context");
+  const r = await fetch(s.ready.url + "glossary");
   assert.equal(r.status, 404);
   assert.deepEqual(await r.json(), { error: "no project" });
 });
@@ -741,15 +790,17 @@ test("patch: writingProfile accepts supported values, defaults by omission, and 
   rejected(session, { writingProfile: true }, /writingProfile must be/);
 });
 
-test("patch: finished.context and finished.adrs read back; a bad adrs is rejected, state untouched", () => {
+test("patch: finished.glossary and finished.adrs read back; the legacy finished.context still applies", () => {
   const session = seeded({ questions: [qn("q1", 1)] });
-  applied(session, { finished: { doc: "docs/design.md", context: "CONTEXT.md", adrs: ["docs/adr/0001-a.md"] } });
+  applied(session, { finished: { doc: "docs/design.md", glossary: "GLOSSARY.md", adrs: ["docs/adr/0001-a.md"] } });
   const fin = stateOf(session).finished;
   assert.equal(fin.doc, "docs/design.md");
-  assert.equal(fin.context, "CONTEXT.md");
+  assert.equal(fin.glossary, "GLOSSARY.md");
   assert.deepEqual(fin.adrs, ["docs/adr/0001-a.md"]);
   rejected(session, { finished: { adrs: "docs/adr" } }, /finished\.adrs/);
   rejected(session, { finished: { adrs: ["docs/adr/0001-a.md", 2] } }, /finished\.adrs/);
+  applied(session, { finished: { doc: "docs/design.md", context: "CONTEXT.md" } }); // finished is replaced whole
+  assert.equal(stateOf(session).finished.context, "CONTEXT.md", "a pre-rename session finishing still validates");
 });
 
 test("patch: terms are keyed by term; a known term is replaced whole, a new one appended", () => {
@@ -836,6 +887,7 @@ test("patch: every field the page renders must have the shape the render reads, 
   rejected(session, { finished: { doc: "docs/x.md", visual: 1 } }, /finished\.visual/);
   rejected(session, { finished: { doc: "docs/x.md", at: boom } }, /finished\.at/);
   rejected(session, { finished: { context: boom } }, /finished\.context/);
+  rejected(session, { finished: { glossary: boom } }, /finished\.glossary/);
 
   // Every shape SKILL.md documents still goes through, including the optional parts left out.
   applied(session, {

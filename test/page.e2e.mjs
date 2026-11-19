@@ -48,7 +48,7 @@ const url = ready.url;
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [];
-const notFound = []; // 404 URLs: /context is the page's deliberate "is there a glossary?" probe and 404s by design
+const notFound = []; // 404 URLs: /glossary is the page's deliberate "is there a glossary?" probe and 404s by design
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("response", (r) => { if (r.status() === 404) notFound.push(r.url()); });
@@ -406,9 +406,9 @@ try {
   check("staging locked when finished", await page.locator("#free").count() === 0 && await page.locator("#thread-in").count() === 0 && await page.locator("#finish").count() === 0);
 
   // The server-gone step above produces ERR_CONNECTION_REFUSED fetch failures by design.
-  // Console 404s carry no URL, so the deliberate /context probe is excused by URL instead —
+  // Console 404s carry no URL, so the deliberate /glossary probe is excused by URL instead —
   // a real missing asset still lands in `notFound` and fails the check with its address.
-  const isProbe = (u) => { try { return new URL(u).pathname === "/context"; } catch { return false; } };
+  const isProbe = (u) => { try { return new URL(u).pathname === "/glossary"; } catch { return false; } };
   const real = errors
     .filter((e) => !e.includes("ERR_CONNECTION_REFUSED") && !e.includes("404 (Not Found)"))
     .concat(notFound.filter((u) => !isProbe(u)).map((u) => `404 ${u}`));

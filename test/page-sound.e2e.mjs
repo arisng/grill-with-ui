@@ -42,7 +42,7 @@ const url = JSON.parse(await nth(1)).url;
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
 const errors = [];
-const notFound = []; // 404 URLs: /context is the page's deliberate "is there a glossary?" probe and 404s by design
+const notFound = []; // 404 URLs: /glossary is the page's deliberate "is there a glossary?" probe and 404s by design
 page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
 page.on("pageerror", (e) => errors.push(String(e)));
 page.on("response", (r) => { if (r.status() === 404) notFound.push(r.url()); });
@@ -126,7 +126,7 @@ try {
 
   // The fixture declares a visual without a visual.html on disk — /visual 404s by design,
   // exactly like the glossary probe; any other missing asset still fails with its address.
-  const isProbe = (u) => { try { return ["/context", "/visual"].includes(new URL(u).pathname); } catch { return false; } };
+  const isProbe = (u) => { try { return ["/glossary", "/visual"].includes(new URL(u).pathname); } catch { return false; } };
   const real = errors
     .filter((e) => !e.includes("404 (Not Found)"))
     .concat(notFound.filter((u) => !isProbe(u)).map((u) => `404 ${u}`));
