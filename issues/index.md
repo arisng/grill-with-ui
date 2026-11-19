@@ -38,6 +38,7 @@ with `plugin.json` `version`.
 | [261119_port-carried-notes.md](261119_port-carried-notes.md) | Medium | `9695ee7`, `a0d6a8d`, `b025d24` |
 | [261119_port-detach-heartbeat.md](261119_port-detach-heartbeat.md) | Medium | `969bfa2`, `dccafbc`, `9d64da7` |
 | [261119_port-cmd-enter-staging.md](261119_port-cmd-enter-staging.md) | Low | `85a2041` |
+| [261119_reconcile-lineage-grilling.md](261119_reconcile-lineage-grilling.md) | Medium | lineage `grilling`: `95249b0` (10-07), `7739eae` (10-29) |
 
 ## Phase 3 — decisions (block related ports)
 
