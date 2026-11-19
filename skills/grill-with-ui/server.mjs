@@ -7,16 +7,19 @@
 //                                                   line to stdout (this process is the agent's Monitor command).
 //                                                   Without --port it retries the port it used last time, then falls
 //                                                   back to an ephemeral one, so an open tab survives a restart.
-//                                                   GET /context reads the glossary finished.context records,
-//                                                   else the project's root CONTEXT.md
+//                                                   GET /glossary reads the glossary finished.glossary records
+//                                                   (legacy /context and finished.context still work), else the
+//                                                   project's root GLOSSARY.md (a legacy CONTEXT.md still counts)
 //   sessions [--all]                                list this project's sessions (newest first; --all adds finished ones)
 //   pending  --session DIR                          print every Send past agent.handled (replay on resume)
 //   wait     --session DIR [--after N] [--timeout S] block until a Send newer than seq N lands, print it, exit 0
 //                                                   (exit 3 on timeout) — for agents without a Monitor tool
 //   url      --session DIR [--timeout S]            print the running server's url (from server.json)
-//   context  --session DIR                          parse the repo's CONTEXT-MAP.md and print one JSON line:
+//   glossary --session DIR                          parse the repo's GLOSSARY-MAP.md (a legacy CONTEXT-MAP.md
+//                                                   still parses) and print one JSON line:
 //                                                   {map, rootGlossary, fallback, fallbackAdr, contexts:[{name,path,folder,adr}]}
 //                                                   — the bounded-context locations the Finish step picks from
+//                                                   (context is a legacy alias for this command)
 //   adr      --session DIR --folder F --title T     scaffold one ADR file (NNNN-slug.md) from adr-template.md:
 //                                                   [--status Accepted|Proposed] the number is the next free one in F,
 //                                                   the date is the grill's start day, the author is git's user.name;
@@ -68,17 +71,22 @@ function mustSession(o) {
 const escapes = (base, p) => { const r = path.relative(base, p); return r === ".." || r.startsWith(`..${path.sep}`) || path.isAbsolute(r); };
 
 // ---- glossary location: what Finish recorded, else the root file ----
-// Finish writes the glossary and records its path in finished.context — the repo root
-// normally, or the matching bounded context's CONTEXT.md when the repo keeps a
-// CONTEXT-MAP.md (its root belongs to the map). The recorded path must resolve inside the
-// project: a stray absolute or `..` path never wins, so the Terms panel cannot read a
-// stray file outside the repo.
+// Finish writes the glossary and records its path in finished.glossary — the repo root
+// normally, or the matching bounded context's GLOSSARY.md when the repo keeps a
+// GLOSSARY-MAP.md (its root belongs to the map). Pre-rename state still records
+// finished.context, and pre-rename repos still have CONTEXT.md: both are read, but
+// anything new is written under the GLOSSARY names. The recorded path must resolve
+// inside the project: a stray absolute or `..` path never wins, so the Terms panel
+// cannot read a stray file outside the repo.
 function pickContextFile(project, st) {
-  const root = path.join(project, "CONTEXT.md");
-  const c = st && st.finished && st.finished.context;
-  if (typeof c !== "string" || !c) return root;
-  const file = path.resolve(project, c);
-  return escapes(project, file) ? root : file;
+  const root = path.join(project, "GLOSSARY.md");
+  const legacyRoot = path.join(project, "CONTEXT.md");
+  const rec = st && st.finished && (st.finished.glossary || st.finished.context);
+  if (typeof rec === "string" && rec) {
+    const file = path.resolve(project, rec);
+    if (!escapes(project, file)) return file;
+  }
+  return fs.existsSync(root) ? root : legacyRoot;
 }
 
 // ADR folder inside a location: whichever of docs/adr or .docs/adr already exists there;
@@ -208,7 +216,7 @@ function cmdServe(o) {
       if (!fs.existsSync(visual)) return json(res, 404, { error: "no visual" });
       return send(res, 200, fs.readFileSync(visual), "text/html; charset=utf-8");
     }
-    if (req.method === "GET" && pathname === "/context") {
+    if (req.method === "GET" && (pathname === "/glossary" || pathname === "/context")) { // /context = pre-rename alias
       // Same read+parse attempt as /state, so first-read vs stale semantics match:
       // a mid-write corrupt file keeps serving the last parse that worked.
       try { const raw = fs.readFileSync(stateFile, "utf8"); JSON.parse(raw); lastGoodState = raw; } catch { /* keep lastGoodState */ }
@@ -216,7 +224,7 @@ function cmdServe(o) {
       const st = JSON.parse(lastGoodState); // never re-throws: lastGoodState only holds parses that worked
       const project = st?.project;
       if (typeof project !== "string" || !path.isAbsolute(project)) return json(res, 404, { error: "no project" }); // before join: patch {"project":null} deletes the key; join(undefined) throws, join("") resolves against cwd
-      try { return send(res, 200, fs.readFileSync(pickContextFile(project, st)), "text/markdown; charset=utf-8"); } catch { return json(res, 404, { error: "no context" }); }
+      try { return send(res, 200, fs.readFileSync(pickContextFile(project, st)), "text/markdown; charset=utf-8"); } catch { return json(res, 404, { error: "no glossary" }); }
     }
     if (req.method === "POST" && pathname === "/send") {
       // Browsers set Origin on every POST, same-origin or not; reject a mismatch so another
@@ -297,25 +305,30 @@ function cmdUrl(o) {
   tick();
 }
 
-// ---- context (bounded-context discovery: parse the repo's CONTEXT-MAP.md) ----
+// ---- glossary (bounded-context discovery: parse the repo's GLOSSARY-MAP.md) ----
 // One JSON line the Finish step reads instead of the map itself: which contexts exist,
 // where each one's glossary and ADR folder live, and what a non-mapped glossary would use.
-function cmdContext(o) {
+// A pre-rename repo's CONTEXT-MAP.md still parses and its CONTEXT.md links still count —
+// but fallback always names the new file, so anything created from here is GLOSSARY.md.
+function cmdGlossary(o) {
   const session = mustSession(o);
   const st = readState(session);
   if (!st) die(`no state.json in ${session}`, 1);
   const project = st.project;
   if (typeof project !== "string" || !path.isAbsolute(project)) die("state has no project", 1);
   const rel = (p) => posix(path.relative(project, p));
-  const hasMap = fs.existsSync(path.join(project, "CONTEXT-MAP.md"));
-  // The map is the index of bounded contexts: `- [Name](./path/CONTEXT.md) — description`.
-  // Only bullet links to a CONTEXT.md count; relationship prose and other links are not contexts.
+  const mapPath = [path.join(project, "GLOSSARY-MAP.md"), path.join(project, "CONTEXT-MAP.md")]
+    .find((p) => fs.existsSync(p));
+  const hasMap = Boolean(mapPath);
+  // The map is the index of bounded contexts: `- [Name](./path/GLOSSARY.md) — description`.
+  // Only bullet links to a glossary file count (legacy CONTEXT.md links count too);
+  // relationship prose and other links are not contexts.
   const contexts = [];
-  if (hasMap) {
+  if (mapPath) {
     const seen = new Set();
-    const text = fs.readFileSync(path.join(project, "CONTEXT-MAP.md"), "utf8");
+    const text = fs.readFileSync(mapPath, "utf8");
     for (const [, name, target] of text.matchAll(/^\s*[-*]\s+\[([^\]]+)\]\(([^)\s]+)[^)]*\)/gm)) {
-      if (!/(^|\/)CONTEXT\.md$/i.test(target)) continue;
+      if (!/(^|\/)(GLOSSARY|CONTEXT)\.md$/i.test(target)) continue;
       const file = path.resolve(project, target);
       if (escapes(project, file)) continue; // the map may point anywhere; we never follow outside
       const inner = path.relative(project, file);
@@ -327,15 +340,18 @@ function cmdContext(o) {
     }
   }
   // "beside the design doc" — the offer when no mapped context fits. Never outside the project.
+  // It always names GLOSSARY.md: the target is the new name even where a legacy CONTEXT.md
+  // sits (domain-brief renames before merging — one file, never two).
   const doc = typeof st.doc === "string" && st.doc ? st.doc : "";
-  let fallback = "CONTEXT.md";
+  let fallback = "GLOSSARY.md";
   if (doc) {
     const dir = path.dirname(path.resolve(project, doc));
-    if (!escapes(project, dir)) fallback = posix(path.join(path.relative(project, dir), "CONTEXT.md"));
+    if (!escapes(project, dir)) fallback = posix(path.join(path.relative(project, dir), "GLOSSARY.md"));
   }
   print({
     map: hasMap,
-    rootGlossary: fs.existsSync(path.join(project, "CONTEXT.md")),
+    rootGlossary:
+      fs.existsSync(path.join(project, "GLOSSARY.md")) || fs.existsSync(path.join(project, "CONTEXT.md")),
     fallback,
     fallbackAdr: hasMap ? rel(adrFolderIn(project)) : "docs/adr", // no map: the standing docs/adr convention
     contexts,
@@ -566,8 +582,8 @@ function validateState(s) {
   check(s, "writingProfile", (v) => v === "clarity-baseline" || v === "strictest-available",
     'writingProfile must be "clarity-baseline" or "strictest-available"');
   if ("finished" in s) {
-    need(isObj(s.finished), 'finished must be an object ({"doc","visual","context","adrs","at"})');
-    texts(s.finished, ["doc", "visual", "at", "context"], "finished");
+    need(isObj(s.finished), 'finished must be an object ({"doc","visual","glossary","adrs","at"})');
+    texts(s.finished, ["doc", "visual", "at", "glossary", "context"], "finished"); // context = pre-rename sessions
     check(s.finished, "adrs", (v) => Array.isArray(v) && v.every(str), "finished.adrs must be an array of strings");
   }
   if ("agent" in s) {
@@ -666,7 +682,7 @@ function cmdPatch(o) {
 }
 
 const o = parseArgs(process.argv.slice(2));
-const cmds = { new: cmdNew, serve: cmdServe, sessions: cmdSessions, pending: cmdPending, wait: cmdWait, url: cmdUrl, context: cmdContext, adr: cmdAdr, patch: cmdPatch };
+const cmds = { new: cmdNew, serve: cmdServe, sessions: cmdSessions, pending: cmdPending, wait: cmdWait, url: cmdUrl, glossary: cmdGlossary, context: cmdGlossary, adr: cmdAdr, patch: cmdPatch };
 // own keys only: `toString` and friends are inherited, not subcommands
 (Object.hasOwn(cmds, o._[0] ?? "") ? cmds[o._[0]]
-  : () => die("usage: server.mjs new|serve|sessions|pending|wait|url|context|adr|patch [--session DIR] ..."))(o);
+  : () => die("usage: server.mjs new|serve|sessions|pending|wait|url|glossary|adr|patch [--session DIR] ..."))(o);
