@@ -1,8 +1,12 @@
 ---
-date: 2026-11-19
-type: Task
+id: 0016
+title: Watch the two open upstream PRs
+type: task
+status: open
+priority: P2
+created: 2026-11-19
+theme: 0021
 severity: Medium
-status: Proposed
 tags: [fork-sync, upstream, watch]
 ---
 
@@ -21,7 +25,7 @@ Handle each when it lands (or cherry-pick the branch deliberately).
   unread tracking in long threads.
 - **#41** dependabot `actions/setup-node` 6 → 7 (2026-10-22). Mechanical;
   arrives with the next scan after merge — but only matters once
-  [261119_port-ci-workflows.md](261119_port-ci-workflows.md) has given the
+  [0013-port-ci-workflows.md](0013-port-ci-workflows.md) has given the
   fork any workflows at all.
 
 ## Tasks

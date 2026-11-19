@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "tracker": "local-markdown",
+  "issuesDir": "issues",
+  "archiveDir": "issues/archived",
+  "treeFile": "issues/tree.md",
+  "treeScript": "~/.agents/skills/issue-tracking/scripts/issue-tree.ps1",
+  "lintTask": "lint:issues",
+  "gitRemoteHost": "github",
+  "gitRemoteUrl": "https://github.com/arisng/grill-with-ui.git"
+}

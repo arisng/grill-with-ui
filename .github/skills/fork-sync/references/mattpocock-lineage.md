@@ -47,9 +47,9 @@ gh api "repos/mattpocock/skills/commits?path=skills/engineering/domain-modeling&
 
 | Date | Upstream change | Status in the fork |
 |------|-----------------|---------------------|
-| 2026-10-29 | `grilling`: dispatch a sub-agent "with a fresh context window" | **not ported** — `issues/261119_reconcile-lineage-grilling.md` |
+| 2026-10-29 | `grilling`: dispatch a sub-agent "with a fresh context window" | **not ported** — `issues/0009-reconcile-lineage-grilling.md` |
 | 2026-10-07 | `grilling`: word questions so "yes" accepts the recommendation | **not ported** — same issue |
-| 2026-09-17 | `domain-modeling`: renamed `CONTEXT.md`/`CONTEXT-MAP.md` to `GLOSSARY.md`/`GLOSSARY-MAP.md` | **adopted 2026-11-19** — legacy files still read, renamed on first Finish contact; `issues/261119_decision-glossary-naming.md` |
+| 2026-09-17 | `domain-modeling`: renamed `CONTEXT.md`/`CONTEXT-MAP.md` to `GLOSSARY.md`/`GLOSSARY-MAP.md` | **adopted 2026-11-19** — legacy files still read, renamed on first Finish contact; `issues/0012-decision-glossary-naming.md` |
 | 2026-08-20 | `grilling`: separate questions in a round with an HR | ported in spirit — the fork already numbers and separates its questions |
 | 2026-08-15 | removed em-dashes from the `grilling` skill | not ported — the fork's own prose style is its own decision |
 
@@ -76,7 +76,7 @@ cards" section, plus a look at whether the page's free-text answers can express 
 
 Upstream **renamed from** `CONTEXT.md`/`CONTEXT-MAP.md` **to** `GLOSSARY.md`/
 `GLOSSARY-MAP.md` on 2026-09-17. The fork followed on 2026-11-19 — see
-`issues/261119_decision-glossary-naming.md`, now resolved: everything new is written
+`issues/0012-decision-glossary-naming.md`, now resolved: everything new is written
 under the GLOSSARY names, while the server still **reads** the legacy names everywhere
 (root file, map, map links, `finished.context`, the `/context` endpoint alias, the
 `context` command alias), and Finish renames a legacy file on first contact — one file,

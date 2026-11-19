@@ -1,8 +1,12 @@
 ---
-date: 2026-11-19
-type: RFC
+id: 0010
+title: Adopt upstream's inline markdown rendering (brings `markdown.mjs`)
+type: task
+status: open
+priority: P1
+created: 2026-11-19
+theme: 0019
 severity: High
-status: Open for Comment
 tags: [fork-sync, decision, markdown]
 ---
 
@@ -34,7 +38,7 @@ Upstream commits (tier REWORK):
 
 1. **Adopt the cluster** — port `markdown.mjs`, the page renderer, and the
    parity tests; adapt the SKILL.md note; the fork gains the capability and
-   the CI issue ([261119_port-ci-workflows.md](261119_port-ci-workflows.md))
+   the CI issue ([0013-port-ci-workflows.md](0013-port-ci-workflows.md))
    can reference the real files.
 2. **Defer** — keep plain text; record a fork-wins decision in
    `docs/design.md`. The CI issue must then be adapted to skip markdown jobs.
@@ -57,5 +61,5 @@ Upstream commits (tier REWORK):
 ## References
 
 - Upstream: `40a5e6f`, `6166a49`, `6123fde`, `23415c8` (PRs #9, #26)
-- Related: [261119_port-ci-workflows.md](261119_port-ci-workflows.md),
-  [261119_review-inline-drawing-docs.md](261119_review-inline-drawing-docs.md)
+- Related: [0013-port-ci-workflows.md](0013-port-ci-workflows.md),
+  [0014-review-inline-drawing-docs.md](0014-review-inline-drawing-docs.md)

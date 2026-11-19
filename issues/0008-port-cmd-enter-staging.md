@@ -1,8 +1,12 @@
 ---
-date: 2026-11-19
-type: Task
+id: 0008
+title: Port Cmd+Enter two-press staging for Send
+type: task
+status: open
+priority: P3
+created: 2026-11-19
+theme: 0018
 severity: Low
-status: Proposed
 tags: [fork-sync, upstream-port, page]
 ---
 

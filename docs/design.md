@@ -239,7 +239,7 @@ keeps one Claude session behind it so nothing is ever out of context.
   one file, never both. The earlier keep-`CONTEXT.md` position (the fork's domain-modeling
   mode predates the rename) is superseded: vocabulary coherence with the lineage wins now
   that the rename is settled upstream. Dated entries above keep their names as recorded.
-  Resolved from `issues/261119_decision-glossary-naming.md`.
+  Resolved from `issues/0012-decision-glossary-naming.md`.
 
 ## Verified facts (2026-09-06)
 

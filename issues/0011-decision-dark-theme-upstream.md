@@ -1,8 +1,12 @@
 ---
-date: 2026-11-19
-type: RFC
+id: 0011
+title: Upstream's dark theme — defer wholesale, port only the contrast fix
+type: task
+status: open
+priority: P3
+created: 2026-11-19
+theme: 0019
 severity: N/A
-status: Open for Comment
 tags: [fork-sync, decision, theme]
 ---
 

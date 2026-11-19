@@ -38,7 +38,7 @@ A port that changes one of these rows is a contract change: run the
 (`serve-detach-heartbeat`, `wait-mode-listener-gate`, `--detach`) describe a
 mechanism the fork replaced; take the intent (a liveness signal, a detached
 serve) and re-express it in terms of the extension. See
-[issues/261119_port-detach-heartbeat.md](../../../../issues/261119_port-detach-heartbeat.md).
+[issues/0007-port-detach-heartbeat.md](../../../../issues/0007-port-detach-heartbeat.md).
 
 ## Delta 2 — listening truth (how the UI knows an agent will hear a Send)
 
@@ -68,17 +68,17 @@ with the detach/heartbeat port issue above.
 - **Client-side three-state theme** (`localStorage grill-theme`, deliberately
   not agent-owned state) — upstream's server-backed theme (`__GRILL_THEME__`,
   `POST /theme`) is its inverse. See
-  [issues/261119_decision-dark-theme-upstream.md](../../../../issues/261119_decision-dark-theme-upstream.md).
+  [issues/0011-decision-dark-theme-upstream.md](../../../../issues/0011-decision-dark-theme-upstream.md).
 
 **Inbound, gated (in `issues/`, never auto-applied):**
 
 | Upstream capability | Loop impact | Record |
 |---------------------|-------------|--------|
-| Importance levels + ratings | new state fields: page controls + `validateState` + SKILL schema + tests must ripple together; the fork's validator rejects them today | [port-importance-ratings](../../../../issues/261119_port-importance-ratings.md) |
-| Inline markdown (`markdown.mjs`) | thread rendering; server-side render vs page parity | [decision-inline-markdown](../../../../issues/261119_decision-inline-markdown.md) |
-| Reply markers (upstream PR `jasonku09/grill-with-ui#40`) | how human replies correlate to question ids in state | [watch-upstream-prs](../../../../issues/261119_watch-upstream-prs.md) |
-| `--lan` / `--detach` / per-serve LAN secret | serve exposure + wake (Delta 1) | [port-lan-mode](../../../../issues/261119_port-lan-mode.md), [port-detach-heartbeat](../../../../issues/261119_port-detach-heartbeat.md) |
-| Localhost hardening (`/send` origin/token) | trust boundary of `POST /send` — **security: port first** | [port-localhost-hardening](../../../../issues/261119_port-localhost-hardening.md) |
+| Importance levels + ratings | new state fields: page controls + `validateState` + SKILL schema + tests must ripple together; the fork's validator rejects them today | [port-importance-ratings](../../../../issues/0004-port-importance-ratings.md) |
+| Inline markdown (`markdown.mjs`) | thread rendering; server-side render vs page parity | [decision-inline-markdown](../../../../issues/0010-decision-inline-markdown.md) |
+| Reply markers (upstream PR `jasonku09/grill-with-ui#40`) | how human replies correlate to question ids in state | [watch-upstream-prs](../../../../issues/0016-watch-upstream-prs.md) |
+| `--lan` / `--detach` / per-serve LAN secret | serve exposure + wake (Delta 1) | [port-lan-mode](../../../../issues/0002-port-lan-mode.md), [port-detach-heartbeat](../../../../issues/0007-port-detach-heartbeat.md) |
+| Localhost hardening (`/send` origin/token) | trust boundary of `POST /send` — **security: port first** | [port-localhost-hardening](../../../../issues/0001-port-localhost-hardening.md) |
 
 **Schema-compatibility warning:** `validateState` is strict. A field one side
 accepts and the other does not is a half-update — confirm both directions after

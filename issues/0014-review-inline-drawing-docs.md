@@ -1,8 +1,12 @@
 ---
-date: 2026-11-19
-type: Task
+id: 0014
+title: Review upstream's inline-drawing documentation clarifications
+type: task
+status: open
+priority: P3
+created: 2026-11-19
+theme: 0020
 severity: Low
-status: Proposed
 tags: [fork-sync, upstream-port, docs]
 ---
 

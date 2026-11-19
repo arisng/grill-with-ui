@@ -1,8 +1,12 @@
 ---
-date: 2026-11-19
-type: RFC
+id: 0012
+title: CONTEXT.md vs GLOSSARY.md — the lineage rename
+type: task
+status: done
+priority: P2
+created: 2026-11-19
+theme: 0019
 severity: Medium
-status: Accepted
 tags: [fork-sync, decision, lineage, domain-modeling]
 ---
 

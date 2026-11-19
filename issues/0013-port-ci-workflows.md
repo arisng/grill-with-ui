@@ -1,10 +1,14 @@
 ---
-date: 2026-11-19
-type: Task
+id: 0013
+title: Port upstream's CI workflows, adapted to the fork
+type: task
+status: open
+priority: P2
+created: 2026-11-19
+theme: 0020
 severity: Medium
-status: Proposed
 tags: [fork-sync, upstream-port, ci]
-related: [261119_decision-inline-markdown.md]
+related: [0010-decision-inline-markdown.md]
 ---
 
 # Task: Port upstream's CI workflows, adapted to the fork
@@ -32,7 +36,7 @@ Upstream commits (tier ADOPT unless noted):
 
 ## Tasks
 
-- [ ] Blocked by: [261119_decision-inline-markdown.md](261119_decision-inline-markdown.md)
+- [ ] Blocked by: [0010-decision-inline-markdown.md](0010-decision-inline-markdown.md)
       (upstream's CI runs markdown tests — decide first, then adapt the jobs)
 - [ ] Show the user each workflow diff before adding it
 - [ ] Add `.github/workflows/` files with paths/tests corrected to the fork's

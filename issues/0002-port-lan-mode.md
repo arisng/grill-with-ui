@@ -1,10 +1,14 @@
 ---
-date: 2026-11-19
-type: Task
+id: 0002
+title: Port opt-in LAN mode with browser auto-open
+type: task
+status: open
+priority: P1
+created: 2026-11-19
+theme: 0017
 severity: High
-status: Proposed
 tags: [fork-sync, security, upstream-port]
-related: [261119_port-localhost-hardening.md]
+related: [0001-port-localhost-hardening.md]
 ---
 
 # Task: Port opt-in LAN mode with browser auto-open
@@ -24,7 +28,7 @@ Upstream commits (tier REWORK, flagged `[security]`):
 
 ## Tasks
 
-- [ ] Blocked by: [261119_port-localhost-hardening.md](261119_port-localhost-hardening.md)
+- [ ] Blocked by: [0001-port-localhost-hardening.md](0001-port-localhost-hardening.md)
 - [ ] Show the user both diffs and the dependency before porting
 - [ ] Port the `--lan` / `--host` / `--open` flag behaviour and the token check
 - [ ] Port the `238f713` Host exemption **for token-authenticated requests only**
@@ -43,5 +47,5 @@ Upstream commits (tier REWORK, flagged `[security]`):
 ## References
 
 - Upstream: `6ffe658` (PR #25), `238f713` in `jasonku09/grill-with-ui`
-- Prerequisite: [261119_port-localhost-hardening.md](261119_port-localhost-hardening.md)
+- Prerequisite: [0001-port-localhost-hardening.md](0001-port-localhost-hardening.md)
 - Fork files: `skills/grill-with-ui/server.mjs`, `skills/grill-with-ui/SKILL.md`, `README.md`

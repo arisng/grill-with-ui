@@ -102,10 +102,16 @@ tasks:
       - node .github/skills/fork-sync/scripts/sync-report.mjs {{.CLI_ARGS}}
 
   check:
-    desc: Everything local — unit tests, extension tests, page e2e, design detector
-    deps: [test, test:ext, test:e2e]
+    desc: Everything local — unit tests, extension tests, page e2e, design detector, issue gate
+    deps: [test, test:ext, test:e2e, lint:issues]
     cmds:
       - task detect
+
+  lint:issues:
+    desc: Issue-store gate — ids, theme links, tree/view freshness (issue-tracking skill)
+    cmds:
+      - pwsh ~/.agents/skills/issue-tracking/scripts/issue-tree.ps1 -Check
+      - pwsh ~/.agents/skills/issue-tracking/scripts/render-issue-tree.ps1 -Check
 
   taste:
     desc: Open the completion-sound sampler, drift-checked against page.html

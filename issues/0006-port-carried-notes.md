@@ -1,8 +1,12 @@
 ---
-date: 2026-11-19
-type: Task
+id: 0006
+title: Port carried discussion notes on Send
+type: task
+status: open
+priority: P2
+created: 2026-11-19
+theme: 0018
 severity: Medium
-status: Proposed
 tags: [fork-sync, upstream-port]
 ---
 

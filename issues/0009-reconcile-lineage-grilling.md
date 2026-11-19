@@ -1,10 +1,14 @@
 ---
-date: 2026-11-19
-type: Task
+id: 0009
+title: Reconcile the `grilling` method drift (two unported rules)
+type: task
+status: open
+priority: P2
+created: 2026-11-19
+theme: 0018
 severity: Medium
-status: Proposed
 tags: [fork-sync, lineage, method-port]
-related: [261119_decision-glossary-naming.md]
+related: [0012-decision-glossary-naming.md]
 ---
 
 # Task: Reconcile the `grilling` method drift (two unported rules)

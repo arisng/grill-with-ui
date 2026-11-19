@@ -1,8 +1,12 @@
 ---
-date: 2026-11-19
-type: Task
+id: 0015
+title: Housekeeping — fast-forward the stale `main` branch
+type: chore
+status: open
+priority: P3
+created: 2026-11-19
+theme: 0020
 severity: Low
-status: Proposed
 tags: [fork-sync, housekeeping]
 ---
 

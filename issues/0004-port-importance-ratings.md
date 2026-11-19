@@ -1,8 +1,12 @@
 ---
-date: 2026-11-19
-type: Task
+id: 0004
+title: Port importance levels and per-option rating chips
+type: task
+status: open
+priority: P1
+created: 2026-11-19
+theme: 0018
 severity: High
-status: Proposed
 tags: [fork-sync, upstream-port, schema]
 ---
 

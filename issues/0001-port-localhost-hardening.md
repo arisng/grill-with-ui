@@ -1,10 +1,14 @@
 ---
-date: 2026-11-19
-type: Task
+id: 0001
+title: Port localhost hardening (body cap, Host allowlist, /visual CSP)
+type: task
+status: open
+priority: P0
+created: 2026-11-19
+theme: 0017
 severity: Critical
-status: Proposed
 tags: [fork-sync, security, upstream-port]
-related: [261119_port-lan-mode.md]
+related: [0002-port-lan-mode.md]
 ---
 
 # Task: Port localhost hardening (body cap, Host allowlist, /visual CSP)

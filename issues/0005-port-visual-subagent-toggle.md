@@ -1,8 +1,12 @@
 ---
-date: 2026-11-19
-type: Task
+id: 0005
+title: Port the Visualize "Use subagent" checkbox
+type: task
+status: open
+priority: P2
+created: 2026-11-19
+theme: 0018
 severity: Medium
-status: Proposed
 tags: [fork-sync, upstream-port]
 ---
 
