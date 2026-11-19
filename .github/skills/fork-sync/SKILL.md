@@ -2,7 +2,7 @@
 name: fork-sync
 description: Keep the grill-with-ui fork in sync with its upstreams — the jasonku09/grill-with-ui code repo, the mattpocock/skills method lineage, and the installed skill copy. Use when asked to sync, refresh, update, catch up, or rebase the fork; when checking for new upstream commits, branches, or PRs; when deciding whether to adopt, adapt, or skip an incoming change; when asked whether the fork, its installs, or its dependencies are up to date (answer with the coverage table — upstream gaps, lineage pins, installs, toolchain); or when a schema or contract change needs the full ripple update. Do not use for ordinary feature work inside the repo.
 metadata:
-  version: 0.4.2
+  version: 0.4.3
 ---
 
 # fork-sync
@@ -69,6 +69,14 @@ exceptions — not just the tier counts. The lineage section is deterministic (p
 `lineage.json`, a `knownSkills` snapshot, a keyword screen); deciding whether a
 drifted commit or a newly discovered skill actually matters stays a human call, made
 with the user.
+
+Before classifying any commit that touches **the grilling loop itself** — how a Send
+wakes the agent, how either side knows the other is listening, what a patch may carry,
+or where Finish lands — read
+[references/architecture-deltas.md](references/architecture-deltas.md). It records the
+fork's loop against upstream's (verified with a re-check recipe), and points each
+gated loop port at its `issues/` file. Taking a loop diff that file already rules out
+is the same failure as a blind cherry-pick.
 
 The script classifies by two independent questions: does the commit touch a **contract
 file** (the schema and its docs), and did the fork **also change that file**?

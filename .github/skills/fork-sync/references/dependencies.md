@@ -17,7 +17,10 @@ noted per row.
 | Commits, branches, PRs: features, fixes, CI, docs | the report's tier classification (REWORK/ADAPT/ADOPT/MERGE) + `issues/` triage | every activation; triage lands as issues, ports never auto-apply |
 
 Gap detail lives in [upstream-repo.md](upstream-repo.md) and the per-commit
-files under `issues/`.
+files under `issues/`. The **loop-shape deltas** — wake channel, listening
+truth, payload surface, Finish — are recorded in
+[architecture-deltas.md](architecture-deltas.md); a port touching any of them
+consults that file before it consults the diff.
 
 ## B. Method lineage — `mattpocock/skills`
 
@@ -107,3 +110,8 @@ a design question, not a port — record it in `docs/design.md`.
 4. For each new skill: audit → pin as a dependency or reject in the audit
    record above (it stays in `knownSkills` either way).
 5. Never apply an upstream or lineage diff without walking the user through it.
+6. When a port touches the grilling loop (wake channel, listening truth,
+   payload surface, Finish), read
+   [architecture-deltas.md](architecture-deltas.md) first — several inbound
+   ports are pre-classified there, and its facts are re-verified with the
+   recipe at the bottom of that file.
