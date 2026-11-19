@@ -1,6 +1,6 @@
 # Writing clarity for grill-with-ui
 
-Read this file before starting or resuming a grill. Apply it to all text the agent creates for the user: the grill topic title and intent when the agent writes them, question cards, discussion replies, accumulated terms, visible prototype or diagram text, and Finish documents. Do not rewrite user-authored text when the contract requires it verbatim, such as a quoted thread message. Do not edit an existing `CONTEXT-MAP.md`; the grill reads it only to route output.
+Read this file before starting or resuming a grill. Apply it to all text the agent creates for the user: the grill topic title and intent when the agent writes them, question cards, discussion replies, accumulated terms, visible prototype or diagram text, and Finish documents. Do not rewrite user-authored text when the contract requires it verbatim, such as a quoted thread message. Do not edit an existing `GLOSSARY-MAP.md`; the grill reads it only to route output.
 
 ## Clarity baseline
 

@@ -1,9 +1,9 @@
 ---
 name: grill-with-ui
 description: >
-   Run a grilling interview on a local browser page instead of the terminal: each question shows its recommendation, takes any order, has a discussion thread and one Send button. An opt-in first question also lands terms in a CONTEXT.md glossary and durable decisions as ADRs. USE FOR: "grill with ui", /grill-with-ui with a topic, "/grill-with-ui resume", "grill me on a topic". DO NOT USE FOR: plain design questions, reviews, tasks, repo questions — answer directly."
+   Run a grilling interview on a local browser page instead of the terminal: each question shows its recommendation, takes any order, has a discussion thread and one Send button. An opt-in first question also lands terms in the repo's GLOSSARY.md and durable decisions as ADRs. USE FOR: "grill with ui", /grill-with-ui with a topic, "/grill-with-ui resume", "grill me on a topic". DO NOT USE FOR: plain design questions, reviews, tasks, repo questions — answer directly."
 metadata:
-   version: 0.9.1
+   version: 0.10.0
 ---
 
 # grill-with-ui
@@ -143,15 +143,15 @@ GRILL_PATCH
    domain-modeling-mode question, first, id `q-domain`:
    - `title`: "Also keep a glossary and ADRs?"
    - `body`: At Finish the design doc is always written to `doc`; opting in additionally
-     keeps a `CONTEXT.md` glossary of settled terms and one ADR per architecturally
+     keeps a `GLOSSARY.md` glossary of settled terms and one ADR per architecturally
      significant decision — the big, hard-to-reverse choices, grouped where several
      questions settle the same one — both written when the grill finishes. The glossary
      lands at the repo root —
-     except in a repo that keeps a `CONTEXT-MAP.md` at its root, where each bounded
-     context owns its own `CONTEXT.md`: there Finish reads the map, lands the glossary in
+     except in a repo that keeps a `GLOSSARY-MAP.md` at its root, where each bounded
+     context owns its own `GLOSSARY.md`: there Finish reads the map, lands the glossary in
      the bounded context this topic belongs to (confirmed with you at Finish when unclear)
      and the ADRs in that context's own ADR folder.
-   - `options`: A "Yes — also write CONTEXT.md and ADRs", B "No — the design doc only (default)".
+   - `options`: A "Yes — also write GLOSSARY.md and ADRs", B "No — the design doc only (default)".
    - `rec`: option A, why: locked decisions then live where the next engineer already looks —
      the glossary and docs/adr/ — not only in a dated design doc; the cost is the glossary
      plus one file per significant decision.
@@ -398,11 +398,12 @@ On a `finish` action, or when the user says finish in the terminal:
    patch, a `q-domain` reopen/revoke among them turning it off — write the repo-level docs
    per `$SKILL/domain-brief.md`, **ADRs before the design doc**: the doc cites their
    numbers.
-   (a) **locate the locations first**: run `node $SKILL/server.mjs context --session
-   <session>`. `map: false` → the repo-root `CONTEXT.md`. `map: true` → the repo scopes one
+   (a) **locate the locations first**: run `node $SKILL/server.mjs glossary --session
+   <session>`. `map: false` → the repo-root `GLOSSARY.md`. `map: true` → the repo scopes one
    glossary per bounded context: match this grill's topic and intent to the single clear
    candidate in `contexts` (the brief gives the criteria) and use it — merge the context's
-   `CONTEXT.md` when it exists, create it in the context's `folder` when it does not. No
+   `GLOSSARY.md` when it exists (a legacy `CONTEXT.md` there is renamed first, never kept
+   alongside), create it in the context's `folder` when it does not. No
    clear match or several → ask the user in the terminal, offering the candidates, then
    `fallback`, then "no glossary this grill", and use their answer.
    (b) **ADRs**: take the answered questions with `durable: true` and cluster them into
@@ -411,13 +412,13 @@ On a `finish` action, or when the user says finish in the terminal:
    that fails the screen gets no ADR and stays a Locked decision in the design doc. For
    every decision that survives, run
    `node $SKILL/server.mjs adr --session <session> --folder <adr-folder> --title "<decision title>"`
-   — the folder is the matched context's `adr` from `context`, else `fallbackAdr` — which
+   — the folder is the matched context's `adr` from `glossary`, else `fallbackAdr` — which
    scaffolds the file with the next free number, the date and the author; then fill its
    sections per the brief. Keep the paths it prints.
    (c) **the glossary**: merge this grill's terms into the located file (create lazily;
    merge, never clobber).
    (d) remember the paths — the step that patches `finished` must then also include
-   `"context": <path>` (when the glossary was written, wherever it resolved to) and
+   `"glossary": <path>` (when the glossary was written, wherever it resolved to) and
    `"adrs": [<paths…>]` (when any
    ADR was written — one entry per file, never one per decision), alongside `doc`/`at` as
    that step already does. Neither was written: leave the key out.
@@ -446,11 +447,11 @@ On a `finish` action, or when the user says finish in the terminal:
    needed; the visual always sits beside the doc — same folder wherever `--doc` points; if
    `--doc` leaves the project, the visual follows it out; prefer a project-relative path) and
    add `"visual": <that path>` to `finished` (it is replaced whole, so give `doc` again —
-   and `context`/`adrs` when domain-modeling mode wrote them — or fold it into the step 3
+   and `glossary`/`adrs` when domain-modeling mode wrote them — or fold it into the step 3
    patch). Otherwise request one
    reconciling draw (or let the in-flight one land), return to listening, and when it lands
    copy the file and patch `finished` with `visual` then (it is replaced whole, so give
-   `doc` again — and `context`/`adrs` when domain-modeling mode wrote them; the server
+   `doc` again — and `glossary`/`adrs` when domain-modeling mode wrote them; the server
    stamps `at`).
 5. Once there is no draw in flight and the exports are complete, stop the persistent
    Monitor with TaskStop; with `grill_attach`, call `grill_detach` first; in every case
@@ -481,11 +482,12 @@ What each field means. You write it only through `patch`.
   "topic": "…", "intent": "why this grill exists, 1-2 sentences", "doc": ".grill-with-ui/x/design.md", "project": "/abs/path", "created": "ISO",
   "agent": { "status": "waiting|working", "since": "ISO", "handled": 3 },
   "note": "optional short sentence shown above the question list",
-  "domainModeling": true,  // domain-modeling mode on: Finish also writes CONTEXT.md + docs/adr/ per domain-brief.md; absent = off
+  "domainModeling": true,  // domain-modeling mode on: Finish also writes GLOSSARY.md + docs/adr/ per domain-brief.md; absent = off
   "writingProfile": "clarity-baseline|strictest-available",  // optional; absent = clarity-baseline; strictest-available requires opt-in and lasts this grill
   "finished": { "doc": ".grill-with-ui/x/design.md", "visual": ".grill-with-ui/x/visual.html",
-                "context": "CONTEXT.md", "adrs": ["docs/adr/0001-slug.md"], "at": "ISO" },  // only after Finish; context is project-relative —
-                // project-relative: repo-root CONTEXT.md, or the matched bounded context's CONTEXT.md in a CONTEXT-MAP.md repo
+                "glossary": "GLOSSARY.md", "adrs": ["docs/adr/0001-slug.md"], "at": "ISO" },  // only after Finish; glossary is project-relative —
+                // project-relative: repo-root GLOSSARY.md, or the matched bounded context's GLOSSARY.md in a
+                // GLOSSARY-MAP.md repo; the pre-rename field "context" is still accepted and still read
   "visual": {                                                   // only after a visualize action
     "kind": "prototype|diagram", "version": 3, "at": "ISO",
     "note": "v3: discussion panel moved to the right per Q3",

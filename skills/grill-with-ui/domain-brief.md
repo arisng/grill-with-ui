@@ -1,7 +1,7 @@
 # Domain brief
 
 You are writing the optional repo-level docs a grill produces in domain-modeling mode (state
-`domainModeling: true`) at Finish: a `CONTEXT.md` glossary and architecture
+`domainModeling: true`) at Finish: a `GLOSSARY.md` glossary and architecture
 decision records in the folders the rules below pick. This file holds the rules; follow every one. Adapted
 from the `domain-modeling` skill in mattpocock/skills (MIT):
 https://github.com/mattpocock/skills/tree/main/skills/engineering
@@ -19,29 +19,36 @@ a document shorter by dropping decision context or technical meaning. Use active
 it makes the actor clear. Keep each glossary definition to one or two sentences, as required
 below. Keep ADR content complete under every required heading.
 
-## CONTEXT.md
+## GLOSSARY.md
 
-Location: resolve it before writing anything — `node $SKILL/server.mjs context --session
+Location: resolve it before writing anything — `node $SKILL/server.mjs glossary --session
 <session>` prints one JSON line holding everything this step needs:
 
-- `map: false` (the usual repo): the repo-root `CONTEXT.md`, as always.
+- `map: false` (the usual repo): the repo-root `GLOSSARY.md`, as always.
 - `map: true`: the repo scopes one glossary per bounded context. `contexts` lists each one
-  read from the root `CONTEXT-MAP.md` — `name`, the glossary's `path`, its `folder`, and
+  read from the root `GLOSSARY-MAP.md` — `name`, the glossary's `path`, its `folder`, and
   the ADR folder for it. Match this grill's topic and intent against the context names and
-  the map's one-line descriptions (read `CONTEXT-MAP.md` itself when the short list is not
+  the map's one-line descriptions (read `GLOSSARY-MAP.md` itself when the short list is not
   enough to judge):
-  - **One clear match** → use it. Its `CONTEXT.md` exists: merge into that file — that is
-    the update-a-context case. It does not exist: create it in the context's `folder`,
-    which is this context's location.
+  - **One clear match** → use it. Its `GLOSSARY.md` exists: merge into that file — that is
+    the update-a-context case. Only a legacy `CONTEXT.md` exists there: rename it to
+    `GLOSSARY.md` first, then merge — one file, never both. Neither exists: create
+    `GLOSSARY.md` in the context's `folder`, which is this context's location.
   - **Several plausible, or none** → ask the user in the terminal before writing anything.
     Offer the candidates, then `fallback` (beside the design doc), then "no glossary this
     grill", and take the answer as the location. A confident match is never worth
     interrupting for; an uncertain one is never guessed.
 - Whatever location wins, the `finished` patch records its project-relative path as
-  `context`; that recorded path is what the Terms panel then reads.
+  `glossary`; that recorded path is what the Terms panel then reads. (Pre-rename sessions
+  recorded `context` — the server still reads that field; never write it again.)
 
-The map owns the root: never create a repo-root `CONTEXT.md` in a mapped repo — that slot
-belongs to `CONTEXT-MAP.md` itself.
+**Deprecated names.** `CONTEXT.md` and `CONTEXT-MAP.md` are the pre-rename names — the
+lineage renamed them on 2026-09-17 and the fork adopted the rename. Everything this
+brief creates or updates is written under the GLOSSARY names; a legacy file is renamed
+on first contact, never duplicated or left beside its replacement.
+
+The map owns the root: never create a repo-root `GLOSSARY.md` in a mapped repo — that slot
+belongs to `GLOSSARY-MAP.md` itself.
 
 Whichever file was located, the format below is unchanged.
 
@@ -59,13 +66,13 @@ The definition comes from the term's `def`; the `_Avoid_` list from `state.terms
   implementation detail — it is a glossary and nothing else.
 - Be opinionated: one canonical term per concept; list the rejected words under _Avoid_.
 - Create the file lazily: only when there is at least one term to write.
-- **Merge, never clobber.** If `CONTEXT.md` already exists, read it first; append or update
+- **Merge, never clobber.** If `GLOSSARY.md` already exists, read it first; append or update
   only the terms from this grill. Never reorder, overwrite, or delete existing entries or
   any other section.
 
 ## ADRs
 
-Location: the folder `$SKILL/server.mjs context` reports for the location chosen above —
+Location: the folder `$SKILL/server.mjs glossary` reports for the location chosen above —
 its `adr` for a matched context (whichever of `docs/adr/` or `.docs/adr/` already exists
 inside that context, `docs/adr/` when neither or both), `fallbackAdr` otherwise (the
 standing `docs/adr/` convention). Files are numbered sequentially as `NNNN-slug.md` (four
@@ -172,7 +179,7 @@ brief's rule, not the server's.
 The exhaustive design doc (`.grill-with-ui/<yymmdd>-<topic-slug>/design.md`) is always written and
 remains the per-topic record; the glossary and the ADRs are cumulative, standing artifacts
 across grills — each in the bounded context a map scopes them to, or the repo's root
-`CONTEXT.md` and `docs/adr/` where no context map applies. Session-meta questions (ids
+`GLOSSARY.md` and `docs/adr/` where no context map applies. Session-meta questions (ids
 `q-domain` and `q-writing-profile`) produce no ADR — they are never durable, so this falls out
 naturally. A durable decision that the screen rules out produces no ADR either: it stays a
 Locked decision in the design doc, which cites `→ ADR-NNNN` only where a decision does have
