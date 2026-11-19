@@ -11,8 +11,8 @@
     {
       "name": "grill-with-ui",
       "source": "./",
-      "description": "Grilling design interview rendered on a local browser page: staged answers, discussion threads, optional domain-modeling mode (CONTEXT.md glossary + ADRs), and the grill-monitor extension that wakes the agent once per Send instead of polling.",
-      "version": "0.9.1",
+      "description": "Grilling design interview rendered on a local browser page: staged answers, discussion threads, optional domain-modeling mode (GLOSSARY.md glossary + ADRs), and the grill-monitor extension that wakes the agent once per Send instead of polling.",
+      "version": "0.10.0",
       "author": {
         "name": "Aris Nguyen"
       },
