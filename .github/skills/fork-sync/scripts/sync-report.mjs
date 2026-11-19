@@ -496,6 +496,104 @@ const installs = installTargets.map((t) => {
   return { name: t.name, state, installedVersion, repoVersion, remedy: t.remedy };
 });
 
+// Method-lineage drift. mattpocock/skills has no merge base with the fork, so
+// freshness is pinned: lineage.json records each dependency's last AUDITED
+// commit and a snapshot of every skill path in the repo. The live tree is
+// compared with both — a moved pin means unaudited drift to reconcile, and a
+// path outside the snapshot is a new skill to audit for dependency relevance
+// (the keyword screen only narrows the list; relevance stays a human call).
+// A pin is an audit date, not a port date: the reconciliation backlog lives in
+// issues/. gh is required; without it, or under --no-fetch, the section says
+// why it is missing instead of implying the lineage is clean.
+const lineageFile = join(here, "..", "lineage.json");
+let lineage = null;
+if (existsSync(lineageFile)) {
+  if (!DO_FETCH) {
+    lineage = { skipped: "--no-fetch" };
+  } else if (!tryRun("gh", ["--version"]).ok) {
+    lineage = { skipped: "gh not available" };
+  } else {
+    let pins = null;
+    try {
+      pins = JSON.parse(readFileSync(lineageFile, "utf8"));
+    } catch {
+      lineage = { error: "lineage.json could not be parsed" };
+    }
+    if (pins) {
+      const deps = [];
+      let failed = false;
+      for (const d of pins.dependencies || []) {
+        const res = tryRun("gh", [
+          "api",
+          `repos/${pins.repo}/commits?path=${encodeURIComponent(d.path)}&per_page=1`,
+        ]);
+        let live = null;
+        if (res.ok) {
+          try {
+            const first = JSON.parse(res.stdout)[0];
+            if (first?.sha) {
+              live = {
+                sha: first.sha,
+                date: String(first.commit?.committer?.date || "").slice(0, 10),
+              };
+            }
+          } catch {
+            live = null;
+          }
+        }
+        if (!live) {
+          failed = true;
+          break;
+        }
+        deps.push({
+          path: d.path,
+          role: d.role || "",
+          pinnedCommit: d.pinnedCommit,
+          pinnedDate: d.pinnedDate,
+          liveSha: live.sha,
+          liveDate: live.date,
+          state: live.sha === d.pinnedCommit ? "stable" : "drifted",
+        });
+      }
+      let newSkills = [];
+      let removedSkills = [];
+      if (!failed) {
+        const tree = tryRun("gh", ["api", `repos/${pins.repo}/git/trees/${pins.ref}?recursive=1`]);
+        if (!tree.ok) {
+          failed = true;
+        } else {
+          try {
+            const entries = JSON.parse(tree.stdout).tree.map((e) => e.path);
+            const liveSet = new Set(
+              entries
+                .filter((p) => p.endsWith("/SKILL.md"))
+                .map((p) => p.slice(0, -"/SKILL.md".length)),
+            );
+            const known = new Set(pins.knownSkills || []);
+            newSkills = [...liveSet].filter((p) => !known.has(p)).sort();
+            removedSkills = [...known].filter((p) => !liveSet.has(p)).sort();
+          } catch {
+            failed = true;
+          }
+        }
+      }
+      lineage = failed
+        ? { error: `could not read ${pins.repo} via gh api` }
+        : {
+            repo: pins.repo,
+            ref: pins.ref,
+            auditedAt: pins.auditedAt,
+            deps,
+            newSkills,
+            removedSkills,
+            candidates: newSkills.filter((p) =>
+              (pins.relevanceKeywords || []).some((k) => p.toLowerCase().includes(k.toLowerCase())),
+            ),
+          };
+    }
+  }
+}
+
 // Open upstream pull requests, when gh is available.
 let prs = null;
 if (tryRun("gh", ["--version"]).ok) {
@@ -544,6 +642,7 @@ if (AS_JSON) {
         contestedFiles: contested,
         commits,
         installs,
+        lineage,
         openPRs: prs,
       },
       null,
@@ -605,6 +704,44 @@ for (const i of installs) {
   if (i.state === "behind" || i.state === "missing") console.log(`  refresh: ${i.remedy}`);
 }
 console.log("");
+
+if (lineage) {
+  if (lineage.skipped) {
+    console.log(`Lineage: skipped — ${lineage.skipped}`);
+  } else if (lineage.error) {
+    console.log(`Lineage: ${lineage.error}`);
+  } else {
+    console.log(
+      `Lineage (${lineage.repo}@${lineage.ref}, pins audited ${lineage.auditedAt}):`,
+    );
+    for (const d of lineage.deps) {
+      const flag = d.state === "drifted" ? "DRIFTED" : "stable ";
+      console.log(
+        `  ${flag} ${d.path} — pin ${d.pinnedDate} (${d.pinnedCommit.slice(0, 7)}),` +
+          ` live ${d.liveDate} (${d.liveSha.slice(0, 7)})`,
+      );
+      if (d.state === "drifted")
+        console.log(
+          "           read the new commits, reconcile through the ripple checklist, then update the pin",
+        );
+    }
+    if (lineage.newSkills.length) {
+      console.log(
+        `  new skills since the pin audit: ${lineage.newSkills.join(", ")}` +
+          (lineage.candidates.length
+            ? `   relevance candidates: ${lineage.candidates.join(", ")}`
+            : ""),
+      );
+    } else {
+      console.log("  no new skills since the pin audit");
+    }
+    if (lineage.removedSkills.length)
+      console.log(
+        `  gone since the pin audit (renamed or removed): ${lineage.removedSkills.join(", ")}`,
+      );
+  }
+  console.log("");
+}
 
 if (prs && prs.length) {
   console.log(

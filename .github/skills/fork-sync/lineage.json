@@ -1,0 +1,78 @@
+{
+  "repo": "mattpocock/skills",
+  "ref": "main",
+  "auditedAt": "2026-11-19",
+  "note": "Pins record the last AUDITED state, not what the fork has ported. Reconciliation backlog lives in issues/; update a pin only after its drift has been audited (read the commits, decided, filed).",
+  "dependencies": [
+    {
+      "path": "skills/productivity/grilling",
+      "role": "interview method: rounds, frontier, question wording, fact-finding by subagent",
+      "forkReceives": [
+        "skills/grill-with-ui/SKILL.md interview method",
+        "skills/grill-with-ui/writing-clarity.md question cards"
+      ],
+      "pinnedCommit": "7739eaed7f8f3915437a8def198a6d0d7206dbc7",
+      "pinnedDate": "2026-10-29"
+    },
+    {
+      "path": "skills/engineering/domain-modeling",
+      "role": "glossary and ADR discipline: durable gates, glossary format, CONTEXT/GLOSSARY routing",
+      "forkReceives": [
+        "skills/grill-with-ui/domain-brief.md",
+        "skills/grill-with-ui/adr-template.md",
+        "skills/grill-with-ui/SKILL.md durable definition"
+      ],
+      "pinnedCommit": "d80fa0f4ebe0c5714af0adf8670336065233ecc6",
+      "pinnedDate": "2026-09-17"
+    },
+    {
+      "path": "skills/engineering/grill-with-docs",
+      "role": "the original two-skill composition shim the fork grew out of",
+      "forkReceives": [],
+      "pinnedCommit": "447ca70872026d5b79d6073a546dac082117fed7",
+      "pinnedDate": "2026-08-15"
+    }
+  ],
+  "knownSkills": [
+    "skills/engineering/ask-matt",
+    "skills/engineering/code-review",
+    "skills/engineering/codebase-design",
+    "skills/engineering/diagnosing-bugs",
+    "skills/engineering/domain-modeling",
+    "skills/engineering/grill-with-docs",
+    "skills/engineering/implement-spec",
+    "skills/engineering/implement",
+    "skills/engineering/improve-codebase-architecture",
+    "skills/engineering/pr",
+    "skills/engineering/prototype",
+    "skills/engineering/research",
+    "skills/engineering/retro",
+    "skills/engineering/setup-matt-pocock-skills",
+    "skills/engineering/tdd",
+    "skills/engineering/to-spec",
+    "skills/engineering/to-tickets",
+    "skills/engineering/triage",
+    "skills/engineering/wayfinder",
+    "skills/engineering/wizard",
+    "skills/in-progress/chief-of-staff",
+    "skills/in-progress/claude-handoff",
+    "skills/in-progress/loop-me",
+    "skills/in-progress/setup-ts-deep-modules",
+    "skills/in-progress/software-factory",
+    "skills/in-progress/writing-beats",
+    "skills/in-progress/writing-fragments",
+    "skills/in-progress/writing-shape",
+    "skills/misc/git-guardrails-claude-code",
+    "skills/misc/migrate-to-shoehorn",
+    "skills/misc/scaffold-exercises",
+    "skills/misc/setup-pre-commit",
+    "skills/productivity/grill-me",
+    "skills/productivity/grilling",
+    "skills/productivity/handoff",
+    "skills/productivity/teach",
+    "skills/productivity/to-questionnaire",
+    "skills/productivity/wait-what",
+    "skills/productivity/writing-for-agents"
+  ],
+  "relevanceKeywords": ["grill", "interview", "question", "domain", "glossary", "adr", "durable"]
+}
