@@ -124,8 +124,9 @@ Upstream's own theme commit `3903c55` also added the `originOk` cross-origin che
 
 `SKILL.md` and `server.mjs` are the same schema seen from two sides. Both sides'
 `validateState` reject malformed state, but the *fields* differ: the fork adds
-`domainModeling`, `writingProfile`, the `q-domain` and `q-writing-profile` questions,
-the `finished.glossary` / `finished.adrs` outputs (legacy `finished.context` still read), and the `GLOSSARY-MAP.md` routing.
+`writingProfile`, `finished.pipeline`, the `q-writing-profile` question and the
+`finished.glossary` / `finished.adrs` outputs (legacy `finished.context` still read), and
+accepts-and-ignores the legacy `domainModeling` key upstream-era sessions carry.
 Upstream adds `multi`, `rec.options`, and `answer.options`, which the fork has none of.
 
 So an upstream `SKILL.md` diff is a **specification of a different product**, not a
@@ -203,7 +204,7 @@ protects every user of the skill.
 
 ## Reducing future debt
 
-The fork's own changes — domain-modeling mode, the responsive tiers, the Taskfile, the
+The fork's own changes — the decision pipeline, the responsive tiers, the Taskfile, the
 waza eval suite — are upstreamable. Sending them as PRs to `jasonku09` converts permanent
 merge conflicts into upstream history. The cost is writing the PR against upstream's
 schema, which is the same work as adapting them here. Do it once, and the next sync

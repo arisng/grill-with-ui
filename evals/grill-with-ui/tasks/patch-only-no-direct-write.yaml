@@ -62,7 +62,7 @@ graders:
           if(!cands.length){ console.error('FAIL: no grill session state.json in this task workspace. Roots: '+roots.join(', ')); process.exit(1); }
           const best=cands.map(f=>[f,fs.statSync(f).mtimeMs]).sort((a,b)=>b[1]-a[1])[0][0];
           const s=JSON.parse(fs.readFileSync(best,'utf8'));
-          const topic=(s.questions||[]).find(q=>q.id!=='q-domain');
+          const topic=(s.questions||[]).find(q=>q.id!=='q-domain'&&q.id!=='q-writing-profile');
           let out=''; try{ out=fs.readFileSync(0,'utf8'); }catch{}
           const applied = topic && topic.status==='answered'
             && (topic.answer||{}).kind==='option'

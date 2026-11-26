@@ -578,13 +578,17 @@ function validateState(s) {
       `${where}[${i}] must be {"who":"user"|"agent","text":"…","at":"ISO"}`));
   };
   for (const k of ["topic", "intent", "doc", "project", "created", "note"]) check(s, k, str, `${k} must be a string`);
+  // domainModeling is LEGACY: the old opt-in flag. Accepted so sessions created before the
+  // pipeline still validate, then ignored — Finish acts on the decision pipeline, not this key.
   check(s, "domainModeling", bool, "domainModeling must be a boolean");
   check(s, "writingProfile", (v) => v === "clarity-baseline" || v === "strictest-available",
     'writingProfile must be "clarity-baseline" or "strictest-available"');
   if ("finished" in s) {
-    need(isObj(s.finished), 'finished must be an object ({"doc","visual","glossary","adrs","at"})');
+    need(isObj(s.finished), 'finished must be an object ({"doc","visual","glossary","adrs","pipeline","at"})');
     texts(s.finished, ["doc", "visual", "at", "glossary", "context"], "finished"); // context = pre-rename sessions
     check(s.finished, "adrs", (v) => Array.isArray(v) && v.every(str), "finished.adrs must be an array of strings");
+    check(s.finished, "pipeline", (v) => isObj(v) && ["durable", "decisions", "written", "skipped"].every((k) => !(k in v) || count(v[k])),
+      "finished.pipeline must be an object of whole numbers (durable, decisions, written, skipped)");
   }
   if ("agent" in s) {
     need(isObj(s.agent), "agent must be an object");

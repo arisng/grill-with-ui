@@ -1,9 +1,9 @@
 ---
 name: grill-with-ui
 description: >
-   Run a grilling interview on a local browser page instead of the terminal: each question shows its recommendation, takes any order, has a discussion thread and one Send button. An opt-in first question also lands terms in the repo's GLOSSARY.md and durable decisions as ADRs. USE FOR: "grill with ui", /grill-with-ui with a topic, "/grill-with-ui resume", "grill me on a topic". DO NOT USE FOR: plain design questions, reviews, tasks, repo questions — answer directly."
+   Run a grilling interview on a local browser page instead of the terminal: each question shows its recommendation, takes any order, has a discussion thread and one Send button. At Finish it always runs a decision pipeline: settled terms land in the repo's GLOSSARY.md and architecturally significant decisions as ADRs. USE FOR: "grill with ui", /grill-with-ui with a topic, "/grill-with-ui resume", "grill me on a topic". DO NOT USE FOR: plain design questions, reviews, tasks, repo questions — answer directly."
 metadata:
-   version: 0.10.0
+   version: 0.12.0
 ---
 
 # grill-with-ui
@@ -139,26 +139,12 @@ GRILL_PATCH
    the title; the intent is the why. Omit it only when the topic arrived as a bare phrase with
    no goal attached. The page shows it under the topic so several open grills stay
    distinguishable. It prints one JSON line; keep `session` (the session folder).
-2. Patch round 1 in (`new` already wrote the skeleton). Round 1 ALWAYS begins with the
-   domain-modeling-mode question, first, id `q-domain`:
-   - `title`: "Also keep a glossary and ADRs?"
-   - `body`: At Finish the design doc is always written to `doc`; opting in additionally
-     keeps a `GLOSSARY.md` glossary of settled terms and one ADR per architecturally
-     significant decision — the big, hard-to-reverse choices, grouped where several
-     questions settle the same one — both written when the grill finishes. The glossary
-     lands at the repo root —
-     except in a repo that keeps a `GLOSSARY-MAP.md` at its root, where each bounded
-     context owns its own `GLOSSARY.md`: there Finish reads the map, lands the glossary in
-     the bounded context this topic belongs to (confirmed with you at Finish when unclear)
-     and the ADRs in that context's own ADR folder.
-   - `options`: A "Yes — also write GLOSSARY.md and ADRs", B "No — the design doc only (default)".
-   - `rec`: option A, why: locked decisions then live where the next engineer already looks —
-     the glossary and docs/adr/ — not only in a dated design doc; the cost is the glossary
-     plus one file per significant decision.
-   - `durable: false` (it is session meta, never a topic decision).
-   Then the usual one to three independent topic questions follow (round 1: after
-   `q-domain`), each with lettered options, one recommendation, and a one-paragraph why,
-   plus any `terms` and `"agent": { "status": "waiting" }`.
+2. Patch round 1 in (`new` already wrote the skeleton). Round 1 asks the one to three
+   independent topic questions that open the tree, each with lettered options, one
+   recommendation, and a one-paragraph why, plus any `terms` and
+   `"agent": { "status": "waiting" }`. There is no setup question and no round-1 question
+   about documentation: whether the grill writes a glossary or ADRs is decided at Finish by
+   the decision pipeline (see Finish), never promised up front.
 3. Open a **persistent Monitor** (`persistent: true`) whose command is
    `node $SKILL/server.mjs serve --session <session>`, description `grill page: <topic>`.
    No Monitor tool in your harness? That is Extension monitor: if `grill_attach` is
@@ -213,12 +199,10 @@ described there, then return to listening.
      Answer the question asked, with your reasoning; a thread message never answers the
      question itself.
    - `defer` → `status: "deferred"`. `reopen` → `status: "reopened"`, `answer: null`.
-   - The top-level `domainModeling` key follows `q-domain`: an `answer` that means yes (kind accept,
-     option A, or affirmative free text) → include `"domainModeling": true` in the step 6 patch; an
-     answer that means no (option B, or negative free text) → `"domainModeling": null` (`null`
-     deletes the key). A `reopen` → `"domainModeling": null` too: never write repo files the user is
-     reconsidering; domain-modeling mode takes effect again only when re-answered yes. Defer and
-     never-answered leave the key absent: domain-modeling mode off.
+   - The top-level `domainModeling` key is accepted and ignored. It was the old opt-in flag;
+     old sessions still carry it and still validate. Never write it and never act on it: the
+     Finish pipeline decides what to write. A `q-domain` question left in an old session is an
+     ordinary question now — answer it like any other; it changes nothing.
    - The top-level `writingProfile` key follows `q-writing-profile`: a yes answer (kind accept, option A, or clear affirmative text) → set it to `"strictest-available"`; a no answer → set it to `"clarity-baseline"`. Reopening `q-writing-profile` sets it to `null` and restores the baseline. Defer or no answer leaves the baseline active. This question is session metadata, not a topic decision.
    - `explore` → set the question's `explore`: `{ rows: [{ option, pros: [...], cons: [...] }] }`,
      one row per option in order, two to four pros and two to four cons each, specific to this
@@ -238,8 +222,6 @@ described there, then return to listening.
      set the question's `status: "reopened"`, append the quoted note to its `thread`, set
      its `rec` to what the note implies, and set `updated: true`. The answer changes only
      when the user answers the reopened question. The visual follows the note either way.
-     This applies to `q-domain` too: a reopen of it here puts `"domainModeling": null` in
-     the step 6 patch.
    - `finish` → see Finish below, after the other actions. The page sends it the moment the
      user confirms, with everything they had staged in front of it.
 3. If an answer changes the recommendation of a still-open question, give that question its
@@ -283,7 +265,11 @@ decisions in order:
 - Maintain `terms` as vocabulary settles: `term`, one-sentence `def`, and `avoid` (words
   not to use for it). Use the terms consistently in later questions.
 - Set `durable: true` on a question whose decision passes all three gates: hard to reverse,
-  surprising without context, a real trade-off. Everything else is a routine choice.
+  surprising without context, a real trade-off. Everything else is a routine choice. The flag
+  marks candidates for a Locked decision in the design doc and is a **hint, not a filter** for
+  the ADR pipeline at Finish: Finish re-derives the roster from the answers, so a decision
+  marked routine can still earn an ADR and a marked one can still be skipped. See
+  `$SKILL/domain-brief.md` for the pipeline that decides.
 - Stop asking when the tree is walked. Say so with `note`; do not pad with filler questions.
 
 ## Writing clarity and profiles
@@ -392,13 +378,18 @@ also be changed this way ("write the doc to …" → patch `"doc"`).
 
 ## Finish
 
-On a `finish` action, or when the user says finish in the terminal:
+On a `finish` action, or when the user says finish in the terminal. The sequence is fixed;
+each step names what it produces.
 
-1. If `domainModeling` is true — in state or in the changes collected for this send's
-   patch, a `q-domain` reopen/revoke among them turning it off — write the repo-level docs
-   per `$SKILL/domain-brief.md`, **ADRs before the design doc**: the doc cites their
-   numbers.
-   (a) **locate the locations first**: run `node $SKILL/server.mjs glossary --session
+1. **Confirm the interview is closed.** Every open/reopened question is either answered or
+   recorded as deferred before any artifact is written. Never write standing docs over an
+   unresolved interview: a question still open when Finish is pressed goes under Deferred (or
+   Open threads when it was published and never answered), not into a Locked decision.
+2. **Merge the glossary** per `$SKILL/domain-brief.md`, create lazily (only when this grill
+   settled at least one term). It goes **before the ADRs**: the glossary fixes the canonical
+   term and its _Avoid_ list, and an ADR is immutable, so writing ADRs first could freeze
+   non-canonical vocabulary into a file correctable only by supersession.
+   (a) **locate the location first**: run `node $SKILL/server.mjs glossary --session
    <session>`. `map: false` → the repo-root `GLOSSARY.md`. `map: true` → the repo scopes one
    glossary per bounded context: match this grill's topic and intent to the single clear
    candidate in `contexts` (the brief gives the criteria) and use it — merge the context's
@@ -406,25 +397,18 @@ On a `finish` action, or when the user says finish in the terminal:
    alongside), create it in the context's `folder` when it does not. No
    clear match or several → ask the user in the terminal, offering the candidates, then
    `fallback`, then "no glossary this grill", and use their answer.
-   (b) **ADRs**: take the answered questions with `durable: true` and cluster them into
-   the decisions they settle, split any that state two independently-changeable
-   commitments, then screen each group (the brief gives the three tests) — a decision
-   that fails the screen gets no ADR and stays a Locked decision in the design doc. For
-   every decision that survives, run
+   (b) merge this grill's terms into the located file (merge, never clobber).
+3. **Run the decision pipeline** and write one ADR per surviving decision, per
+   `$SKILL/domain-brief.md` — roster, eligibility by subject, cluster, split, screen,
+   alternatives. For every decision that survives, run
    `node $SKILL/server.mjs adr --session <session> --folder <adr-folder> --title "<decision title>"`
    — the folder is the matched context's `adr` from `glossary`, else `fallbackAdr` — which
    scaffolds the file with the next free number, the date and the author; then fill its
-   sections per the brief. Keep the paths it prints.
-   (c) **the glossary**: merge this grill's terms into the located file (create lazily;
-   merge, never clobber).
-   (d) remember the paths — the step that patches `finished` must then also include
-   `"glossary": <path>` (when the glossary was written, wherever it resolved to) and
-   `"adrs": [<paths…>]` (when any
-   ADR was written — one entry per file, never one per decision), alongside `doc`/`at` as
-   that step already does. Neither was written: leave the key out.
-2. Write the design doc to `doc` (relative to the project root). It is exhaustive and
+   sections per the brief. Keep the paths it prints, and the counts
+   (durable questions, decisions, ADRs, skipped) for step 8.
+4. **Write the design doc** to `doc` (relative to the project root). It is exhaustive and
    self-contained, in this order: a one-paragraph summary (linking `visual.html` in the doc's
-   folder when there is one, see step 4); **Terms** (each with its
+   folder when there is one, see step 5); **Terms** (each with its
    Avoid list); **Why** (the problem in the user's words); **Locked decisions** (every
    `durable` question: the decision, the rejected options and why each lost; when that
    decision has an ADR, end the bullet with `→ ADR-NNNN` — the same pointer on every
@@ -434,32 +418,47 @@ On a `finish` action, or when the user says finish in the terminal:
    (deferred questions, with what would reopen them); **Open threads** (discussion points
    that ended without a decision, plus every question that was published and never answered —
    a reader must see what is still open; name each one, never leave it out). The
-   domain-modeling-mode question (`q-domain`) and writing-profile question (`q-writing-profile`)
-   are session metadata, not topic decisions. They appear in **no** section — not as decisions,
-   routine choices, or notes about glossary, ADR, or profile processing. Do not compress: a
-   reader with no access to the session must be able to build from it.
-3. Patch `"finished": { "doc": … }` and `"agent": { "status": "waiting" }`
-   (after a page Finish this is the send's one patch, with `handled`); the page shows the
-   finished banner and locks staging.
-4. If `state.visual` exists, it must be reconciled with every answered question before it
-   is exported. If no draw is in flight and it is not stale and nothing disagrees, copy
-   `<session>/visual.html` to `visual.html` in the design doc's folder (create the folder if
-   needed; the visual always sits beside the doc — same folder wherever `--doc` points; if
-   `--doc` leaves the project, the visual follows it out; prefer a project-relative path) and
-   add `"visual": <that path>` to `finished` (it is replaced whole, so give `doc` again —
-   and `glossary`/`adrs` when domain-modeling mode wrote them — or fold it into the step 3
-   patch). Otherwise request one
-   reconciling draw (or let the in-flight one land), return to listening, and when it lands
-   copy the file and patch `finished` with `visual` then (it is replaced whole, so give
-   `doc` again — and `glossary`/`adrs` when domain-modeling mode wrote them; the server
-   stamps `at`).
-5. Once there is no draw in flight and the exports are complete, stop the persistent
-   Monitor with TaskStop; with `grill_attach`, call `grill_detach` first; in every case
-   stop the server with the verified `pid` in `<session>/server.json`.
-6. Print one line with the doc path (and the visual's, plus the glossary's path and the ADRs when
-   domain-modeling mode wrote them). When durable decisions produced no ADR, say how many
-   ("…, 2 ADRs to docs/adr/, 3 durable decisions had no ADR") — the page banner only
-   counts the files that exist. End.
+   writing-profile question (`q-writing-profile`) is session metadata, not a topic decision:
+   it appears in **no** section — not as a decision, routine choice, or note about profile
+   processing. An old session's `q-domain` is not special either, but drop it from every
+   section for the same reason it was never a topic decision. Do not compress: a reader with
+   no access to the session must be able to build from it.
+5. **Spec readiness** (see the section below): emit the one-line verdict — `recommended`,
+   `not warranted`, or `blocked` — derived from the issue anchor. Write no spec file.
+6. **Reconcile and export the visual.** If `state.visual` exists, it must be reconciled with
+   every answered question before it is exported. If no draw is in flight and it is not stale
+   and nothing disagrees, copy `<session>/visual.html` to `visual.html` in the design doc's
+   folder (create the folder if needed; the visual always sits beside the doc — same folder
+   wherever `--doc` points; if `--doc` leaves the project, the visual follows it out; prefer a
+   project-relative path). Otherwise request one reconciling draw (or let the in-flight one
+   land) and copy it when it lands.
+7. **Patch `finished`** — `"finished": { "doc": …, "at" is stamped }` plus, when they were
+   written, `"glossary": <path>`, `"adrs": [<paths…>]` (one entry per file, never per
+   decision), `"visual": <path>`, and `"pipeline": { "durable", "decisions", "written",
+   "skipped" }`. It replaces whole, so give every key you want kept. Also patch
+   `"agent": { "status": "waiting" }`; after a page Finish this is the send's one patch, with
+   `handled`. The page shows the finished banner and locks staging.
+8. **Stop cleanly.** Once there is no draw in flight and the exports are complete: with
+   `grill_attach`, call `grill_detach` first; stop the persistent Monitor with TaskStop; in
+   every case stop the server with the verified `pid` in `<session>/server.json`.
+9. **Hand off.** Print one line per artifact plus what is next — the doc path, the visual, the
+   glossary, the ADRs, the pipeline arithmetic (`6 durable → 2 decisions → 1 ADR, 1 skipped`;
+   the page banner only counts files that exist), the deferred count, the spec verdict, and
+   that the ADRs are reviewed by pull request. Then end.
+
+## Spec readiness
+
+At Finish, emit one line saying whether an **implementation spec** is the next step. Never
+write the spec: the template is the consuming repo's. Follow `$SKILL/spec-brief.md` — the
+division of labour (the issue owns *what*, the spec *how*, the ADR *why*), the work-shape
+signals, the issue anchor read from `.github/issue-tracker.json`, the stop conditions, and the
+verdict order.
+
+The rule in one sentence: an issue is a **prerequisite**, not a signal — a spec derives from an
+issue, so recommend it only when the implementation route is genuinely unsettled and an issue
+anchors it; say `blocked` (naming the tracker) when the route is unsettled but no issue matches;
+say `not warranted` when the work is small or easily reversible, whatever the tracker holds.
+Acceptance criteria stay in the issue: reference them, never restate them.
 
 ## Serve lifecycle (Extension monitor)
 
@@ -482,10 +481,11 @@ What each field means. You write it only through `patch`.
   "topic": "…", "intent": "why this grill exists, 1-2 sentences", "doc": ".grill-with-ui/x/design.md", "project": "/abs/path", "created": "ISO",
   "agent": { "status": "waiting|working", "since": "ISO", "handled": 3 },
   "note": "optional short sentence shown above the question list",
-  "domainModeling": true,  // domain-modeling mode on: Finish also writes GLOSSARY.md + docs/adr/ per domain-brief.md; absent = off
+  "domainModeling": true,  // LEGACY, accepted and ignored: the old opt-in flag. Never written by a new grill; old sessions still validate and Finish acts only on the pipeline
   "writingProfile": "clarity-baseline|strictest-available",  // optional; absent = clarity-baseline; strictest-available requires opt-in and lasts this grill
   "finished": { "doc": ".grill-with-ui/x/design.md", "visual": ".grill-with-ui/x/visual.html",
-                "glossary": "GLOSSARY.md", "adrs": ["docs/adr/0001-slug.md"], "at": "ISO" },  // only after Finish; glossary is project-relative —
+                "glossary": "GLOSSARY.md", "adrs": ["docs/adr/0001-slug.md"],
+                "pipeline": { "durable": 6, "decisions": 2, "written": 1, "skipped": 1 }, "at": "ISO" },  // only after Finish; glossary is project-relative —
                 // project-relative: repo-root GLOSSARY.md, or the matched bounded context's GLOSSARY.md in a
                 // GLOSSARY-MAP.md repo; the pre-rename field "context" is still accepted and still read
   "visual": {                                                   // only after a visualize action

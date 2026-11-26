@@ -91,9 +91,10 @@
   #nav .round { padding: 16px 20px 6px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); display: flex; justify-content: space-between; }
   #nav .round.current { color: var(--accent); }
   /* The card is two rows: a meta line carrying the identifier and its status, then the title at
-     the full width of the rail. A fixed leading column for the id could not hold `q-domain`
-     (48px) or `q-slice-boundary` (110px), so long slugs broke mid-word and squeezed the title
-     into three ragged lines; id length now costs nothing, and every card measures the same.
+     the full width of the rail. A fixed leading column for the id could not hold
+     `q-writing-profile` (48px) or `q-slice-boundary` (110px), so long slugs broke mid-word and
+     squeezed the title into three ragged lines; id length now costs nothing, and every card
+     measures the same.
      It is a real button so the rail is reachable and operable from the keyboard. */
   .item { display: grid; gap: 2px; width: 100%; padding: 8px 20px; border: 0; border-radius: 0; background: transparent; font: inherit; text-align: left; color: inherit; white-space: normal; cursor: pointer; }
   .item .meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -718,7 +719,15 @@ function withThreadScroll(fn) {
 }
 function renderBanner() {
   const b = $("banner");
-  if (S && S.finished) { b.className = "show done"; const f = S.finished, adrs = Array.isArray(f.adrs) ? f.adrs : [], ai = adrs.length ? Math.max(adrs[0].lastIndexOf("/"), adrs[0].lastIndexOf("\\")) : -1, adir = adrs.length ? (ai >= 0 ? adrs[0].slice(0, ai + 1) : adrs[0]) : ""; b.textContent = `Finished · the design doc was written to ${f.doc || S.doc || "the doc path"}${f.visual ? ", the visual to " + f.visual : ""}${f.context ? ", the glossary to " + f.context : ""}${adrs.length ? `, ${adrs.length} ADR${adrs.length === 1 ? "" : "s"} to ${adir}` : ""}${f.at ? " at " + timeOf(f.at) : ""}.`; }
+  if (S && S.finished) {
+    const f = S.finished, adrs = Array.isArray(f.adrs) ? f.adrs : [];
+    const ai = adrs.length ? Math.max(adrs[0].lastIndexOf("/"), adrs[0].lastIndexOf("\\")) : -1;
+    const adir = adrs.length ? (ai >= 0 ? adrs[0].slice(0, ai + 1) : adrs[0]) : "";
+    const gloss = f.glossary || f.context; // context = pre-rename sessions
+    const skipped = f.pipeline && Number.isInteger(f.pipeline.skipped) ? f.pipeline.skipped : 0;
+    b.className = "show done";
+    b.textContent = `Finished · the design doc was written to ${f.doc || S.doc || "the doc path"}${f.visual ? ", the visual to " + f.visual : ""}${gloss ? ", the glossary to " + gloss : ""}${adrs.length ? `, ${adrs.length} ADR${adrs.length === 1 ? "" : "s"} to ${adir}` : ""}${skipped > 0 ? ` (${skipped} decision${skipped === 1 ? "" : "s"} skipped)` : ""}${f.at ? " at " + timeOf(f.at) : ""}.`;
+  }
   else if (gone) { b.className = "show"; b.textContent = "Server gone. Resume the grill from the terminal; this tab reconnects by itself."; }
   else { b.className = ""; b.textContent = ""; }
 }
@@ -743,7 +752,7 @@ function renderHeader() {
   $("terms").innerHTML = (rows.length
     ? rows.map((t) => `<div class="term"><b>${esc(t.term)}</b> — ${esc(t.def)}${hasGloss ? `<span class="pill">${esc(t.pill)}</span>` : ""}${t.avoid && t.avoid.length ? `<div class="avoid">Avoid: ${t.avoid.map(esc).join(", ")}</div>` : ""}</div>`).join("")
     : `<div class="term" style="color:var(--ink-3)">No terms yet. The agent adds vocabulary here as it settles.</div>`)
-    + (glossaryMissing && S.domainModeling && !S.finished ? `<div class="glossary-note">The glossary is written at Finish.</div>` : "");
+    + (glossaryMissing && !S.finished ? `<div class="glossary-note">The glossary is written at Finish.</div>` : "");
   renderVisualizeButton();
   renderStatus();
 }

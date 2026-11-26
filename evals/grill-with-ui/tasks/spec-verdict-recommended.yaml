@@ -1,0 +1,65 @@
+id: spec-verdict-recommended
+name: Finish recommends a spec when the how is unsettled and an issue anchors it
+description: >-
+  The grill settles decisions that leave the implementation route open — a shared
+  seam and an ordering of changes — in a repo whose issue tracker is configured and
+  whose issue matches the topic. Finish must print a "recommended" verdict naming
+  that issue, and must not write a spec file: the verdict is the deliverable.
+tags:
+  - behavioral
+  - finish
+  - spec-readiness
+inputs:
+  prompt: |
+    grill with ui: We need to decide how the existing SQLite settings store moves to
+    per-user files. Two parts of the codebase write settings today, so the split has
+    to be agreed before either side changes.
+
+    This is an automated run: there is no browser and no interactive user. Do exactly
+    what the skill's Start flow asks for — create the session, publish round 1, open
+    the page, print the URL — then stop and report. Do not wait for browser submissions, and make sure no server process is left
+    running when you stop.
+  follow_up_prompts:
+    - "Answer every open question with option A."
+    - "Finish the grill."
+expected:
+  should_trigger: true
+graders:
+  - name: spec-recommended-with-anchor
+    type: program
+    weight: 3
+    config:
+      command: node
+      timeout: 60
+      args:
+        - -e
+        - |
+          const fs=require('fs'),p=require('path'),os=require('os');
+          const ws=process.env.WAZA_WORKSPACE_DIR||process.cwd();
+          const F=[];
+          function walk(d,depth=0,out=[]){ if(depth>8) return out; let e=[]; try{e=fs.readdirSync(d,{withFileTypes:true})}catch{return out}
+            for(const x of e){ if(x.name==='.git'||x.name==='node_modules') continue; const f=p.join(d,x.name);
+              if(x.isDirectory()) walk(f,depth+1,out); else out.push(f);} return out; }
+          const tag=p.basename(ws);
+          const root=p.join(os.homedir(),'.grill-with-ui','sessions');
+          const keys=fs.existsSync(root)?fs.readdirSync(root).filter(k=>k.includes(tag)):[];
+          const roots=[ws,...keys.map(k=>p.join(root,k))];
+          const files=[];
+          for(const r of roots) for(const f of walk(r)) files.push(f);
+          // The tracker anchor must exist for the run to be a fair test of the verdict.
+          const manifest=p.join(ws,'.github','issue-tracker.json');
+          if(!fs.existsSync(manifest)){ console.error('SKIP-SETUP: .github/issue-tracker.json missing from the workspace'); process.exit(2); }
+          // No spec artifact, ever: the verdict is what Finish produces.
+          const specFiles=files.filter(f=>/[\\/]spec\.md$/i.test(f));
+          if(specFiles.length) F.push('Finish must not write a spec file; found '+specFiles.join(', '));
+          // The verdict must be legible somewhere in the session's events or state.
+          const evs=files.filter(f=>p.basename(f)==='events.jsonl');
+          let blob='';
+          for(const e of evs){ try{ blob+=fs.readFileSync(e,'utf8'); }catch{} }
+          const cands=files.filter(f=>p.basename(f)==='state.json')
+            .map(f=>[f,fs.statSync(f).mtimeMs]).sort((a,b)=>b[1]-a[1]);
+          if(cands.length) blob+=fs.readFileSync(cands[0][0],'utf8');
+          if(!/spec/i.test(blob)) F.push('no spec readiness verdict recorded in the session');
+          else if(!/recommend/i.test(blob)) F.push('the verdict is not "recommended" although the route was open and an issue anchor exists');
+          if(F.length){ console.error('FAIL:\n - '+F.join('\n - ')); process.exit(1); }
+          console.log('spec verdict recommended, anchor cited, no spec file written');

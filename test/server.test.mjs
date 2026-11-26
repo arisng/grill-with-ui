@@ -341,7 +341,7 @@ test("glossary: a pre-rename CONTEXT-MAP.md still parses, through the legacy con
 
 // ---- adr: the server scaffolds the file, the agent fills it ----
 const ADR_SECTIONS = ["## Context and Problem Statement", "## Decision Drivers", "## Considered Options",
-  "## Decision Outcome", "### Technical Implementation", "## Consequences"];
+  "## Decision Outcome", "### Confirmation", "## More Information", "## Consequences"];
 
 test("adr: scaffolds the template with the number, the status and the date; the agent fills the sections", () => {
   const { session, project } = newSession(tmp("grill-adr-"), "Storage layout");
@@ -801,6 +801,19 @@ test("patch: finished.glossary and finished.adrs read back; the legacy finished.
   rejected(session, { finished: { adrs: ["docs/adr/0001-a.md", 2] } }, /finished\.adrs/);
   applied(session, { finished: { doc: "docs/design.md", context: "CONTEXT.md" } }); // finished is replaced whole
   assert.equal(stateOf(session).finished.context, "CONTEXT.md", "a pre-rename session finishing still validates");
+});
+
+test("patch: finished.pipeline records the decision arithmetic; only whole numbers are accepted", () => {
+  const session = seeded({ questions: [qn("q1", 1)] });
+  applied(session, { finished: { doc: "docs/design.md", pipeline: { durable: 6, decisions: 2, written: 1, skipped: 1 } } });
+  assert.deepEqual(stateOf(session).finished.pipeline, { durable: 6, decisions: 2, written: 1, skipped: 1 });
+  applied(session, { finished: { doc: "docs/design.md", pipeline: {} } }); // every key is optional
+  assert.deepEqual(stateOf(session).finished.pipeline, {});
+  applied(session, { finished: { doc: "docs/design.md", pipeline: { written: 0 } } });
+  rejected(session, { finished: { pipeline: 3 } }, /finished\.pipeline/);
+  rejected(session, { finished: { pipeline: { skipped: -1 } } }, /finished\.pipeline/);
+  rejected(session, { finished: { pipeline: { skipped: "1" } } }, /finished\.pipeline/);
+  rejected(session, { finished: { pipeline: { skipped: 1.5 } } }, /finished\.pipeline/);
 });
 
 test("patch: terms are keyed by term; a known term is replaced whole, a new one appended", () => {

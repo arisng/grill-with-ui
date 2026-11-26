@@ -22,8 +22,8 @@ file holds the rules; follow every one.
 
 The questions are the source of truth; the visual is derived from them.
 
-- The session-meta questions (ids `q-domain` and `q-writing-profile`) are not design
-  decisions: do not draw them.
+- The session-meta question (id `q-writing-profile`) is not a design
+  decision: do not draw it.
 - **Answered** question: draw the decision, plain.
 - **Open, reopened, or deferred** question: draw its recommended option and mark that region
   **assumed · Qn open** (dashed outline, or a small tag in the corner), so the visual reads

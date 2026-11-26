@@ -35,7 +35,7 @@ Use this question:
 - Body: name the detected text type and say how stricter checks may reduce ambiguity. Explain that full ASD-STE100 compliance cannot be claimed because the official word list is unavailable.
 - Options: A "Yes — use the strictest available profile for this grill"; B "No — keep the clarity baseline".
 - Recommend A only when the detected text benefits from stricter checks. State the trade-off, such as less natural phrasing or the need to keep longer wording for precision.
-- Set `durable: false`. This question is session metadata, like `q-domain`, and never a topic decision.
+- Set `durable: false`. This question is session metadata and never a topic decision.
 
 Do not enable strict mode before the user opts in. Only a clear affirmative answer activates it. If the answer is unclear, ask for an explicit choice and keep the baseline active. An unanswered, declined, or deferred question leaves the baseline active. Do not ask again after the user declines. The profile lasts for this grill only. A new grill starts at the baseline. If the user reopens `q-writing-profile`, clear `writingProfile` so the baseline applies until the user answers again.
 

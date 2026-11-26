@@ -10,8 +10,9 @@ metadata:
 `$REPO` is this repo's root. The fork is `arisng/grill-with-ui`; the code upstream is
 `jasonku09/grill-with-ui`; the method lineage is `mattpocock/skills`.
 
-**Never merge upstream wholesale.** The fork is not a mirror: it carries domain-modeling
-mode, responsive tiers, a writing-clarity profile, a Taskfile, a waza eval suite, and its
+**Never merge upstream wholesale.** The fork is not a mirror: it carries the decision
+pipeline (glossary + ADRs gated at Finish), responsive tiers, a writing-clarity profile, a
+Taskfile, a waza eval suite, and its
 own dark theme. Upstream's equivalents are older or differently shaped. Every incoming
 change is classified and then either adopted as-is, adapted to the fork's shape, deferred,
 or skipped on purpose. Blind application is the failure mode this skill exists to prevent.
@@ -188,13 +189,14 @@ decide whether the fork needs the capability at all. A deliberate skip is a DEFE
 record it.
 
 **Schema compatibility.** The fork's `validateState` accepts fields upstream's does not
-(`domainModeling`, `writingProfile`), and upstream accepts fields the fork's does not
+(`writingProfile`, `finished.pipeline`, and the legacy `domainModeling` it now ignores), and
+upstream accepts fields the fork's does not
 (`multi`, `rec.options`, `answer.options`). After a sync that touches `server.mjs` or
 `SKILL.md`, confirm the fork's own fields are still accepted and that the two schemas
 have not silently drifted apart:
 
 ```sh
-git diff <base>..HEAD -- skills/grill-with-ui/server.mjs | grep -E '^\+.*(domainModeling|writingProfile)'
+git diff <base>..HEAD -- skills/grill-with-ui/server.mjs | grep -E '^\+.*(domainModeling|writingProfile|pipeline)'
 ```
 
 **Long divergence.** Per-commit cherry-picking is right while the gap is a few dozen

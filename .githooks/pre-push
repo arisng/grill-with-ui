@@ -1,0 +1,22 @@
+#!/bin/sh
+# Pre-push gate: run the local CI before anything leaves this machine.
+#
+# No cloud CI runs for this repo, so this hook is the guardrail. It is version-controlled
+# (git does not track .git/hooks) and enabled once with `task hooks:install`, which points
+# `core.hooksPath` at this folder.
+#
+# `scripts/ci.mjs --fast` is the cheap subset: contract, issue store, offline eval graders,
+# sound cues, unit and extension tests. The browser suites are skipped because a push should
+# not need Playwright; run `node scripts/ci.mjs` for those.
+#
+# Bypass deliberately (a docs-only push, a work-in-progress branch):
+#   git push --no-verify
+echo "pre-push: running the local gate (scripts/ci.mjs --fast)..."
+if node scripts/ci.mjs --fast; then
+  echo "pre-push: gate green"
+  exit 0
+fi
+echo ""
+echo "pre-push: gate FAILED - push blocked."
+echo "  Fix the failing step above, or bypass deliberately with: git push --no-verify"
+exit 1

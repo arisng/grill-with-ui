@@ -89,8 +89,9 @@ skill's Installation gate cleans for you):
    migration.
 
 This repository is a fork of [jasonku09/grill-with-ui](https://github.com/jasonku09/grill-with-ui),
-which remains the upstream code source. The fork adds domain-modeling mode (a `GLOSSARY.md`
-glossary and ADRs), a responsive layout for phone and tablet, a writing-clarity profile, a
+which remains the upstream code source. The fork adds the decision pipeline (a `GLOSSARY.md`
+glossary and one ADR per eligible decision, gated at Finish rather than opted into up front),
+a responsive layout for phone and tablet, a writing-clarity profile, a
 Taskfile, and an evaluation suite. Install from the fork to get those; the upstream
 repository stays the place to watch for new upstream work. See
 [Keeping the fork in sync](#keeping-the-fork-in-sync) below.
@@ -167,15 +168,24 @@ the **Questions** button between them opens the list and shows where you are (`1
 Everything staged survives opening and closing those panels. The visual is view-only on a
 phone — send feedback on it from a wider window.
 
-The first question of every grill asks whether settled terms and durable decisions should
-also be kept as standing files — a `GLOSSARY.md` glossary and one ADR per architecturally
-significant decision, the big hard-to-reverse choices, grouped where several questions
-settle the same one — alongside the design doc, which is written
-either way; no (the default) changes nothing else. The glossary goes to the project root,
+The first question of every grill is a topic question: the grill no longer asks permission to
+keep standing files. At Finish it always runs a decision pipeline, and the pipeline — not a
+round-1 promise — decides what earns a record. Settled terms go to a `GLOSSARY.md` glossary;
+architecturally significant decisions become one ADR each. Both are written
+alongside the design doc, which is written
+either way. The glossary goes to the project root,
 except in a repo that keeps a `GLOSSARY-MAP.md` at its root: there the root belongs to the
 context map, so Finish reads it, lands the glossary in the bounded context this topic
 belongs to — asking you to confirm when the match is unclear — and writes the ADRs into
 that context's own `docs/adr/` or `.docs/adr/`.
+
+The pipeline has five stages, and a decision can leave it at any of them: **roster** (the
+`durable` flag is a hint, not a filter — a routine-flagged answer can still earn an ADR),
+**eligibility by subject** (system shape, core stack or infrastructure, a cross-cutting
+standard, a deliberate exception, a deprecation — product scope and easily reversible choices
+are out), **cluster**, **split**, then **screen** as a tie-breaker only. A group with no real
+alternatives gets no record. Zero ADRs is a valid, visible outcome: the decision stays a Locked
+decision in the design doc, and Finish reports the arithmetic.
 
 The header **Terms** panel also shows the project's standing glossary once it exists —
 from the root `GLOSSARY.md` (a legacy `CONTEXT.md` still works), or from wherever Finish recorded a scoped one —
@@ -221,8 +231,9 @@ reconciles and copies the final visual next to the design doc as
 
 **Finish grill** sends at once (after an inline confirm), together with anything you had
 staged; the agent writes the design doc to the path shown in the header (default
-`.grill-with-ui/<yymmdd>-<topic-slug>/design.md` in your project), plus the glossary and ADRs in
-domain-modeling mode, and stops.
+`.grill-with-ui/<yymmdd>-<topic-slug>/design.md` in your project), plus whatever the decision
+pipeline admitted — a glossary and ADRs — and then reports a spec readiness verdict. Then it
+stops.
 
 To pick up an unfinished grill, in the same project:
 
@@ -256,16 +267,25 @@ sort chronologically without opening them. These are committed deliverables: com
 `.grill-with-ui/` (it is the
 product), or gitignore it deliberately if you don't want them in the repo.
 
-Only in domain-modeling mode does Finish also write these standing files: `GLOSSARY.md`
+Only when the pipeline admits a decision does Finish also write standing files: `GLOSSARY.md`
 (merged into, never overwritten; the project root, or the matched bounded context's file
 when a `GLOSSARY-MAP.md` scopes it; a legacy `CONTEXT.md` is renamed on first contact)
 and `NNNN-slug.md` in `docs/adr/` or that context's
 ADR folder, recorded in
-`finished.glossary`/`finished.adrs`. Each ADR follows one template — status, date,
-authors, context, drivers, the options that were weighed, the outcome, and the
-consequences — and records **one decision**, not one question: durable questions that
-settle the same choice share a file, and a durable choice too small to be worth a record
+`finished.glossary`/`finished.adrs`, with the pipeline's counts in `finished.pipeline`. Each ADR
+follows one template — status, date,
+authors, context, drivers, the options that were weighed, the outcome, how it is confirmed, and
+the consequences — and records **one decision**, not one question: questions that
+settle the same choice share a file, and a decision too small to be worth a record
 keeps its place in the design doc alone.
+
+Finish ends with a handoff line per artifact, then a **spec readiness verdict**: whether an
+implementation spec is the next step. The grill never writes one, and the template belongs to
+your repo. The verdict is `recommended` only when the implementation route is genuinely
+unsettled *and* an issue in your tracker anchors it, `blocked` when the route is unsettled but
+no issue matches, and `not warranted` for small or easily reversible work. A spec derives from
+an issue — the issue owns *what*, the spec *how*, the ADR *why* — and acceptance criteria stay
+in the issue.
 
 In this repo, `skills/grill-with-ui/` holds the installable skill — `SKILL.md` (the
 prompt the agent follows), `server.mjs` (the server and CLI), `page.html` (the page),
@@ -306,16 +326,40 @@ state.
 ## Tests
 
 ```sh
-node --test test/server.test.mjs
-PLAYWRIGHT_PKG=/path/to/node_modules/@playwright/test/index.mjs node test/page.e2e.mjs
+node scripts/ci.mjs           # the whole local gate (contract, issues, evals, tests, browser)
+node scripts/ci.mjs --fast    # everything except the browser suites
 
 # or, with Task (taskfile.dev) installed — thin aliases over the same commands:
+task check       # node scripts/ci.mjs + the design detector
+task check:fast  # the cheap gate: what the pre-push hook runs
 task test        # unit tests, skipping the three documented as broken on Windows
 task test:ext    # grill-monitor extension tests (SDK stubbed, real wait CLI)
 task test:e2e    # the page check (normalises a raw Windows PLAYWRIGHT_PKG path)
-task check       # all three suites, plus the design detector
+task hooks:install  # run the gate automatically on every git push
 task             # list every task
 ```
+
+**There is no cloud CI, by design.** `scripts/ci.mjs` is the gate, and `task hooks:install`
+points `core.hooksPath` at the version-controlled `.githooks/`, so `git push` runs
+`scripts/ci.mjs --fast` first — contract, issue store, offline eval graders, sound cues, unit
+and extension tests — and a blocked push names the failing step (`git push --no-verify`
+bypasses one push deliberately). The browser suites stay a deliberate local run: they are
+skipped with a notice when `PLAYWRIGHT_PKG` is unset, so a machine without Playwright still
+runs everything else.
+
+Three of those gates exist to keep the repo's own rules true, and each is itself tested:
+
+- `node scripts/check-contract.mjs` — the pipeline, the ADR section list, the spec verdict
+  names and the version agree across `SKILL.md`, `domain-brief.md`, `spec-brief.md`,
+  `adr-template.md`, the repo instructions, the design docs and `server.mjs`. It also fails if
+  the removed `q-domain` question reappears, and if the unit-test skip list grows past its
+  three documented entries.
+- `node scripts/check-evals.mjs` — runs every waza grader against a good fixture **and** a
+  drifted one, because `waza run` needs a live model and a grader that cannot fail is
+  decoration. 11/11 verified.
+- `node scripts/check-issues.mjs` — the issue store and its generated tree agree; plain Node,
+  so it runs anywhere (the issue-tracking skill's own scripts need `pwsh` and a machine-local
+  path).
 
 The page check needs Playwright with Chromium; point `PLAYWRIGHT_PKG` at an existing install
 or run it with `@playwright/test` installed next to the repo. It starts a real server on a
@@ -340,10 +384,13 @@ routing prompts the main spec also picks up.
 
 | Task | What it pins down |
 |------|-------------------|
-| `start-grill` | `server.mjs new` → patch round 1 (`q-domain` first, then topic questions with options, a recommendation and a why) → open the page → print the URL |
-| `answer-glossary-yes` | a terminal answer on `q-domain` sets `domainModeling: true` |
+| `start-grill` | `server.mjs new` → patch round 1 (topic questions with options, a recommendation and a why, with no setup question) → open the page → print the URL |
+| `finish-domain-docs` | Finish writes the glossary (when terms settled) and one ADR per eligible decision, recording both plus `finished.pipeline` |
+| `finish-no-adr-for-product-scope` | a product-scope and priority grill writes the design doc but **no** ADR — the subject gate rejects it |
+| `spec-verdict-recommended` | an unsettled implementation route plus a matching issue yields a `recommended` spec verdict, and no spec file is written |
+| `spec-verdict-not-warranted` | a single reversible choice yields `not warranted`, never `blocked` — no issue is demanded for work that needs none |
+| `spec-verdict-blocked` | a warranted spec with no matching issue yields `blocked`, naming the tracker |
 | `finish-design-doc` | Finish writes the self-contained design doc with its prescribed sections and records it in `finished` |
-| `finish-domain-docs` | domain-modeling mode also writes `GLOSSARY.md` and one ADR per significant decision |
 | `patch-only-no-direct-write` | the skill overrides a request to hand-edit `state.json` — the change goes through `patch` |
 | `extension-attach` | `grill_attach` is called, `server.mjs wait` never is, round 1 lands, and the monitor is detached at stop |
 | `negative-trigger` | a design-adjacent request does not start a grill |
@@ -409,7 +456,8 @@ Commits that change the server's request handling — a host check, an origin ch
 body cap, a CSP sandbox — are flagged `[security]`, because the fork is behind upstream
 on those today.
 
-**Never merge upstream wholesale.** The fork's own shape — domain-modeling mode, the
+**Never merge upstream wholesale.** The fork's own shape — the decision pipeline (no opt-in
+question, ADRs gated at Finish), the
 responsive tiers, the writing-clarity profile, the Taskfile, the eval suite, and the
 client-side three-state dark theme — is not upstream's, and upstream's equivalents
 (server-backed theme, a different `state.json`) are not drop-in replacements. A commit's

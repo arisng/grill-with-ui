@@ -1,0 +1,62 @@
+id: spec-verdict-blocked
+name: Finish blocks a warranted spec when no issue anchors it
+description: >-
+  The decisions leave the implementation route open, so a spec is warranted, but no
+  issue in the configured tracker matches the topic. The verdict must be "blocked",
+  naming the tracker and saying the spec derives from an issue — a spec is derived
+  from an issue, so there is nothing to derive from yet.
+tags:
+  - behavioral
+  - finish
+  - spec-readiness
+inputs:
+  prompt: |
+    grill with ui: We need to design the migration of the settings store from a single
+    SQLite file to per-user files, while the CLI, the daemon and the tests all keep
+    reading settings during the move.
+
+    This is an automated run: there is no browser and no interactive user. Do exactly
+    what the skill's Start flow asks for — create the session, publish round 1, open
+    the page, print the URL — then stop and report. Do not wait for browser submissions, and make sure no server process is left
+    running when you stop.
+  follow_up_prompts:
+    - "Answer every open question with option A."
+    - "Finish the grill."
+expected:
+  should_trigger: true
+graders:
+  - name: spec-blocked-without-issue
+    type: program
+    weight: 3
+    config:
+      command: node
+      timeout: 60
+      args:
+        - -e
+        - |
+          const fs=require('fs'),p=require('path'),os=require('os');
+          const ws=process.env.WAZA_WORKSPACE_DIR||process.cwd();
+          const F=[];
+          function walk(d,depth=0,out=[]){ if(depth>8) return out; let e=[]; try{e=fs.readdirSync(d,{withFileTypes:true})}catch{return out}
+            for(const x of e){ if(x.name==='.git'||x.name==='node_modules') continue; const f=p.join(d,x.name);
+              if(x.isDirectory()) walk(f,depth+1,out); else out.push(f);} return out; }
+          const tag=p.basename(ws);
+          const root=p.join(os.homedir(),'.grill-with-ui','sessions');
+          const keys=fs.existsSync(root)?fs.readdirSync(root).filter(k=>k.includes(tag)):[];
+          const roots=[ws,...keys.map(k=>p.join(root,k))];
+          const files=[];
+          for(const r of roots) for(const f of walk(r)) files.push(f);
+          const specFiles=files.filter(f=>/[\\/]spec\.md$/i.test(f));
+          if(specFiles.length) F.push('Finish must not write a spec file, especially when the anchor is missing; found '+specFiles.join(', '));
+          const evs=files.filter(f=>p.basename(f)==='events.jsonl');
+          let blob='';
+          for(const e of evs){ try{ blob+=fs.readFileSync(e,'utf8'); }catch{} }
+          const cands=files.filter(f=>p.basename(f)==='state.json')
+            .map(f=>[f,fs.statSync(f).mtimeMs]).sort((a,b)=>b[1]-a[1]);
+          if(cands.length) blob+=fs.readFileSync(cands[0][0],'utf8');
+          if(!/spec/i.test(blob)) F.push('no spec readiness verdict recorded in the session');
+          else if(!/blocked/i.test(blob)) F.push('the verdict must be "blocked" when a spec is warranted but no issue matches');
+          if(!/issue/i.test(blob)) F.push('a blocked verdict must say the spec derives from an issue');
+          if(/recommend/i.test(blob) && !/blocked/i.test(blob)) F.push('must not recommend a spec with no issue to derive it from');
+          if(F.length){ console.error('FAIL:\n - '+F.join('\n - ')); process.exit(1); }
+          console.log('spec verdict blocked, issue named, no spec file written');

@@ -62,8 +62,13 @@ with the detach/heartbeat port issue above.
 - `GET /glossary` (with `/context` as read alias) — Terms panel merges live
   `state.terms` with the repo's `GLOSSARY.md`; `glossary`/`context`/`adr` CLI
   commands; `finished.glossary` / `finished.adrs`.
-- Domain-modeling mode — `q-domain`, top-level `domainModeling`, Finish writes
-  GLOSSARY.md + ADRs (legacy `CONTEXT*.md` read everywhere, written never).
+- The **decision pipeline** — no round-1 opt-in question; Finish always runs
+  roster → eligibility by subject → cluster → split → screen and writes
+  GLOSSARY.md + one ADR per surviving decision (legacy `domainModeling` accepted, ignored;
+  legacy `CONTEXT*.md` read everywhere, written never); `finished.pipeline` records the counts.
+- **Spec readiness verdict** at Finish (`spec-brief.md`, no `SKILL.md` bulk) — `recommended` /
+  `not warranted` / `blocked`, anchored to an issue read from `.github/issue-tracker.json`
+  (read-only; that manifest belongs to the `issue-tracking` skill).
 - Visual contract — `visual.queued`, `version` bump rules, `stale` flag.
 - **Client-side three-state theme** (`localStorage grill-theme`, deliberately
   not agent-owned state) — upstream's server-backed theme (`__GRILL_THEME__`,

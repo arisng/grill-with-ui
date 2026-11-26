@@ -15,7 +15,8 @@
 name: grill-with-ui-eval
 description: >-
   Behavioral evaluation for grill-with-ui: session bootstrap, patch-only state
-  ownership, terminal answers, domain-modeling mode, Finish artefacts, and routing.
+  ownership, terminal answers, the Finish decision pipeline, spec-readiness
+  verdicts, Finish artefacts, and routing.
 skill: grill-with-ui
 version: "1.0"
 config:

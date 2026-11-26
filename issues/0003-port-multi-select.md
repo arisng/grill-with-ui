@@ -39,7 +39,8 @@ Upstream commit (tier REWORK):
 
 - [ ] A question with `multi: true` lets the user stage several options
 - [ ] Unknown fields are still rejected: a typo'd field fails validation
-- [ ] Fork-only fields (`domainModeling`, `writingProfile`) still validate —
+- [ ] Fork-only fields (`writingProfile`, `finished.pipeline`, and the legacy
+      `domainModeling` it still accepts) still validate —
       schema compatibility check from the skill passes
 - [ ] `task test` green; ripple checklist completed
 

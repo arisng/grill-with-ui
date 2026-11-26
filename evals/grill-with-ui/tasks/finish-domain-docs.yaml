@@ -1,13 +1,14 @@
 id: finish-domain-docs
-name: Finish in domain-modeling mode writes GLOSSARY.md and ADRs
+name: Finish writes the glossary and one ADR per eligible decision
 description: >-
-  The user opts into domain-modeling mode, answers the questions and finishes.
-  The agent must write the repo-level glossary and one ADR per significant
-  durable decision, and record both in state.finished.
+  The user grills a storage-location decision — an architectural/stack choice that
+  belongs in the decision log — and finishes. The agent must write the glossary
+  (when the grill settled terms) and at least one ADR, record both in
+  state.finished, and record the pipeline arithmetic there too.
 tags:
   - behavioral
   - finish
-  - domain-modeling
+  - decision-pipeline
 inputs:
   prompt: |
     grill with ui: We need to decide where a small CLI keeps per-user settings — a
@@ -18,7 +19,6 @@ inputs:
     the page, print the URL — then stop and report. Do not wait for browser submissions, and make sure no server process is left
     running when you stop.
   follow_up_prompts:
-    - "Answer the glossary question with Yes — that is option A."
     - "Answer every open question with option A."
     - "Finish the grill."
 expected:
@@ -48,7 +48,7 @@ graders:
           const roots=[ws,...keys.map(k=>p.join(root,k))];
           const files=[];
           for(const r of roots) for(const f of walk(r)) files.push(f);
-          const ctx=files.filter(f=>p.basename(f)==='GLOSSARY.md');
+          const gl=files.filter(f=>p.basename(f)==='GLOSSARY.md');
           const adrDir=p.join(ws,'docs','adr');
           const adrs=fs.existsSync(adrDir)?fs.readdirSync(adrDir).filter(n=>n.endsWith('.md')):[];
           const cands=files.filter(f=>p.basename(f)==='state.json')
@@ -56,31 +56,39 @@ graders:
           if(!cands.length){ console.error('FAIL: no grill session state.json in this task workspace. Roots: '+roots.join(', ')); process.exit(1); }
           const best=cands[0][0];
           const s=JSON.parse(fs.readFileSync(best,'utf8'));
-          if(s.domainModeling!==true) F.push('domainModeling is not true');
           const fin=s.finished||{};
+          // The old opt-in flag is dead: a new session must not write it, and a
+          // legacy one must not gate anything.
+          if(s.domainModeling!==undefined) F.push('domainModeling must not be written by a new session: '+JSON.stringify(s.domainModeling));
+          if(!fin.doc) F.push('finished.doc missing');
           // The glossary is created lazily: only when the grill settled terms.
           const terms=(s.terms||[]).length;
           if(terms){
-            if(!ctx.length) F.push('the grill settled terms but no GLOSSARY.md glossary was written');
+            if(!gl.length) F.push('the grill settled terms but no GLOSSARY.md glossary was written');
             else {
-              const text=fs.readFileSync(ctx[0],'utf8');
+              const text=fs.readFileSync(gl[0],'utf8');
               if(!/##\s*Language/i.test(text)) F.push('GLOSSARY.md has no "## Language" section');
               if(!/\*\*.+\*\*/.test(text)) F.push('GLOSSARY.md has no bold-term entry');
             }
             if(!fin.glossary) F.push('finished.glossary missing (glossary path)');
           } else if(fin.glossary) F.push('finished.glossary points at a glossary that was never written');
-          // An ADR exists per significant durable decision that was actually
-          // settled. Zero ADRs is the correct outcome when every durable
-          // question is still open, so the check is conditional.
-          const settled=(s.questions||[]).filter(q=>q.durable===true && q.status==='answered');
+          // This topic is a storage/infrastructure choice, so the pipeline's subject
+          // gate admits it: at least one ADR is required once a question was answered.
+          const settled=(s.questions||[]).filter(q=>q.status==='answered' && q.id!=='q-domain' && q.id!=='q-writing-profile');
           if(settled.length){
-            if(!adrs.length) F.push('a durable decision was settled but no ADR was written under docs/adr/');
+            if(!adrs.length) F.push('an architectural decision was settled but no ADR was written under docs/adr/');
             else {
               const body=fs.readFileSync(p.join(adrDir,adrs[0]),'utf8');
               if(!/^#\s*\d{4}:/m.test(body)) F.push('ADR does not start with "# NNNN: title": '+adrs[0]);
               if(!/Decision Outcome/i.test(body)) F.push('ADR has no "Decision Outcome" section');
+              if(!/Confirmation/i.test(body)) F.push('ADR has no "Confirmation" section');
+              if(/Technical Implementation/i.test(body)) F.push('ADR still carries the removed "Technical Implementation" section');
             }
             if(!Array.isArray(fin.adrs)||!fin.adrs.length) F.push('finished.adrs missing (ADR paths)');
-          } else if((fin.adrs||[]).length) F.push('finished.adrs lists ADRs but no durable decision was settled');
+          } else if((fin.adrs||[]).length) F.push('finished.adrs lists ADRs but no decision was settled');
+          // The pipeline arithmetic is recorded so a skip leaves a trace in state.
+          const pl=fin.pipeline;
+          if(!pl||typeof pl!=='object') F.push('finished.pipeline missing (the decision arithmetic)');
+          else if(!Number.isInteger(pl.decisions)||!Number.isInteger(pl.written)) F.push('finished.pipeline needs whole-number decisions and written: '+JSON.stringify(pl));
           if(F.length){ console.error('FAIL:\n - '+F.join('\n - ')); process.exit(1); }
-          console.log('glossary + '+adrs.length+' ADR(s) written, '+settled.length+' durable decision(s) settled, '+terms+' term(s)');
+          console.log('glossary + '+adrs.length+' ADR(s) written, '+settled.length+' question(s) settled, '+terms+' term(s), pipeline '+JSON.stringify(pl||{}));

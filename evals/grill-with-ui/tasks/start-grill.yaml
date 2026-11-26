@@ -2,8 +2,8 @@ id: start-grill
 name: Start a grill and publish round 1
 description: >-
   The agent must create the session with server.mjs new, patch round 1 through
-  server.mjs patch (q-domain first, then one to three topic questions that carry
-  options, a recommendation and a why), open the page server and print the URL.
+  server.mjs patch (one to three topic questions carrying options, a recommendation
+  and a why, with no setup question), open the page server and print the URL.
   state.json must never be written with a file-write tool.
 golden: true
 tags:
@@ -55,18 +55,12 @@ graders:
           const qs=s.questions||[];
           if(!(s.intent||'').trim()) F.push('intent empty');
           if(!/^\.grill-with-ui\//.test(s.doc||'')) F.push('doc path unexpected: '+JSON.stringify(s.doc));
-          if(qs.length<2) F.push('expected >=2 questions, got '+qs.length);
-          const dom=qs.find(q=>q.id==='q-domain');
-          if(!dom) F.push('q-domain missing');
-          else {
-            if(dom.title!=='Also keep a glossary and ADRs?') F.push('q-domain title: '+JSON.stringify(dom.title));
-            if(dom.durable!==false) F.push('q-domain must be durable:false');
-            if(!Array.isArray(dom.options)||dom.options.length<2) F.push('q-domain needs >=2 options');
-            if(!dom.rec||!dom.rec.option||!(dom.rec.why||'').trim()) F.push('q-domain needs rec.option + rec.why');
-            if(dom.status!=='open') F.push('q-domain status: '+dom.status);
-            if(qs[0]&&qs[0].id!=='q-domain') F.push('q-domain is not the first question');
-          }
-          for(const q of qs.filter(q=>q.id!=='q-domain')){
+          if(!qs.length) F.push('no questions published');
+          if(qs.length>3) F.push('round 1 published '+qs.length+' questions, max is 3');
+          // No setup question: the docs decision belongs to the Finish pipeline now.
+          if(s.domainModeling!==undefined) F.push('a new session must not write domainModeling: '+JSON.stringify(s.domainModeling));
+          for(const q of qs){
+            if(q.id==='q-domain') F.push('q-domain must not exist any more');
             if(Number(q.round)!==1) F.push(q.id+' round='+q.round);
             if(!(q.title||'').trim()) F.push(q.id+' missing title');
             if(!(q.body||'').trim()) F.push(q.id+' missing body');

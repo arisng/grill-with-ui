@@ -18,8 +18,12 @@ vars:
     sh: |-
       node -e "const fs=require('fs');const h=process.env.USERPROFILE||process.env.HOME||'';const c=[process.env.IMPECCABLE,h+'/.agents/skills/impeccable/scripts/impeccable.cmd',h+'/.agents/skills/impeccable/scripts/impeccable'].filter(Boolean);process.stdout.write(c.find(f=>{try{return fs.statSync(f).isFile()}catch(e){return false}})||'')"
   # Three server tests are broken on Windows and documented as such: a POSIX-only path
-  # assertion, and two serve tests whose ready line never arrives. Skipped so `task test`
-  # means the same thing on every machine; `task test:all` runs the full suite unfiltered.
+  # assertion, and two serve tests whose ready line never arrives under `node --test` here
+  # (both pass when run as standalone scripts — it is the runner, not the server). Skipped so
+  # `task test` means the same thing on every machine; `task test:all` runs the full suite
+  # unfiltered. This list is a contract: scripts/check-contract.mjs asserts it matches
+  # scripts/ci.mjs and that it stays exactly these three, so a real failure cannot be
+  # silenced by adding a fourth pattern.
   UNIT_SKIP: '--test-skip-pattern "outside\s+git\s+the\s+key\s+comes\s+from\s+the\s+cwd|ready\s+line\s+\+\s+server\.json|reuses\s+the\s+last\s+port\s+from\s+server\.json"'
   UNIT_FLAGS: --test-force-exit --test-timeout=10000
 
@@ -102,16 +106,55 @@ tasks:
       - node .github/skills/fork-sync/scripts/sync-report.mjs {{.CLI_ARGS}}
 
   check:
-    desc: Everything local — unit tests, extension tests, page e2e, design detector, issue gate
-    deps: [test, test:ext, test:e2e, lint:issues]
+    desc: Everything local — contract, issues, eval graders, unit, extension, page e2e, detector
+    summary: The local CI (scripts/ci.mjs) plus the design detector. No cloud service is
+      involved. Browser suites are skipped with a notice when PLAYWRIGHT_PKG is unset, so a
+      machine without Playwright still runs every other step instead of failing on setup.
     cmds:
+      - node scripts/ci.mjs
       - task detect
 
-  lint:issues:
-    desc: Issue-store gate — ids, theme links, tree/view freshness (issue-tracking skill)
+  check:fast:
+    desc: The cheap gate — contract, issues, eval graders, sound cues, unit and extension tests
+    summary: What the pre-push hook runs. Everything except the browser suites.
     cmds:
-      - pwsh ~/.agents/skills/issue-tracking/scripts/issue-tree.ps1 -Check
-      - pwsh ~/.agents/skills/issue-tracking/scripts/render-issue-tree.ps1 -Check
+      - node scripts/ci.mjs --fast
+
+  hooks:install:
+    desc: Enable the version-controlled pre-push gate (.githooks/)
+    summary: Points core.hooksPath at .githooks so every `git push` runs the local gate
+      first. Undo with `task hooks:uninstall`. Bypass a single push with --no-verify.
+    cmds:
+      - git config core.hooksPath .githooks
+      - 'echo "core.hooksPath -> .githooks (pre-push gate active)"'
+
+  hooks:uninstall:
+    desc: Stop running the pre-push gate
+    cmds:
+      - git config --unset core.hooksPath || true
+      - 'echo "core.hooksPath unset (pre-push gate inactive)"'
+
+  lint:issues:
+    desc: Issue-store gate — ids, theme links, summary counts, tree freshness (portable)
+    summary: Replaces the issue-tracking skill's PowerShell scripts, which need pwsh and a
+      machine-local ~/.agents path. Runs anywhere Node runs.
+    cmds:
+      - node scripts/check-issues.mjs
+
+  lint:contract:
+    desc: Contract gate — the pipeline, ADR sections, verdict names and version agree
+    summary: Asserts the rules repeated across SKILL.md, domain-brief.md, spec-brief.md,
+      adr-template.md, copilot-instructions.md, the design docs and server.mjs still agree,
+      and that the removed opt-in question has not come back.
+    cmds:
+      - node scripts/check-contract.mjs --verbose
+
+  lint:evals:
+    desc: Offline eval gate — every waza grader passes a good fixture and fails a bad one
+    summary: 'waza run needs a live LLM; this proves each grader can both pass and fail,
+      which is what makes it a guardrail rather than decoration.'
+    cmds:
+      - node scripts/check-evals.mjs
 
   taste:
     desc: Open the completion-sound sampler, drift-checked against page.html

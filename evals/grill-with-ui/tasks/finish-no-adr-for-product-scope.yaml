@@ -1,0 +1,66 @@
+id: finish-no-adr-for-product-scope
+name: Finish writes no ADR for a product-scope decision
+description: >-
+  The grill settles a product-scope and priority question — which features ship first.
+  That decision is hard to reverse and genuinely traded off, so it passes the old
+  three-gate test, but the pipeline's subject gate is ineligible, so it must produce
+  no ADR while still writing the design doc. This is the negative case that the
+  pre-pipeline contract could not express.
+tags:
+  - behavioral
+  - finish
+  - decision-pipeline
+  - negative
+inputs:
+  prompt: |
+    grill with ui: We need to decide which of our candidate features ship in the next
+    release and in what order — offline mode, team sharing, or a reporting dashboard.
+
+    This is an automated run: there is no browser and no interactive user. Do exactly
+    what the skill's Start flow asks for — create the session, publish round 1, open
+    the page, print the URL — then stop and report. Do not wait for browser submissions, and make sure no server process is left
+    running when you stop.
+  follow_up_prompts:
+    - "Answer every open question with option A."
+    - "Finish the grill."
+expected:
+  should_trigger: true
+graders:
+  - name: no-adr-for-product-scope
+    type: program
+    weight: 3
+    config:
+      command: node
+      timeout: 60
+      args:
+        - -e
+        - |
+          const fs=require('fs'),p=require('path'),os=require('os');
+          const ws=process.env.WAZA_WORKSPACE_DIR||process.cwd();
+          const F=[];
+          function walk(d,depth=0,out=[]){ if(depth>8) return out; let e=[]; try{e=fs.readdirSync(d,{withFileTypes:true})}catch{return out}
+            for(const x of e){ if(x.name==='.git'||x.name==='node_modules') continue; const f=p.join(d,x.name);
+              if(x.isDirectory()) walk(f,depth+1,out); else out.push(f);} return out; }
+          const tag=p.basename(ws);
+          const root=p.join(os.homedir(),'.grill-with-ui','sessions');
+          const keys=fs.existsSync(root)?fs.readdirSync(root).filter(k=>k.includes(tag)):[];
+          const roots=[ws,...keys.map(k=>p.join(root,k))];
+          const files=[];
+          for(const r of roots) for(const f of walk(r)) files.push(f);
+          const cands=files.filter(f=>p.basename(f)==='state.json')
+            .map(f=>[f,fs.statSync(f).mtimeMs]).sort((a,b)=>b[1]-a[1]);
+          if(!cands.length){ console.error('FAIL: no grill session state.json in this task workspace. Roots: '+roots.join(', ')); process.exit(1); }
+          const best=cands[0][0];
+          const s=JSON.parse(fs.readFileSync(best,'utf8'));
+          const fin=s.finished||{};
+          // The design doc is written either way — the decision is recorded, just not as an ADR.
+          if(!fin.doc) F.push('finished.doc missing: the design doc is written in every case');
+          const adrDir=p.join(ws,'docs','adr');
+          const adrs=fs.existsSync(adrDir)?fs.readdirSync(adrDir).filter(n=>n.endsWith('.md')):[];
+          if(adrs.length) F.push('product-scope and priority decisions must not become ADRs; found '+adrs.join(', '));
+          if((fin.adrs||[]).length) F.push('finished.adrs must be absent or empty: no decision was eligible');
+          const pl=fin.pipeline;
+          if(!pl||typeof pl!=='object') F.push('finished.pipeline missing (the decision arithmetic)');
+          else if(!Number.isInteger(pl.decisions)||pl.decisions!==0) F.push('pipeline.decisions must be 0 for an ineligible grill: '+JSON.stringify(pl));
+          if(F.length){ console.error('FAIL:\n - '+F.join('\n - ')); process.exit(1); }
+          console.log('no ADR written for a product-scope grill, pipeline '+JSON.stringify(pl||{}));
