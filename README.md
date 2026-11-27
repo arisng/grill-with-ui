@@ -352,8 +352,11 @@ Three of those gates exist to keep the repo's own rules true, and each is itself
 - `node scripts/check-contract.mjs` — the pipeline, the ADR section list, the spec verdict
   names and the version agree across `SKILL.md`, `domain-brief.md`, `spec-brief.md`,
   `adr-template.md`, the repo instructions, the design docs and `server.mjs`. It also fails if
-  the removed `q-domain` question reappears, and if the unit-test skip list grows past its
-  three documented entries.
+  the removed `q-domain` question reappears, if the unit-test skip list grows past its three
+  documented entries, and if `plugin.json` and its `.github/plugin/marketplace.json` entry
+  disagree on version, description or source — the two manifests are read by different
+  consumers, so a bump in one went unnoticed in the other. The manifest rule is proved
+  against a drifted fixture on every run, so it cannot silently become a no-op.
 - `node scripts/check-evals.mjs` — runs every waza grader against a good fixture **and** a
   drifted one, because `waza run` needs a live model and a grader that cannot fail is
   decoration. 11/11 verified.
@@ -467,7 +470,9 @@ Two things make a sync land safely. First, `SKILL.md` is the product: its schema
 implemented by `server.mjs`, `page.html`, the briefs, and the tests, so a schema change
 must move through all of them — see the skill's `references/contract-ripple.md`. Second,
 bump `metadata.version` in `skills/grill-with-ui/SKILL.md` together with `version` in
-`plugin.json` (they are kept equal), then refresh what runs:
+`plugin.json` **and** the version in its `.github/plugin/marketplace.json` entry (all three
+are kept equal; `scripts/check-contract.mjs` fails if any two disagree, including the
+duplicated description), then refresh what runs:
 
 ```sh
 copilot plugin marketplace update grill-with-ui && copilot plugin update grill-with-ui

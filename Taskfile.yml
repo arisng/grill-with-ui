@@ -142,10 +142,12 @@ tasks:
       - node scripts/check-issues.mjs
 
   lint:contract:
-    desc: Contract gate — the pipeline, ADR sections, verdict names and version agree
+    desc: Contract gate — the pipeline, ADR sections, verdict names, versions and manifests agree
     summary: Asserts the rules repeated across SKILL.md, domain-brief.md, spec-brief.md,
       adr-template.md, copilot-instructions.md, the design docs and server.mjs still agree,
-      and that the removed opt-in question has not come back.
+      that the removed opt-in question has not come back, and that plugin.json and its
+      .github/plugin/marketplace.json entry carry the same version, description and source
+      (a bump in one manifest alone is the drift this catches).
     cmds:
       - node scripts/check-contract.mjs --verbose
 

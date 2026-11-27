@@ -262,3 +262,17 @@ Entries marked **Locked decision** are still in force. Entries marked *Supersede
   eight times in one session while only its tail mattered: `design.md` now carries the terms,
   locked decisions, risks and state sketch, with one pointer here. Refines the 2026-10-21 and
   2026-11-26 pipeline entries, which stay as recorded.
+
+- **The two manifests are one fact, told twice, and now asserted** (2026-11-27). `plugin.json`
+  and the `.github/plugin/marketplace.json` entry both carry a version and a description.
+  v0.11.0 and v0.12.0 bumped only `plugin.json`, so `copilot plugin install` served the new
+  payload while `copilot plugin list` still advertised v0.10.0 — and the catalog description
+  still promised the domain-modeling opt-in the skill had removed, which is the same drift
+  one release earlier that a version comparison alone would not have caught. **Chosen over
+  deleting the duplicated fields**, because the catalog copy is what a client renders before
+  it fetches the plugin, so a marketplace that cannot state a version cannot list one; and
+  over a release script that writes both, because a release script only guards releases —
+  these manifests are also edited by hand during fork-sync. The lockstep lives in
+  `scripts/check-contract.mjs`, whose manifest rule compares version, description and source
+  and is itself proved against a drifted fixture on every run, because a lockstep assertion
+  that cannot be shown to fire is the guard that rots first.

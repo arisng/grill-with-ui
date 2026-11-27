@@ -35,6 +35,8 @@
 ### `devtool`
 
 - config
+- gate
+- taste
 - taskfile
 ### `docs`
 

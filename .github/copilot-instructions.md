@@ -67,7 +67,10 @@ issue store, offline eval graders, sound cues, unit and extension tests — ever
 browser suites, which stay a deliberate local run). A blocked push names the failing step and
 offers `git push --no-verify` for a deliberate bypass. The three gates that keep this repo's
 own rules true are `scripts/check-contract.mjs` (the pipeline, ADR sections, verdict names and
-version agree across the contract files, and the removed `q-domain` question has not returned),
+version agree across the contract files, the removed `q-domain` question has not returned, and
+`plugin.json` and its `.github/plugin/marketplace.json` entry agree on version, description and
+source — both manifests are read by different consumers, so a one-sided bump ships a catalog
+entry that advertises a version the payload is not),
 `scripts/check-evals.mjs` (every waza grader passes a good fixture **and** fails a bad one, so
 no check is a no-op) and `scripts/check-issues.mjs` (the issue store and its tree are in sync,
 portable — it replaces the issue-tracking skill's `pwsh` + `~/.agents` scripts). `task test` already skips the three

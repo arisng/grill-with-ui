@@ -1,6 +1,6 @@
 # Commit Scope Constitution
 
-Last Updated: 2026-11-19
+Last Updated: 2026-11-27
 
 ## Purpose
 
@@ -81,6 +81,12 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 
 - `config`: `.waza.yaml` — the project configuration for the waza CLI
   (token budgets per file).
+- `gate`: the local CI gates that hold the repository's own rules —
+  `scripts/ci.mjs` (the gate runner) and `scripts/check-*.mjs` (the
+  invariant checks it runs), plus `.githooks/` when the hook is the
+  thing that runs them. Distinct from `taskfile`, which is the
+  wrapper, and from `test`, which proves product behaviour rather than
+  the repository's own rules.
 - `taskfile`: `Taskfile.yml` — the taskfile.dev wrappers over the
   repository's own commands.
 - `taste`: `taste.mjs` — the sampler launcher and the SOUND_CUES
@@ -125,6 +131,30 @@ Conventional Commits (Tier 1) and the extended `agent`/`copilot`/
 3. Record the change under Amendment History and bump Last Updated.
 
 ## Amendment History
+
+### 2026-11-27 - Amendment #10
+
+**Changes:**
+- Added the `gate` scope under the `devtool` type, for the local CI gates that
+  hold the repository's own rules — `scripts/ci.mjs` and the `scripts/check-*.mjs`
+  invariant checks, plus `.githooks/` when a hook is the thing that runs them.
+
+**Rationale:**
+`scripts/check-contract.mjs` and its siblings became a real gate in the
+2026-11-26 pipeline session, and they are the files most likely to change next:
+a rule is added to the contract, or a check is tightened, without touching the
+skill's prompt, its server, or the design record. No approved scope covered
+them — `devtool(config)` is the waza CLI configuration, `devtool(taste)` is the
+sampler, and `devtool(taskfile)` is the wrapper, not the gate — so the earlier
+`bc8c839` commit folded four gate scripts into `feat(skill)`, which hides them
+from anyone reading history for "when did we start checking this".
+
+A distinct `gate` scope keeps the guardrail work legible and separable from the
+product change it protects, which is the same reason `test` is separate from
+`feat`.
+
+**Migration Notes:**
+No history rewriting; the scope is new, so no earlier commit is affected.
 
 ### 2026-11-19 - Amendment #9
 

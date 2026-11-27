@@ -101,12 +101,63 @@ for (const [name, text] of Object.entries({ "SKILL.md": skill, "copilot-instruct
   check(!/domain-modeling mode on/.test(text), `${name}: still describes domainModeling as an active mode`);
 }
 
-// ---- 6. Version agreement: the manifest and the skill frontmatter must match ----
+// ---- 6. Manifest agreement: one version, one description, one source ----
+// The plugin is described twice. `plugin.json` is the install manifest; the marketplace
+// catalog repeats the version and description so a client can list the plugin without
+// fetching it. Repeating a field is what let v0.12.0 ship while the catalog still
+// advertised v0.10.0, so the repetition is now checked rather than trusted: the version
+// must be equal, and the description must be the identical string. A paraphrase is the
+// same drift one release later — the catalog entry still described the removed
+// domain-modeling opt-in long after the skill had dropped it.
+//
+// The rule is a pure function over the two parsed manifests so it can be proved to fail
+// (see the drift fixtures in section 6b): a lockstep assertion that cannot be shown to fire
+// is exactly the guard that silently rots.
+const MARKET = ".github/plugin/marketplace.json";
+function manifestDrift(manifest, market, sourceHasManifest) {
+  const out = [];
+  const entry = (market?.plugins || []).find((p) => p.name === manifest.name);
+  if (!entry) return [`no plugin entry named "${manifest.name}"`];
+  if (entry.version !== manifest.version)
+    out.push(`entry "${entry.name}" is v${entry.version} but plugin.json is v${manifest.version} — bump both in one commit`);
+  if (entry.description !== manifest.description)
+    out.push(`entry "${entry.name}" description differs from plugin.json — copy it verbatim, never reword the catalog copy`);
+  // `source` must be the folder that actually holds plugin.json, so a moved manifest
+  // cannot leave the catalog pointing at nothing.
+  if (!sourceHasManifest(entry.source ?? ""))
+    out.push(`entry "${entry.name}" source "${entry.source}" does not contain plugin.json`);
+  return out;
+}
+
 const plugin = JSON.parse(read("plugin.json") || "{}");
 const fm = /^---\r?\n([\s\S]*?)\r?\n---/.exec(skill);
 const skillVer = fm && /version:\s*([\d.]+)/.exec(fm[1])?.[1];
 check(Boolean(skillVer), "SKILL.md: frontmatter version missing");
 check(plugin.version === skillVer, `version mismatch: plugin.json ${plugin.version} vs SKILL.md ${skillVer}`);
+
+const marketText = read(MARKET);
+check(marketText !== null, `${MARKET}: missing — without it the repo is not installable as a marketplace`);
+let market = null;
+if (marketText !== null) {
+  try { market = JSON.parse(marketText); } catch (e) { findings.push(`${MARKET}: invalid JSON (${e.message})`); }
+  if (market) {
+    const sourceHasManifest = (rel) => existsSync(join(root, rel, "plugin.json"));
+    for (const d of manifestDrift(plugin, market, sourceHasManifest)) findings.push(`${MARKET}: ${d}`);
+  }
+}
+
+// ---- 6b. Prove the manifest rule can fire, on the two drifts it exists for ----
+// Empty findings for a drifted fixture would mean the rule above is a no-op.
+const alwaysHas = () => true;
+const driftFixtures = [
+  ["version drift", { ...plugin, version: "0.0.0" }, "is v"],
+  ["description drift", { ...plugin, description: "a reworded catalog copy" }, "description differs"],
+];
+for (const [name, manifest, expected] of driftFixtures) {
+  const got = market ? manifestDrift(manifest, market, alwaysHas) : [];
+  check(got.some((g) => g.includes(expected)),
+    `manifest rule is not proven: the ${name} fixture did not produce a finding — the gate cannot fail, so it guards nothing`);
+}
 
 // ---- 7. Prose that must stay in step with the contract ----
 check(/pipeline/i.test(readme), "README.md: does not mention the decision pipeline");
@@ -149,4 +200,4 @@ if (findings.length) {
   process.exit(1);
 }
 if (!verbose) process.exit(0);
-console.log(`contract OK — ${CONTRACT_FILES.length} files, ${SECTIONS.length} ADR sections, ${VERDICTS.length} verdicts, v${plugin.version}`);
+console.log(`contract OK — ${CONTRACT_FILES.length} files, ${SECTIONS.length} ADR sections, ${VERDICTS.length} verdicts, manifests in lockstep at v${plugin.version}`);
