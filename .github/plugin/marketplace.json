@@ -11,8 +11,8 @@
     {
       "name": "grill-with-ui",
       "source": "./",
-      "description": "Grilling design interview rendered on a local browser page: staged answers, discussion threads, optional domain-modeling mode (GLOSSARY.md glossary + ADRs), and the grill-monitor extension that wakes the agent once per Send instead of polling.",
-      "version": "0.10.0",
+      "description": "Grilling design interview rendered on a local browser page: staged answers, discussion threads, a Finish-time decision pipeline (GLOSSARY.md glossary + ADRs) with a spec readiness verdict, and the grill-monitor extension that wakes the agent once per Send instead of polling. Install with `copilot plugin install arisng/grill-with-ui`; a plugin cannot install SDK extensions, so install the bundled grill-monitor from a clone with `task ext-install`.",
+      "version": "0.12.0",
       "author": {
         "name": "Aris Nguyen"
       },

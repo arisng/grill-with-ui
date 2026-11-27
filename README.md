@@ -84,7 +84,7 @@ skill's Installation gate cleans for you):
    or copy the bundle's `.github/extensions/grill-monitor` into
    `~/.copilot/extensions/grill-monitor`.
 4. Restart the session — extensions and skills snapshot at start.
-5. Verify: `copilot plugin list` shows `grill-with-ui@grill-with-ui (v0.10.0)` enabled,
+5. Verify: `copilot plugin list` shows `grill-with-ui@grill-with-ui (v0.12.0)` enabled,
    and `grill_status` answers in chat. Existing grills under `~/.grill-with-ui/` need no
    migration.
 
